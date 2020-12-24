@@ -1,26 +1,8 @@
-This project is still experimental. The Master-branch supports sensored motors and Bafang-, Kunteng- and Kingmeter-Displays and debugging.
+Fork of EBiCS firmware for Lishui devices. Ported to Xaiomi M365 controller. 
 
-All user relevant settings have to be done in the config.h
+Note:  None of this has been tested, WiP, use at your own risk. 
+Note:  Makes no attempt to implement M365 protocols between BMS/BLE controllers, currently targets analog throttle soldered to CPU pin 11(PA1)
 
-throttle, "torque-simulation" and torquesensor-modes are available.
-
-The sensorless_VESC-branch has adapted the sensorless control of the VESC. Recently optimized for a Fischer ETH 1606 bike. If will work with other motors also, of course.
-
-A short tutorial can be found in the wiki.
-
-Helpful links:
-
-[vector-control-for-dummies](https://www.switchcraft.org/learning/2016/12/16/vector-control-for-dummies "vector-control-for-dummies")
-
-[space-vector-pwm-intro](https://www.switchcraft.org/learning/2017/3/15/space-vector-pwm-intro "space-vector-pwm-intro")
-
-[UM1052 - STM32F PMSM single/dual FOC SDK v4.3](https://www.st.com/content/ccc/resource/technical/document/user_manual/5e/5e/d2/cb/07/35/45/a6/CD00298474.pdf/files/CD00298474.pdf/jcr:content/translations/en.CD00298474.pdf "UM1052 - STM32F PMSM single/dual FOC SDK v4.3")
-
-[RM0008 Reference Manual STM32F103xx](https://www.st.com/content/ccc/resource/technical/document/reference_manual/59/b9/ba/7f/11/af/43/d5/CD00171190.pdf/files/CD00171190.pdf/jcr:content/translations/en.CD00171190.pdf)
-
-[System Workbench for STM32](https://www.st.com/en/development-tools/sw4stm32.html)
-
-[Sensorless approach VESC](http://cas.ensmp.fr/~praly/Telechargement/Journaux/2010-IEEE_TPEL-Lee-Hong-Nam-Ortega-Praly-Astolfi.pdf)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

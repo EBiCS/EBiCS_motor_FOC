@@ -9,7 +9,7 @@
 #include "stm32f1xx_hal.h"
 #include "print.h"
 
-UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart3;
 uint8_t ui8_rx_buffer[12];
 uint8_t ui8_tx_buffer[12];
 
@@ -17,7 +17,7 @@ uint8_t ui8_tx_buffer[12];
 void ebics_init()
 {
 
-    if (HAL_UART_Receive_DMA(&huart1, (uint8_t *)ui8_rx_buffer, 12) != HAL_OK)
+    if (HAL_UART_Receive_DMA(&huart3, (uint8_t *)ui8_rx_buffer, 12) != HAL_OK)
      {
  	   Error_Handler();
      }
@@ -49,17 +49,7 @@ void process_ant_page(MotorState_t* MS, MotorParams_t* MP){
 		 	 		 MS->regen_level = ui8_rx_buffer[6] & 0x07;
 		 	 		 MS->assist_level = ui8_rx_buffer[6]>>3 & 0x07;
 
-		 	 	    if(ui8_rx_buffer[7]>>3 & 0x01) //Light on/off is Bit 3 in Display_Command Bytes
-		 	 	        {
-		 	 	        	HAL_GPIO_WritePin(LIGHT_GPIO_Port, LIGHT_Pin, GPIO_PIN_RESET);
-		 	 	        	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-		 	 	        }
-		 	 	        else // KM_HEADLIGHT_ON, KM_HEADLIGHT_LOW, KM_HEADLIGHT_HIGH
-		 	 	        {
-		 	 	        	HAL_GPIO_WritePin(LIGHT_GPIO_Port, LIGHT_Pin, GPIO_PIN_SET);
-		 	 	        	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-		 	 	        }
-
+		 
 		 	 	}// end case 16
 		 	 	break;
 
@@ -107,7 +97,7 @@ void send_ant_page(uint8_t page, MotorState_t* MS, MotorParams_t* MP){
 		 	 		}
 		 	 		ui8_tx_buffer[11]= chkSum;
 
-		 	 		HAL_UART_Transmit_DMA(&huart1, (uint8_t *)&ui8_tx_buffer, 12);
+		 	 		HAL_UART_Transmit_DMA(&huart3   , (uint8_t *)&ui8_tx_buffer, 12);
 
 
 		 	 	} //end case 1
