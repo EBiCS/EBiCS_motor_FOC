@@ -107,6 +107,7 @@ uint32_t ui32_tim1_counter=0;
 uint32_t ui32_tim3_counter=0;
 uint8_t ui8_hall_state=0;
 uint8_t ui8_hall_state_old=0;
+uint8_t ui8_hall_case=0;
 uint16_t ui16_tim2_recent=0;
 uint16_t ui16_timertics=5000; 					//timertics between two hall events for 60° interpolation
 uint16_t ui16_reg_adc_value;
@@ -142,6 +143,8 @@ uint32_t uint32_SPEED_counter=32000;
 uint32_t uint32_PAS=32000;
 
 uint8_t ui8_UART_Counter=0;
+int8_t i8_recent_rotor_direction=1;
+int8_t i16_hall_order=1;
 
 uint32_t uint32_torque_cumulated=0;
 uint32_t uint32_PAS_cumulated=32000;
@@ -220,6 +223,50 @@ int32_t map (int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t
 #define ADC_VOLTAGE 0
 #define ADC_THROTTLE 1
 #define ADC_TEMP 2
+
+
+void autodetect(){
+	SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+   	MS.hall_angle_detect_flag=0; //set uq to contstant value in FOC.c for open loop control
+   	q31_rotorposition_absolute=1<<31;
+   	HAL_Delay(5);
+   	for(i=0;i<1080;i++){
+   		q31_rotorposition_absolute+=11930465; //drive motor in open loop with steps of 1°
+   		HAL_Delay(5);
+   		if(ui8_hall_state_old!=ui8_hall_state){
+   		printf_("hallstate:  %d, hallcase %d \n", ui8_hall_state , ui8_hall_case);
+
+   		if(ui8_hall_case==13)
+   		{
+   			q31_rotorposition_motor_specific=q31_rotorposition_absolute;
+   		}
+   		if(ui8_hall_case==23)
+   		{
+   			q31_rotorposition_motor_specific=q31_rotorposition_absolute;
+   		}
+
+   		ui8_hall_state_old=ui8_hall_state;
+   		}
+   	}
+    HAL_FLASH_Unlock();
+//    EE_WriteVariable(EEPROM_POS_SPEC_ANGLE, q31_rotorposition_motor_specific>>16);
+    if(i8_recent_rotor_direction == 1){
+//    	EE_WriteVariable(EEPROM_POS_HALL_ORDER, 1);
+    	i16_hall_order = 1;
+    }
+    else{
+ //   	EE_WriteVariable(EEPROM_POS_HALL_ORDER, -1);
+    	i16_hall_order = -1;
+    }
+    HAL_FLASH_Lock();
+
+   	MS.hall_angle_detect_flag=1;
+#if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
+    printf_("Motor specific angle:  %d, direction %d \n ", q31_rotorposition_motor_specific, i16_hall_order);
+#endif
+
+    HAL_Delay(5);
+}
 
 /* USER CODE END 0 */
 
@@ -401,48 +448,25 @@ int main(void)
 
     }
 
+//while(1){}
+
     ADC1->JSQR=JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
    	ADC1->JOFR1 = ui16_ph1_offset;
 
    	ui8_adc_offset_done_flag=1;
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
+#if 1 //(DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
 
-   	MS.hall_angle_detect_flag=0; //set uq to contstant value in FOC.c for open loop control
-   	q31_rotorposition_absolute=1<<31;
-   	HAL_Delay(5);
-   	for(i=0;i<360;i++){
-   		q31_rotorposition_absolute+=11930465; //drive motor in open loop with steps of 1°
-   		HAL_Delay(5);
-   		if(ui8_hall_state_old!=ui8_hall_state)printf_("hallstate:  %d, \n", ui8_hall_state);
-
-
-   		if(i8_direction==-1){
-   		if(ui8_hall_state_old==5&&ui8_hall_state==1)//switch from 5 to 1 is associated with 0°
-   		{
-   			q31_rotorposition_motor_specific=q31_rotorposition_absolute+(1<<31);//+357913941;//298261617LL; //offset empiric
-   		}}
-   		else{
-   	   		if(ui8_hall_state_old==4&&ui8_hall_state==5)//switch from 4 to 5 is associated with 0°
-   	   		{
-   	   			q31_rotorposition_motor_specific=q31_rotorposition_absolute+(1<<31);//+357913941;//298261617LL; //offset empiric
-   	   		}}
-
-   		ui8_hall_state_old=ui8_hall_state;
-   	}
-
-
-   	MS.hall_angle_detect_flag=1;
-
-    printf_("Motor specific angle:  %d, \n ", q31_rotorposition_motor_specific);
-    HAL_Delay(5);
+        autodetect();
+   
+        //Motor specific angle:  -966367405, direction -1 
 
 #else
    	q31_rotorposition_motor_specific = SPEC_ANGLE;
 
 #endif
 
-   		 HAL_GPIO_EXTI_Callback(GPIO_PIN_0); //read in initial rotor position
+   		 HAL_GPIO_EXTI_Callback(GPIO_PIN_4); //read in initial rotor position
    		 q31_rotorposition_absolute = q31_rotorposition_hall; // set absolute position to corresponding hall pattern.
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
@@ -471,7 +495,7 @@ int main(void)
 		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated>>8;
 		  q31_t_Battery_Current_accumulated += ((MS.i_q*MS.u_abs)>>11)*(uint16_t)(CAL_I>>8);
 
-		  MS.Battery_Current = abs(q31_t_Battery_Current_accumulated>>8); //Battery current in mA
+		  MS.Battery_Current = q31_t_Battery_Current_accumulated>>8*i8_direction; //Battery current in mA
 
 		  	//Control id
 		  q31_u_d_temp = -PI_control_i_d(MS.i_d, 0); //control direct current to zero
@@ -631,7 +655,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d\r\n", MS.i_q,int16_current_target, (uint16_t) temp1,(uint16_t) temp2, (uint16_t) temp3, (uint16_t)uint32_PAS, (uint16_t) (ui16_reg_adc_value-THROTTLE_OFFSET));//((q31_i_q_fil*q31_u_abs)>>14)*
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d\r\n", MS.i_q,int16_current_target, (uint16_t) temp1,(uint16_t) temp2, (uint16_t) temp3, q31_rotorposition_hall, (uint16_t) (ui16_reg_adc_value-THROTTLE_OFFSET));//((q31_i_q_fil*q31_u_abs)>>14)*
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
@@ -937,7 +961,7 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 1;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_LOW; //TODO: depends on gate driver!
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH; //TODO: depends on gate driver!
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
@@ -1168,17 +1192,29 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : HALL_3_Pin */
-  GPIO_InitStruct.Pin = HALL_3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(HALL_3_GPIO_Port, &GPIO_InitStruct);
+
+
+  HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
+
 
   /*Configure GPIO pins : HALL_1_Pin HALL_2_Pin */
-  GPIO_InitStruct.Pin = HALL_1_Pin|HALL_2_Pin;
+  GPIO_InitStruct.Pin = HALL_1_Pin|HALL_2_Pin|HALL_3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+#if 0
+  GPIO_InitStruct.Pin = HALL_1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(HALL_1_GPIO_Port, &GPIO_InitStruct);
+
+  while(1){
+    HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_SET);
+  }
+#endif
 
   /*Configure peripheral I/O remapping */
   __HAL_AFIO_REMAP_PD01_ENABLE();
@@ -1190,8 +1226,8 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
 }
 
@@ -1304,7 +1340,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 	   if (ui16_tim2_recent < ui16_timertics && !ui8_overflow_flag){ //prevent angle running away at standstill
 		// float with division necessary!
 
-		q31_rotorposition_absolute = q31_rotorposition_hall + (q31_t)(i8_direction * (715827883.0*((float)ui16_tim2_recent/(float)ui16_timertics))); //interpolate angle between two hallevents by scaling timer2 tics
+                q31_rotorposition_absolute = q31_rotorposition_hall*i16_hall_order + (q31_t)(i8_direction * i16_hall_order * i8_recent_rotor_direction * (715827883.0*((float)ui16_tim2_recent/(float)ui16_timertics))); //interpolate angle between two hallevents by scaling timer2 tics
 
 	   }
 	   else
@@ -1349,9 +1385,14 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	//Hall sensor event processing
-	if(GPIO_Pin == GPIO_PIN_4||GPIO_Pin == GPIO_PIN_5||GPIO_Pin == GPIO_PIN_15) //check for right interrupt source
+	if(GPIO_Pin == GPIO_PIN_4||GPIO_Pin == GPIO_PIN_5||GPIO_Pin == GPIO_PIN_0) //check for right interrupt source
 	{
-	ui8_hall_state = ((GPIOA->IDR >> 15) << 2) | ((GPIOB->IDR >> 4) & 0b11); //Mask input register with Hall 1 - 3 bits
+	ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); //Mask input register with Hall 1 - 3 bits
+
+	ui8_hall_case=ui8_hall_state_old*10+ui8_hall_state;
+	if(MS.hall_angle_detect_flag){ //only process, if autodetect procedere is fininshed
+	ui8_hall_state_old=ui8_hall_state;
+	}
 
 	ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last hall event
 
@@ -1364,31 +1405,64 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	   ui8_overflow_flag=0;
 
 	}
-	//temp6=ui16_timertics;
 
 
-	switch (ui8_hall_state) //according to UM1052 Fig 57, Page 72, 120° setup
-	{
-	case 5: //0°
-		q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;//SPEC_ANGLE;
-		break;
-	case 1: //60°
-		q31_rotorposition_hall = DEG_plus60 + q31_rotorposition_motor_specific;//SPEC_ANGLE;
-		break;
-	case 3: //120°
-		q31_rotorposition_hall = DEG_plus120 + q31_rotorposition_motor_specific;//SPEC_ANGLE;
-		break;
-	case 2: //180°
-		q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;//SPEC_ANGLE; 	//overflow doesn't matter?!
-		break;
-	case 6: //240°-->-120°
-		q31_rotorposition_hall = DEG_minus120 + q31_rotorposition_motor_specific;//SPEC_ANGLE;
-		break;
-	case 4: //300°-->-60°
-		q31_rotorposition_hall = DEG_minus60 + q31_rotorposition_motor_specific;//SPEC_ANGLE;
-		break;
 
-	} // end case
+	switch (ui8_hall_case) //12 cases for each transition from one stage to the next. 6x forward, 6x reverse
+			{
+		//6 cases for forward direction
+		case 64:
+			q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=1;
+			break;
+		case 45:
+			q31_rotorposition_hall = DEG_plus60 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=1;
+			break;
+		case 51:
+			q31_rotorposition_hall = DEG_plus120 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=1;
+			break;
+		case 13:
+			q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=1;
+			break;
+		case 32:
+			q31_rotorposition_hall = DEG_minus120 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=1;
+			break;
+		case 26:
+			q31_rotorposition_hall = DEG_minus60 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=1;
+			break;
+
+		//6 cases for reverse direction
+		case 46:
+			q31_rotorposition_hall = DEG_minus60 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=-1;
+			break;
+		case 62:
+			q31_rotorposition_hall = DEG_minus120 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=-1;
+			break;
+		case 23:
+			q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=-1;
+			break;
+		case 31:
+			q31_rotorposition_hall = DEG_plus120 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=-1;
+			break;
+		case 15:
+			q31_rotorposition_hall = DEG_plus60 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=-1;
+			break;
+		case 54:
+			q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;
+			i8_recent_rotor_direction=-1;
+			break;
+
+		} // end case
 
 
 	} //end if

@@ -40,6 +40,7 @@ Src/main.c \
 Src/FOC.c \
 Src/display_ebics.c \
 Src/stm32f1xx_it.c \
+Stc/print.c \
 Src/stm32f1xx_hal_msp.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc.c \

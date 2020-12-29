@@ -78,12 +78,10 @@ void Error_Handler(void);
 #define Phase_Voltage_1_GPIO_Port GPIOA
 #define Phase_Voltage_2_Pin GPIO_PIN_7
 #define Phase_Voltage_2_GPIO_Port GPIOA
-#define AGND_Pin GPIO_PIN_0
-#define AGND_GPIO_Port GPIOB
 #define Phase_Voltage_3_Pin GPIO_PIN_1
 #define Phase_Voltage_3_GPIO_Port GPIOB
-#define HALL_3_Pin GPIO_PIN_15
-#define HALL_3_GPIO_Port GPIOA
+#define HALL_3_Pin GPIO_PIN_0
+#define HALL_3_GPIO_Port GPIOB
 #define HALL_1_Pin GPIO_PIN_4
 #define HALL_1_GPIO_Port GPIOB
 #define HALL_2_Pin GPIO_PIN_5
