@@ -102,6 +102,10 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+q31_t	raw_inj1;
+q31_t	raw_inj2;
+
+
 
 uint32_t ui32_tim1_counter=0;
 uint32_t ui32_tim3_counter=0;
@@ -115,10 +119,10 @@ uint32_t ui32_reg_adc_value_filter;
 uint16_t ui16_ph1_offset=0;
 uint16_t ui16_ph2_offset=0;
 uint16_t ui16_ph3_offset=0;
-int16_t i16_ph1_current=0;
 
-int16_t i16_ph2_current=0;
-int16_t i16_ph2_current_filter=0;
+volatile int16_t i16_ph1_current=0;
+volatile int16_t i16_ph2_current=0;
+volatile int16_t i16_ph2_current_filter=0;
 int16_t i16_ph3_current=0;
 uint16_t i=0;
 uint16_t j=0;
@@ -163,7 +167,7 @@ q31_t q31_u_d_temp=0;
 q31_t q31_u_q_temp=0;
 int16_t i16_sinus=0;
 int16_t i16_cosinus=0;
-char buffer[100];
+char buffer[256];
 char char_dyn_adc_state=1;
 char char_dyn_adc_state_old=1;
 uint8_t assist_factor[10]={0, 51, 102, 153, 204, 255, 255, 255, 255, 255};
@@ -204,7 +208,7 @@ uint8_t ui8_LEV_Page_to_send=1;
 
 
 
-MotorState_t MS;
+volatile MotorState_t MS;
 MotorParams_t MP;
 
 
@@ -218,9 +222,15 @@ static void dyn_adc_state(q31_t angle);
 static void set_inj_channel(char state);
 int32_t map (int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);
 
-#define JSQR_PHASE_A 0b000110000000000000000 //3
+#if 0
+#define JSQR_PHASE_A 0b00011000000000000000 //3
 #define JSQR_PHASE_B 0b00100000000000000000 //4
 #define JSQR_PHASE_C 0b00101000000000000000 //5
+#else
+#define JSQR_PHASE_C 0b00011000000000000000 //3
+#define JSQR_PHASE_A 0b00100000000000000000 //4
+#define JSQR_PHASE_B 0b00101000000000000000 //5
+#endif
 
 #define ADC_VOLTAGE 0
 #define ADC_THROTTLE 1
@@ -233,12 +243,12 @@ int32_t map (int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t
 void autodetect(){
 	SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
    	MS.hall_angle_detect_flag=0; //set uq to contstant value in FOC.c for open loop control
-   	q31_rotorposition_absolute=1<<31;
+   	q31_rotorposition_absolute=11930465/2;//1<<31;
    	HAL_Delay(5);
    	for(i=0;i<1080;i++){
 //        while(1){ 
-   		q31_rotorposition_absolute+=11930465; //drive motor in open loop with steps of 1°
-   		HAL_Delay(5);
+   		q31_rotorposition_absolute+=1*11930465; //drive motor in open loop with steps of 1°
+   		HAL_Delay(1);
    		if(ui8_hall_state_old!=ui8_hall_state){
    		printf_("hallstate:  %d, hallcase %d \n", ui8_hall_state , ui8_hall_case);
 
@@ -422,7 +432,7 @@ int main(void)
 
     CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);//Disable PWM
 
-    for(i=0;i<32;i++){
+    for(i=0;i<16;i++){
     	while(!ui8_adc_regular_flag){}
     	ui16_ph1_offset+=adcData[ADC_CHANA];
     	ui16_ph2_offset+=adcData[ADC_CHANB];
@@ -430,9 +440,9 @@ int main(void)
     	ui8_adc_regular_flag=0;
 
     }
-    ui16_ph1_offset=ui16_ph1_offset>>5;
-    ui16_ph2_offset=ui16_ph2_offset>>5;
-    ui16_ph3_offset=ui16_ph3_offset>>5;
+    ui16_ph1_offset=ui16_ph1_offset>>4;
+    ui16_ph2_offset=ui16_ph2_offset>>4;
+    ui16_ph3_offset=ui16_ph3_offset>>4;
 
     printf_("phase current offsets:  %d, %d, %d \n ", ui16_ph1_offset, ui16_ph2_offset, ui16_ph3_offset);
 
@@ -576,8 +586,8 @@ int main(void)
 		  }
 	  }
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG && defined(FAST_LOOP_LOG))
-		if(ui8_debug_state==3 && ui8_UART_TxCplt_flag){
+#if 0 //(DISPLAY_TYPE == DISPLAY_TYPE_DEBUG) // && defined(FAST_LOOP_LOG))
+		if(ui8_UART_TxCplt_flag){
 	        sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n", e_log[k][0], e_log[k][1], e_log[k][2],e_log[k][3],e_log[k][4],e_log[k][5]); //>>24
 			i=0;
 			while (buffer[i] != '\0')
@@ -676,7 +686,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", MS.i_q,int16_current_target, (int16_t) temp1,(int16_t) temp2, (int16_t) temp3, q31_rotorposition_hall, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),i16_ph1_current,i16_ph2_current);//((q31_i_q_fil*q31_u_abs)>>14)*
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", (int32_t)MS.i_q, int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) temp3, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current);//((q31_i_q_fil*q31_u_abs)>>14)*
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
@@ -834,7 +844,7 @@ static void MX_ADC1_Init(void)
   sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_CC4; // Hier bin ich nicht sicher ob Trigger out oder direkt CC4
   sConfigInjected.AutoInjectedConv = DISABLE; //muß aus sein
   sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-  sConfigInjected.InjectedOffset = ui16_ph1_offset;//1900;
+  sConfigInjected.InjectedOffset = 0;//ui16_ph1_offset;//1900;
   HAL_ADC_Stop(&hadc1); //ADC muß gestoppt sein, damit Triggerquelle gesetzt werden kann.
   if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK)
   {
@@ -931,7 +941,7 @@ static void MX_ADC2_Init(void)
   sConfigInjected.ExternalTrigInjecConv = ADC_INJECTED_SOFTWARE_START;
   sConfigInjected.AutoInjectedConv = DISABLE;
   sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-  sConfigInjected.InjectedOffset = ui16_ph2_offset;//	1860;
+  sConfigInjected.InjectedOffset = 0;//ui16_ph2_offset;//	1860;
   if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
@@ -1320,30 +1330,30 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 		{
 		case 1: //Phase C at high dutycycles, read from A+B directly
 			{
-				temp1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-				i16_ph1_current = temp1 ;
+				raw_inj1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+				i16_ph1_current = raw_inj1 ;
 
-				temp2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
-				i16_ph2_current = temp2;
+				raw_inj2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+				i16_ph2_current = raw_inj2;
 			}
 			break;
 		case 2: //Phase A at high dutycycles, read from B+C (A = -B -C)
 			{
 
-				temp2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
-				i16_ph2_current = temp2;
+				raw_inj2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+				i16_ph2_current = raw_inj2;
 
-				temp1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-				i16_ph1_current = -i16_ph2_current-temp1;
+				raw_inj1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+				i16_ph1_current = -i16_ph2_current-raw_inj1;
 
 			}
 			break;
 		case 3: //Phase B at high dutycycles, read from A+C (B=-A-C)
 			{
-				temp1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-				i16_ph1_current = temp1 ;
-				temp2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
-				i16_ph2_current = -i16_ph1_current-temp2;
+				raw_inj1=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+				i16_ph1_current = raw_inj1 ;
+				raw_inj2=(q31_t)HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+				i16_ph2_current = -i16_ph1_current-raw_inj2;
 			}
 			break;
 
@@ -1368,14 +1378,8 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 	   if (ui16_tim2_recent < ui16_timertics && !ui8_overflow_flag){ //prevent angle running away at standstill
 		// float with division necessary!
            		   //normal forward function
-		   if(i16_hall_order * i8_recent_rotor_direction == 1 && i8_reverse_flag*i8_direction == 1){
-			   q31_rotorposition_absolute = q31_rotorposition_hall*i16_hall_order + (q31_t)(i16_hall_order * i8_recent_rotor_direction * (715827883.0*((float)ui16_tim2_recent/(float)ui16_timertics))); //interpolate angle between two hallevents by scaling timer2 tics
-		   }
-		   // reverse direction only if set by flag.
-		   else if (i16_hall_order * i8_recent_rotor_direction == -1 && i8_reverse_flag*i8_direction == -1)
-		   {
-			   q31_rotorposition_absolute = q31_rotorposition_hall*i16_hall_order + (q31_t)(i16_hall_order * i8_recent_rotor_direction * (715827883.0*((float)ui16_tim2_recent/(float)ui16_timertics))); //interpolate angle between two hallevents by scaling timer2 tics
-   		   }
+                q31_rotorposition_absolute = q31_rotorposition_hall*i16_hall_order + (q31_t)(i16_hall_order * i8_recent_rotor_direction * (715827883.0*((float)ui16_tim2_recent/(float)ui16_timertics))); //interpolate angle between two hallevents by scaling timer2 tics
+
 	   }
 	   else
 	   {ui8_overflow_flag=1;
@@ -1407,8 +1411,6 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 	TIM1->CCR1 =  (uint16_t) switchtime[0];
 	TIM1->CCR2 =  (uint16_t) switchtime[1];
 	TIM1->CCR3 =  (uint16_t) switchtime[2];
-
-
 
 	//HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 

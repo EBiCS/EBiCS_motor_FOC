@@ -89,10 +89,10 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 
 	PI_flag=1;
 
-//set static volatage for hall angle detection
-if(!MS_FOC->hall_angle_detect_flag){
-	MS_FOC->u_q=0;
-	MS_FOC->u_d=300;
+        //set static volatage for hall angle detection
+        if(!MS_FOC->hall_angle_detect_flag){
+	        MS_FOC->u_q=0;
+	        MS_FOC->u_d=300;
 	}
 
 
@@ -108,8 +108,7 @@ if(!MS_FOC->hall_angle_detect_flag){
 	//observer_update(q31_u_alpha, q31_u_beta, q31_i_alpha, q31_i_beta , x1, x2, teta_obs);
 
 
-	if(uint32_PAS_counter < PAS_TIMEOUT&&ui8_debug_state==0)
-			{
+	{
 		e_log[z][0]=temp1;//fl_e_alpha_obs;
 		e_log[z][1]=temp2;//fl_e_beta_obs;
 		e_log[z][2]=temp3;//(q31_t)q31_teta_obs>>24;
@@ -117,14 +116,13 @@ if(!MS_FOC->hall_angle_detect_flag){
 		e_log[z][4]=temp5;
 		e_log[z][5]=temp6;
 		z++;
-		if(z>150) Obs_flag=1;
-		if (z>299)
-		{z=0;
-
-		ui8_debug_state=2;}
-			}
-	else {if(ui8_debug_state==2)ui8_debug_state=3;;}
-
+		if(z>150) 
+                        Obs_flag=1;
+		if (z>299) {
+                        z=0;
+		        ui8_debug_state=2;
+                }
+        }
 	//call SVPWM calculation
 	svpwm(q31_u_alpha, q31_u_beta);
 	//temp6=__HAL_TIM_GET_COUNTER(&htim1);

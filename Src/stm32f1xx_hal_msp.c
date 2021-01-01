@@ -189,7 +189,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     PA5     ------> ADC2_IN5
     PA6     ------> ADC2_IN6
     */
-    GPIO_InitStruct.Pin = Phase_Current_2_Pin|Phase_Current_3_Pin|Phase_Voltage_1_Pin;
+    GPIO_InitStruct.Pin = Phase_Current_1_Pin|Phase_Current_2_Pin|Phase_Current_3_Pin|Phase_Voltage_1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
