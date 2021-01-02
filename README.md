@@ -1,8 +1,12 @@
 Fork of EBiCS firmware for Lishui devices. Ported to Xaiomi M365 controller. 
 
-Note:  None of this has been tested, WiP, use at your own risk. 
-Note:  Makes no attempt to implement M365 protocols between BMS/BLE controllers, currently targets analog throttle soldered to CPU pin 11(PA1)
 
+Note:  This is WiP, use at your own risk. 
+Note:  Makes no attempt to implement M365 protocols between BMS/BLE controllers, currently targets analog throttle soldered to CPU pin 11(PA1)
+Note:  On my controller I had to short the Hall A input resistor, some pullup current is very high. Unsure of cause. 
+
+Currently can do hall autodetection, and then run in sinusoidal mode with throttle controlled voltage. 
+FoC and current limiting in general is not working right yet. 
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
