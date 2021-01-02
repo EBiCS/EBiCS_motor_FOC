@@ -39,7 +39,7 @@ char PI_flag=0;
 TIM_HandleTypeDef htim1;
 
 
-void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, MotorState_t* MS_FOC);
+void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, uint16_t throttle, MotorState_t* MS_FOC);
 void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta);
 q31_t PI_control_i_q (q31_t ist, q31_t soll);
 q31_t PI_control_i_d (q31_t ist, q31_t soll);
@@ -48,10 +48,10 @@ void observer_update(q31_t v_alpha, q31_t v_beta, q31_t i_alpha, q31_t i_beta, v
 
 
 
+q31_t last_theta=-1;
 
 
-
-void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, MotorState_t* MS_FOC)
+void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, uint16_t throttle, MotorState_t* MS_FOC)
 {
 
 	 q31_t q31_i_alpha = 0;
@@ -67,7 +67,14 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 	// temp5=(q31_t)int16_i_as;
 	// temp6=(q31_t)int16_i_bs;
 
+        //Clamp field rotation velocity
+        if(last_theta!=-1 && q31_teta - last_theta > 7158278*3)
+             q31_teta = last_theta + 7158278*3;        
+
+
+        last_theta = q31_teta;
 	// Clark transformation
+
 	arm_clarke_q31((q31_t)int16_i_as, (q31_t)int16_i_bs, &q31_i_alpha, &q31_i_beta);
 
 	arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
@@ -93,11 +100,14 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
         if(!MS_FOC->hall_angle_detect_flag){
 	        MS_FOC->u_q=0;
 	        MS_FOC->u_d=300;
-	}
+	}else{
+	        MS_FOC->u_q=0;
+	        MS_FOC->u_d=throttle*10;
+        }
 
 
 	//inverse Park transformation
-	arm_inv_park_q31(MS_FOC->u_d, MS_FOC->u_q, &q31_u_alpha, &q31_u_beta, -sinevalue, cosinevalue);
+	arm_inv_park_q31(MS_FOC->u_d, MS_FOC->u_q, &q31_u_alpha, &q31_u_beta, sinevalue, cosinevalue);
 
 	temp1=int16_i_as;
 	temp2=int16_i_bs;
