@@ -46,10 +46,11 @@ q31_t PI_control_i_d (q31_t ist, q31_t soll);
 void observer_update(q31_t v_alpha, q31_t v_beta, q31_t i_alpha, q31_t i_beta, volatile q31_t x1, volatile q31_t x2, volatile q31_t phase);
 
 
-
+extern q31_t c_squared;
 
 q31_t last_theta=-1;
-
+int int32_last_i_as,int32_last_i_bs;
+int last_current_mag;
 
 void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, uint16_t throttle, MotorState_t* MS_FOC)
 {
@@ -68,16 +69,38 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 	// temp6=(q31_t)int16_i_bs;
 
         //Clamp field rotation velocity
+
+//q31_teta += (715827883 / 300) * (throttle - 150)
+#if 0
         if(last_theta!=-1 && q31_teta - last_theta > 7158278*3)
              q31_teta = last_theta + 7158278*3;        
 
 
         last_theta = q31_teta;
+#endif
 	// Clark transformation
+
+        /* filter currents */
+#if 0
+        int32_last_i_as = (((int32_last_i_as*7)) + (int16_i_as))>>3; // 0.875*prev + 0.125*curr | 0.75 = 0xD999
+        int32_last_i_bs = (((int32_last_i_bs*7)) + (int16_i_bs))>>3; // 0.875*prev + 0.125*curr | 0.75 = 0xD999
+
+        int16_i_as = int32_last_i_as;
+        int16_i_bs = int32_last_i_bs;
+#endif
 
 	arm_clarke_q31((q31_t)int16_i_as, (q31_t)int16_i_bs, &q31_i_alpha, &q31_i_beta);
 
-	arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
+
+
+        int current_mag = q31_i_alpha * q31_i_alpha + q31_i_beta * q31_i_beta;
+
+ 
+        last_current_mag = (last_current_mag*31 + current_mag)>>5; 
+        c_squared = current_mag;
+ 
+
+	arm_sin_cos_q31(q31_teta+(throttle-1500)*7158278*2, &sinevalue, &cosinevalue);
 
 
 	// Park transformation
@@ -102,7 +125,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 	        MS_FOC->u_d=300;
 	}else{
 	        MS_FOC->u_q=0;
-	        MS_FOC->u_d=throttle*10;
+	        MS_FOC->u_d=400;//throttle*10;
         }
 
 

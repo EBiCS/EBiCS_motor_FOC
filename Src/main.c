@@ -44,6 +44,7 @@
   #include "display_ebics.h"
 #endif
 
+#include "stm32f1xx_ll_tim.h"
 
 #include <arm_math.h>
 /* USER CODE END Includes */
@@ -72,6 +73,7 @@ DMA_HandleTypeDef hdma_adc1;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
@@ -95,6 +97,7 @@ static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -112,7 +115,7 @@ uint32_t ui32_tim3_counter=0;
 uint8_t ui8_hall_state=0;
 uint8_t ui8_hall_state_old=0;
 uint8_t ui8_hall_case=0;
-uint16_t ui16_tim2_recent=0;
+uint16_t ui16_tim3_recent=0;
 uint16_t ui16_timertics=5000; 					//timertics between two hall events for 60° interpolation
 uint16_t ui16_reg_adc_value;
 uint32_t ui32_reg_adc_value_filter;
@@ -222,14 +225,17 @@ static void dyn_adc_state(q31_t angle);
 static void set_inj_channel(char state);
 int32_t map (int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);
 
+q31_t c_squared=0;
+
+
 #if 0
 #define JSQR_PHASE_A 0b00011000000000000000 //3
 #define JSQR_PHASE_B 0b00100000000000000000 //4
 #define JSQR_PHASE_C 0b00101000000000000000 //5
 #else
-#define JSQR_PHASE_A 0b00011000000000000000 //3
-#define JSQR_PHASE_B 0b00100000000000000000 //4
-#define JSQR_PHASE_C 0b00101000000000000000 //5
+#define JSQR_PHASE_C 0b00011000000000000000 //3
+#define JSQR_PHASE_A 0b00100000000000000000 //4
+#define JSQR_PHASE_B 0b00101000000000000000 //5
 #endif
 
 #define ADC_VOLTAGE 0
@@ -317,7 +323,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_USART1_UART_Init();
+  //MX_USART1_UART_Init();
   MX_USART3_UART_Init();
 
   //initialize MS struct.
@@ -354,6 +360,7 @@ int main(void)
   MX_TIM1_Init(); //Hier die Reihenfolge getauscht!
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
 
  // Start Timer 1
     if(HAL_TIM_Base_Start_IT(&htim1) != HAL_OK)
@@ -386,14 +393,34 @@ int main(void)
            Error_Handler();
          }
 
-       // Start Timer 3
+       if(HAL_TIM_Base_Start_IT(&htim4) != HAL_OK)
+         {
+           /* Counter Enable Error */
+           Error_Handler();
+         }
 
+
+       // Start Timer 3
+#if 1
+  LL_TIM_IC_SetFilter(htim3.Instance, LL_TIM_CHANNEL_CH1, ( uint32_t )(10) << 20);
+  LL_TIM_SetUpdateSource ( htim3.Instance, LL_TIM_UPDATESOURCE_COUNTER );
+
+  LL_TIM_EnableIT_CC1 ( htim3.Instance );
+  LL_TIM_EnableIT_UPDATE ( htim3.Instance );
+  LL_TIM_SetCounter ( htim3.Instance, 0 );
+
+  LL_TIM_CC_EnableChannel  ( htim3.Instance, LL_TIM_CHANNEL_CH1 );
+  LL_TIM_EnableCounter ( htim3.Instance );
+
+#else
        if(HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
             {
               /* Counter Enable Error */
               Error_Handler();
             }
-
+#endif
+      HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+      HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
 
 /*
       // HAL_TIM_GenerateEvent(&htim1, TIM_EVENTSOURCE_CC4);
@@ -675,7 +702,7 @@ int main(void)
 
 	  if (int16_current_target>0&&!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
 	 //slow loop procedere @16Hz, for LEV standard every 4th loop run, send page,
-	  if(ui32_tim3_counter>500){
+	  if(ui32_tim3_counter++>2000){
 		  MS.Temperature = adcData[ADC_TEMP]*41>>8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 		  MS.Voltage=adcData[ADC_VOLTAGE];
 		  if(uint32_SPEED_counter>127999)MS.Speed =128000;
@@ -686,7 +713,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", (int32_t)MS.i_q, int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) temp3, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle);//((q31_i_q_fil*q31_u_abs)>>14)*
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", (int32_t)MS.i_q, int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) temp3, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, c_squared, ui16_timertics, ui16_tim3_recent);//((q31_i_q_fil*q31_u_abs)>>14)*
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
@@ -795,7 +822,7 @@ void SystemClock_Config(void)
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
   /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(SysTick_IRQn, 1, 0);
 }
 
 /**
@@ -816,7 +843,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE; //Scan muß für getriggerte Wandlung gesetzt sein
   hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;// Trigger regular ADC with timer 3 ADC_EXTERNALTRIGCONV_T1_CC1;// // ADC_SOFTWARE_START; //
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T2_CC2;// Trigger regular ADC with timer 3 ADC_EXTERNALTRIGCONV_T1_CC1;// // ADC_SOFTWARE_START; //
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 6;
   hadc1.Init.NbrOfDiscConversion = 0;
@@ -1051,11 +1078,12 @@ static void MX_TIM2_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig;
   TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_OC_InitTypeDef sConfigOC;
 
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 128;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 64000;
+  htim2.Init.Period = 7813;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -1076,42 +1104,97 @@ static void MX_TIM2_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
+  sConfigOC.OCMode = TIM_OCMODE_TOGGLE;
+  sConfigOC.Pulse = 100;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  HAL_TIM_OC_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2);
+
 }
+
+#define M1_HALL_IC_FILTER  10
+#define M1_HALL_TIM_PERIOD 65535
+
+
 
 /* TIM3 init function 8kHz interrupt frequency for regular adc triggering */
 static void MX_TIM3_Init(void)
 {
 
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
+   /* USER CODE BEGIN TIM3_Init 0 */
 
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_HallSensor_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 128;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 7813;
+  htim3.Init.Period = M1_HALL_TIM_PERIOD;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = M1_HALL_IC_FILTER;
+  sConfig.Commutation_Delay = 0;
+  if (HAL_TIMEx_HallSensor_Init(&htim3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC2REF;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+static void MX_TIM4_Init(void)
+{
+
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_OC_InitTypeDef sConfigOC;
+
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 128;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = -1;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
 
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC1;
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
-
-  HAL_TIM_MspPostInit(&htim3);
-
 }
+
 
 
 /**
@@ -1191,19 +1274,19 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* DMA1_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
   /* DMA1_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
   /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 }
 
@@ -1238,8 +1321,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : HALL_1_Pin HALL_2_Pin */
   GPIO_InitStruct.Pin = HALL_1_Pin|HALL_2_Pin|HALL_3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 #if 0
@@ -1256,9 +1339,10 @@ static void MX_GPIO_Init(void)
 #endif
 
   /*Configure peripheral I/O remapping */
-  __HAL_AFIO_REMAP_PD01_ENABLE();
+//  __HAL_AFIO_REMAP_PD01_ENABLE();
 
   /* EXTI interrupt init*/
+#if 0
   HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
@@ -1267,17 +1351,17 @@ static void MX_GPIO_Init(void)
 
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-
+#endif
 }
 
 
 /* USER CODE BEGIN 4 */
 
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) //_UP flaf
 {
 	if (htim == &htim3) {
-		if(ui32_tim3_counter<32000)ui32_tim3_counter++;
+//		if(ui32_tim3_counter<32000)ui32_tim3_counter++;
 		if (uint32_SPEED_counter<128000){
 			  uint32_SPEED_counter++;
 		}
@@ -1373,12 +1457,12 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 
 	//extrapolate recent rotor position
-	ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
+	ui16_tim3_recent = __HAL_TIM_GET_COUNTER(&htim4); // read in timertics since last event
     if(MS.hall_angle_detect_flag){
-	   if (ui16_tim2_recent < ui16_timertics && !ui8_overflow_flag){ //prevent angle running away at standstill
+	   if (ui16_tim3_recent < ui16_timertics && !ui8_overflow_flag){ //prevent angle running away at standstill
 		// float with division necessary!
            		   //normal forward function
-                q31_rotorposition_absolute = q31_rotorposition_hall*i16_hall_order + (q31_t)(i16_hall_order * i8_recent_rotor_direction * (715827883.0*((float)ui16_tim2_recent/(float)ui16_timertics))); //interpolate angle between two hallevents by scaling timer2 tics
+                q31_rotorposition_absolute = q31_rotorposition_hall*i16_hall_order + (q31_t)(i16_hall_order * i8_recent_rotor_direction * (715827883.0*((float)ui16_tim3_recent/(float)ui16_timertics))); //interpolate angle between two hallevents by scaling timer2 tics
 
 	   }
 	   else
@@ -1418,31 +1502,31 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
 	//Hall sensor event processing
-	if(GPIO_Pin == GPIO_PIN_4||GPIO_Pin == GPIO_PIN_5||GPIO_Pin == GPIO_PIN_0) //check for right interrupt source
+	if(htim == &htim3) //check for right interrupt source
 	{
-	ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); //Mask input register with Hall 1 - 3 bits
 
+
+	ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); //Mask input register with Hall 1 - 3 bits
+//        printf_("hs: %x\n", ui8_hall_state);
 	ui8_hall_case=ui8_hall_state_old*10+ui8_hall_state;
 	if(MS.hall_angle_detect_flag){ //only process, if autodetect procedere is fininshed
-	ui8_hall_state_old=ui8_hall_state;
+  	        ui8_hall_state_old=ui8_hall_state;
 	}
 
-	ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last hall event
 
 
-	if(ui16_tim2_recent>100){//debounce
-		ui16_timertics = ui16_tim2_recent; //save timertics since last hall event
+	ui16_tim3_recent = __HAL_TIM_GET_COUNTER(&htim4); 
+        if(ui16_tim3_recent>100){//debounce
+		ui16_timertics = ui16_tim3_recent; //save timertics since last hall event
 		q31_tics_filtered-=q31_tics_filtered>>3;
 		q31_tics_filtered+=ui16_timertics;
-	   __HAL_TIM_SET_COUNTER(&htim2,0); //reset tim2 counter
+	   __HAL_TIM_SET_COUNTER(&htim4,0); //reset tim2 counter
 	   ui8_overflow_flag=0;
 
 	}
-
-
 
 	switch (ui8_hall_case) //12 cases for each transition from one stage to the next. 6x forward, 6x reverse
 			{
@@ -1542,7 +1626,7 @@ void kingmeter_update(void)
         KM.Tx.Battery = KM_BATTERY_LOW;
     }
 
-    if(__HAL_TIM_GET_COUNTER(&htim2) < 12000)
+    if(__HAL_TIM_GET_COUNTER(&htim3) < 12000)
     {
         // Adapt wheeltime to match displayed speedo value according config.h setting
     	KM.Tx.Wheeltime_ms = ((MS.Speed>>3)*PULSES_PER_REVOLUTION); //>>3 because of 8 kHz counter frequency, so 8 tics per ms
@@ -1611,7 +1695,7 @@ void bafang_update(void)
     	BF.Tx.Battery = battery_percent_fromcapacity;
 
 
-    if(__HAL_TIM_GET_COUNTER(&htim2) < 12000)
+    if(__HAL_TIM_GET_COUNTER(&htim3) < 12000)
     {
         // Adapt wheeltime to match displayed speedo value according config.h setting
         BF.Tx.Wheeltime_ms = WHEEL_CIRCUMFERENCE*216/(MS.Speed*PULSES_PER_REVOLUTION); // Geschwindigkeit ist Weg pro Zeit Radumfang durch Dauer einer Radumdrehung --> Umfang * 8000*3600/(n*1000000) * Skalierung Bafang Display 200/26,6
