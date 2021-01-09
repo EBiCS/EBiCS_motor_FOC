@@ -39,7 +39,7 @@ char PI_flag=0;
 TIM_HandleTypeDef htim1;
 
 
-void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, uint16_t throttle, MotorState_t* MS_FOC);
+void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, int16_t throttle, MotorState_t* MS_FOC);
 void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta);
 q31_t PI_control_i_q (q31_t ist, q31_t soll);
 q31_t PI_control_i_d (q31_t ist, q31_t soll);
@@ -52,7 +52,7 @@ q31_t last_theta=-1;
 int int32_last_i_as,int32_last_i_bs;
 int last_current_mag;
 
-void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, uint16_t throttle, MotorState_t* MS_FOC)
+void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, int16_t throttle, MotorState_t* MS_FOC)
 {
 
 	 q31_t q31_i_alpha = 0;
@@ -69,12 +69,15 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 	// temp6=(q31_t)int16_i_bs;
 
         //Clamp field rotation velocity
-
+        //throttle-=50;
 //q31_teta += (715827883 / 300) * (throttle - 150)
-#if 0
+#if 1
+
         if(last_theta!=-1 && q31_teta - last_theta > 7158278*3)
              q31_teta = last_theta + 7158278*3;        
 
+        if(last_theta!=-1 && q31_teta - last_theta < 100000)
+             q31_teta = last_theta + 100000;        
 
         last_theta = q31_teta;
 #endif
@@ -93,14 +96,16 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 
 
 
-        int current_mag = q31_i_alpha * q31_i_alpha + q31_i_beta * q31_i_beta;
+        int current_mag = q31_i_alpha + q31_i_beta;
 
  
         last_current_mag = (last_current_mag*31 + current_mag)>>5; 
         c_squared = current_mag;
  
-
-	arm_sin_cos_q31(q31_teta+(throttle-1500)*7158278*2, &sinevalue, &cosinevalue);
+        if(MS_FOC->hall_angle_detect_flag){
+//             q31_teta+=throttle*7158278*2;
+        }
+	arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
 
 
 	// Park transformation
@@ -122,10 +127,10 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
         //set static volatage for hall angle detection
         if(!MS_FOC->hall_angle_detect_flag){
 	        MS_FOC->u_q=0;
-	        MS_FOC->u_d=300;
+	        MS_FOC->u_d=400;
 	}else{
 	        MS_FOC->u_q=0;
-	        MS_FOC->u_d=400;//throttle*10;
+	        MS_FOC->u_d=throttle*10;
         }
 
 
