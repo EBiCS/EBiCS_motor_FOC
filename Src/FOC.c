@@ -71,7 +71,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
         //Clamp field rotation velocity
         //throttle-=50;
 //q31_teta += (715827883 / 300) * (throttle - 150)
-#if 1
+#if 0
 
         if(last_theta!=-1 && q31_teta - last_theta > 7158278*3)
              q31_teta = last_theta + 7158278*3;        
@@ -109,7 +109,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 
 
 	// Park transformation
-	arm_park_q31(q31_i_alpha, q31_i_beta, &q31_i_d, &q31_i_q, sinevalue, cosinevalue);
+	arm_park_q31(q31_i_alpha, q31_i_beta, &q31_i_d, &q31_i_q, -sinevalue, cosinevalue);
 
 
 	q31_i_q_fil -= q31_i_q_fil>>4;
@@ -129,8 +129,10 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 	        MS_FOC->u_q=0;
 	        MS_FOC->u_d=400;
 	}else{
+#if 1
 	        MS_FOC->u_q=0;
 	        MS_FOC->u_d=throttle*10;
+#endif
         }
 
 
