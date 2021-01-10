@@ -71,7 +71,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
         //Clamp field rotation velocity
         //throttle-=50;
 //q31_teta += (715827883 / 300) * (throttle - 150)
-#if 0
+#if 1
 
         if(last_theta!=-1 && q31_teta - last_theta > 7158278*3)
              q31_teta = last_theta + 7158278*3;        
@@ -126,18 +126,18 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 
         //set static volatage for hall angle detection
         if(!MS_FOC->hall_angle_detect_flag){
-	        MS_FOC->u_q=0;
-	        MS_FOC->u_d=400;
+	        q31_i_d=400;
+	        q31_i_q=0;
 	}else{
 #if 1
-	        MS_FOC->u_q=0;
-	        MS_FOC->u_d=throttle*10;
+	        q31_i_q=0;
+	        q31_i_d=MS_FOC->u_q; //throttle*10;
 #endif
         }
 
 
 	//inverse Park transformation
-	arm_inv_park_q31(MS_FOC->u_d, MS_FOC->u_q, &q31_u_alpha, &q31_u_beta, sinevalue, cosinevalue);
+	arm_inv_park_q31(q31_i_d, q31_i_q, &q31_u_alpha, &q31_u_beta, sinevalue, cosinevalue);
 
 	temp1=int16_i_as;
 	temp2=int16_i_bs;
@@ -171,7 +171,9 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 //PI Control for quadrature current iq (torque) float operation without division
 q31_t PI_control_i_q (q31_t ist, q31_t soll)
 {
-
+  static tmp=0;
+  if(tmp++%512==0)
+      printf_("%d, %d\n", ist, soll);
   q31_t q31_p; //proportional part
   static float flt_q_i = 0; //integral part
   static q31_t q31_q_dc = 0; // sum of proportional and integral part

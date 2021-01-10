@@ -524,7 +524,7 @@ int main(void)
 	  if(PI_flag){
 
 
-		  q31_u_q_temp =  PI_control_i_q(MS.i_q, (q31_t) i8_direction*i8_reverse_flag*int16_current_target);
+		  q31_u_q_temp =  PI_control_i_q(-MS.i_d, int16_current_target);
 
 		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated>>8;
 		  q31_t_Battery_Current_accumulated += ((MS.i_q*MS.u_abs)>>11)*(uint16_t)(CAL_I>>8);
@@ -539,13 +539,15 @@ int main(void)
 		  MS.u_abs = (q31_t)hypot((double)q31_u_d_temp, (double)q31_u_q_temp); //absolute value of U in static frame
 
 
-
+#if 0
 			if (MS.u_abs > _U_MAX){
 				MS.u_q = (q31_u_q_temp*_U_MAX)/MS.u_abs; //division!
 				MS.u_d = (q31_u_d_temp*_U_MAX)/MS.u_abs; //division!
 				MS.u_abs = _U_MAX;
 			}
-			else{
+			else
+#endif
+                        {
 				MS.u_q=q31_u_q_temp;
 				MS.u_d=q31_u_d_temp;
 			}
@@ -664,7 +666,8 @@ int main(void)
 			  uint32_PAS=32000;
 		  }
 	  }
-	  else int16_current_target = uint16_mapped_throttle;//throttle override: set recent throttle value as current target
+	  else 
+                  int16_current_target = uint16_mapped_throttle;//throttle override: set recent throttle value as current target
 
 
 #endif
@@ -689,7 +692,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", (int32_t)MS.i_q, int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d);//((q31_i_q_fil*q31_u_abs)>>14)*
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", (int32_t)MS.i_q, int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q);//((q31_i_q_fil*q31_u_abs)>>14)*
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
