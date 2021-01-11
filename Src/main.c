@@ -211,7 +211,7 @@ uint8_t ui8_LEV_Page_to_send=1;
 
 
 
-volatile MotorState_t MS;
+MotorState_t MS;
 MotorParams_t MP;
 
 
@@ -524,7 +524,7 @@ int main(void)
 	  if(PI_flag){
 
 
-		  q31_u_q_temp =  PI_control_i_q(-MS.i_d, int16_current_target);
+		  q31_u_q_temp =  PI_control_i_q(MS.i_q, int16_current_target);
 
 		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated>>8;
 		  q31_t_Battery_Current_accumulated += ((MS.i_q*MS.u_abs)>>11)*(uint16_t)(CAL_I>>8);
@@ -549,7 +549,11 @@ int main(void)
 #endif
                         {
 				MS.u_q=q31_u_q_temp;
-				MS.u_d=q31_u_d_temp;
+                                if(q31_u_d_temp < q31_u_q_temp / 2)
+  				    MS.u_d=q31_u_d_temp;
+                                else
+  				    MS.u_d=q31_u_q_temp / 2;
+
 			}
 		  	PI_flag=0;
 	  }
@@ -692,7 +696,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", (int32_t)MS.i_q, int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q);//((q31_i_q_fil*q31_u_abs)>>14)*
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, Q: %d, D: %d, %d, %d\r\n", int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.i_q);//((q31_i_q_fil*q31_u_abs)>>14)*
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;

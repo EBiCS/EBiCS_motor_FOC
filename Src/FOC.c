@@ -73,8 +73,8 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 //q31_teta += (715827883 / 300) * (throttle - 150)
 #if 1
 
-        if(last_theta!=-1 && q31_teta - last_theta > 7158278*3)
-             q31_teta = last_theta + 7158278*3;        
+//        if(last_theta!=-1 && q31_teta - last_theta > 7158278*3)
+//             q31_teta = last_theta + 7158278*3;        
 
         if(last_theta!=-1 && q31_teta - last_theta < 100000)
              q31_teta = last_theta + 100000;        
@@ -109,7 +109,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 
 
 	// Park transformation
-	arm_park_q31(q31_i_alpha, q31_i_beta, &q31_i_d, &q31_i_q, -sinevalue, cosinevalue);
+	arm_park_q31(q31_i_alpha, q31_i_beta, &q31_i_d, &q31_i_q, sinevalue, cosinevalue);
 
 
 	q31_i_q_fil -= q31_i_q_fil>>4;
@@ -126,18 +126,18 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 
         //set static volatage for hall angle detection
         if(!MS_FOC->hall_angle_detect_flag){
-	        q31_i_d=400;
+	        q31_i_d=200;
 	        q31_i_q=0;
 	}else{
 #if 1
-	        q31_i_q=0;
-	        q31_i_d=MS_FOC->u_q; //throttle*10;
+	        q31_i_d=0;//-MS_FOC->u_d;
+	        q31_i_q=MS_FOC->u_q;
 #endif
         }
 
 
 	//inverse Park transformation
-	arm_inv_park_q31(q31_i_d, q31_i_q, &q31_u_alpha, &q31_u_beta, sinevalue, cosinevalue);
+	arm_inv_park_q31(q31_i_d, q31_i_q, &q31_u_alpha, &q31_u_beta, -sinevalue, cosinevalue);
 
 	temp1=int16_i_as;
 	temp2=int16_i_bs;
@@ -168,12 +168,17 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 	//temp6=__HAL_TIM_GET_COUNTER(&htim1);
 
 }
+
+extern MotorState_t MS;
+
 //PI Control for quadrature current iq (torque) float operation without division
 q31_t PI_control_i_q (q31_t ist, q31_t soll)
 {
   static tmp=0;
   if(tmp++%512==0)
-      printf_("%d, %d\n", ist, soll);
+      printf_("Q: %d, %d\n", ist, soll);
+
+//      printf_("Q: %d, %d\n", MS.i_q, MS.i_d);
   q31_t q31_p; //proportional part
   static float flt_q_i = 0; //integral part
   static q31_t q31_q_dc = 0; // sum of proportional and integral part
@@ -200,27 +205,30 @@ q31_t PI_control_i_q (q31_t ist, q31_t soll)
 //PI Control for direct current id (loss)
 q31_t PI_control_i_d (q31_t ist, q31_t soll)
   {
-    q31_t q31_p;
-    static q31_t q31_d_i = 0;
-    static q31_t q31_d_dc = 0;
+    static tmp=0;
+ //   if(tmp++%512==0)
+ //     printf_("D: %d, %d\n", ist, soll);
+  q31_t q31_p; //proportional part
+  static float flt_q_i = 0; //integral part
+  static q31_t q31_q_dc = 0; // sum of proportional and integral part
+  q31_p = (soll - ist)*P_FACTOR_I_D;
+  flt_q_i += ((float)(soll - ist))*I_FACTOR_I_D;
 
-    q31_p=((soll - ist)*P_FACTOR_I_D)>>5;
-    q31_d_i+=((soll - ist)*I_FACTOR_I_D)>>5;
+  if ((q31_t)flt_q_i>_U_MAX) flt_q_i=(float)_U_MAX;
+  if ((q31_t)flt_q_i<-_U_MAX) flt_q_i = -(float)_U_MAX ;
+  if(!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))flt_q_i = 0 ; //reset integral part if PWM is disabled
 
-    if (q31_d_i<-1800)q31_d_i=-1800;
-    if (q31_d_i>1800)q31_d_i=1800;
-
-    if(!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))q31_d_i = 0 ; //reset integral part if PWM is disabled
     //avoid too big steps in one loop run
-    if (q31_p+q31_d_i>q31_d_dc+5) q31_d_dc+=5;
-    else if  (q31_p+q31_d_i<q31_d_dc-5) q31_d_dc-=5;
-    else q31_d_dc=q31_p+q31_d_i;
+  if (q31_p+(q31_t)flt_q_i>q31_q_dc+5) q31_q_dc+=5;
+  else if  (q31_p+(q31_t)flt_q_i<q31_q_dc-5)q31_q_dc-=5;
+  else q31_q_dc=q31_p+(q31_t)flt_q_i;
 
-    if (q31_d_dc>_U_MAX) q31_d_dc = _U_MAX;
-    if (q31_d_dc<-(_U_MAX)) q31_d_dc =- (_U_MAX);
 
-    return (q31_d_dc);
-  }
+  if (q31_q_dc>_U_MAX) q31_q_dc = _U_MAX;
+  if (q31_q_dc<-_U_MAX) q31_q_dc = -_U_MAX; // allow no negative voltage.
+
+    return (q31_q_dc);
+}
 
 void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta)	{
 
