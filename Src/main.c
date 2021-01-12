@@ -159,6 +159,8 @@ uint32_t uint32_torque_cumulated=0;
 uint32_t uint32_PAS_cumulated=32000;
 uint16_t uint16_mapped_throttle=0;
 uint16_t uint16_mapped_PAS=0;
+uint16_t uint16_half_rotation_counter=0;
+uint16_t uint16_full_rotation_counter=0;
 int16_t int16_current_target=0;
 
 q31_t q31_t_Battery_Current_accumulated=0;
@@ -223,6 +225,7 @@ int16_t power;
 
 static void dyn_adc_state(q31_t angle);
 static void set_inj_channel(char state);
+void get_standstill_position();
 int32_t map (int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);
 
 #if 0
@@ -510,7 +513,7 @@ int main(void)
     HAL_Delay(5);
     CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);//Disable PWM
 
-
+    get_standstill_position();
 
 
   /* USER CODE END 2 */
@@ -539,7 +542,7 @@ int main(void)
 		  MS.u_abs = (q31_t)hypot((double)q31_u_d_temp, (double)q31_u_q_temp); //absolute value of U in static frame
 
 
-#if 0
+#if 1
 			if (MS.u_abs > _U_MAX){
 				MS.u_q = (q31_u_q_temp*_U_MAX)/MS.u_abs; //division!
 				MS.u_d = (q31_u_d_temp*_U_MAX)/MS.u_abs; //division!
@@ -683,20 +686,34 @@ int main(void)
 
 	  if(ui8_Push_Assist_flag)int16_current_target=PUSHASSIST_CURRENT;
 
-	  if (int16_current_target>0&&!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
+	  if (int16_current_target>0&&!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
+		  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
+		  uint16_half_rotation_counter=0;
+		  uint16_full_rotation_counter=0;
+		  __HAL_TIM_SET_COUNTER(&htim2,0); //reset tim2 counter
+		  ui16_timertics=20000; //set interval between two hallevents to a large value
+		  i8_recent_rotor_direction=i8_direction*i8_reverse_flag;
+		  get_standstill_position();
+	  }
+
 	 //slow loop procedere @16Hz, for LEV standard every 4th loop run, send page,
 	  if(ui32_tim3_counter>500){
 		  MS.Temperature = adcData[ADC_TEMP]*41>>8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 		  MS.Voltage=adcData[ADC_VOLTAGE];
 		  if(uint32_SPEED_counter>127999)MS.Speed =128000;
 
-		  if(__HAL_TIM_GET_COUNTER(&htim2)>60000&&READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
+		  if((uint16_full_rotation_counter>7999||uint16_half_rotation_counter>7999)&&READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
+			  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
+
+			  get_standstill_position();
+
+		  }
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG && !defined(FAST_LOOP_LOG))
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, Q: %d, D: %d, %d, %d\r\n", int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.i_q);//((q31_i_q_fil*q31_u_abs)>>14)*
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, Q: %d, D: %d, %d, %d, %d, %d\r\n", int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.i_q,q31_tics_filtered>>3,tics_higher_limit);//((q31_i_q_fil*q31_u_abs)>>14)*
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
@@ -1291,7 +1308,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if (uint32_SPEED_counter<128000){
 			  uint32_SPEED_counter++;
 		}
-
+		if(uint16_full_rotation_counter<8000)uint16_full_rotation_counter++;	//full rotation counter for motor standstill detection
+		if(uint16_half_rotation_counter<8000)uint16_half_rotation_counter++;	//half rotation counter for motor standstill detectio
 	}
 }
 
@@ -1460,6 +1478,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		case 64:
 			q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;
 			i8_recent_rotor_direction=1;
+			uint16_full_rotation_counter=0;
 			break;
 		case 45:
 			q31_rotorposition_hall = DEG_plus60 + q31_rotorposition_motor_specific;
@@ -1472,6 +1491,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		case 13:
 			q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;
 			i8_recent_rotor_direction=1;
+		        uint16_half_rotation_counter=0;
 			break;
 		case 32:
 			q31_rotorposition_hall = DEG_minus120 + q31_rotorposition_motor_specific;
@@ -1494,6 +1514,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		case 23:
 			q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;
 			i8_recent_rotor_direction=-1;
+   		        uint16_half_rotation_counter=0;
 			break;
 		case 31:
 			q31_rotorposition_hall = DEG_plus120 + q31_rotorposition_motor_specific;
@@ -1506,6 +1527,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		case 54:
 			q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;
 			i8_recent_rotor_direction=-1;
+			uint16_full_rotation_counter=0;
 			break;
 
 		} // end case
@@ -1740,6 +1762,36 @@ static void set_inj_channel(char state){
 	}
 
 
+}
+
+void get_standstill_position(){
+	  HAL_Delay(100);
+	  HAL_GPIO_EXTI_Callback(GPIO_PIN_4); //read in initial rotor position
+		switch (ui8_hall_state)
+			{
+			//6 cases for forward direction
+			case 2:
+				q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;
+				break;
+			case 6:
+				q31_rotorposition_hall = DEG_plus60 + q31_rotorposition_motor_specific;
+				break;
+			case 4:
+				q31_rotorposition_hall = DEG_plus120 + q31_rotorposition_motor_specific;
+				break;
+			case 5:
+				q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;
+				break;
+			case 1:
+				q31_rotorposition_hall = DEG_minus120 + q31_rotorposition_motor_specific;
+				break;
+			case 3:
+				q31_rotorposition_hall = DEG_minus60 + q31_rotorposition_motor_specific;
+				break;
+
+			}
+
+		 q31_rotorposition_absolute = q31_rotorposition_hall;
 }
 
 /* USER CODE END 4 */

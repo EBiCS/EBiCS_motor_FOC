@@ -71,7 +71,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
         //Clamp field rotation velocity
         //throttle-=50;
 //q31_teta += (715827883 / 300) * (throttle - 150)
-#if 1
+#if 0
 
 //        if(last_theta!=-1 && q31_teta - last_theta > 7158278*3)
 //             q31_teta = last_theta + 7158278*3;        
@@ -175,8 +175,8 @@ extern MotorState_t MS;
 q31_t PI_control_i_q (q31_t ist, q31_t soll)
 {
   static tmp=0;
-  if(tmp++%512==0)
-      printf_("Q: %d, %d\n", ist, soll);
+//  if(tmp++%512==0)
+//      printf_("Q: %d, %d\n", ist, soll);
 
 //      printf_("Q: %d, %d\n", MS.i_q, MS.i_d);
   q31_t q31_p; //proportional part
