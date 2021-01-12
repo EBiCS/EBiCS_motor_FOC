@@ -1452,6 +1452,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	if(GPIO_Pin == GPIO_PIN_4||GPIO_Pin == GPIO_PIN_5||GPIO_Pin == GPIO_PIN_0) //check for right interrupt source
 	{
 	ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); //Mask input register with Hall 1 - 3 bits
+        
+        if(ui8_hall_state == ui8_hall_state_old)
+             return;
 
 	ui8_hall_case=ui8_hall_state_old*10+ui8_hall_state;
 	if(MS.hall_angle_detect_flag){ //only process, if autodetect procedere is fininshed
