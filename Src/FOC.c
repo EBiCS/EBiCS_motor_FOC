@@ -126,7 +126,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 
         //set static volatage for hall angle detection
         if(!MS_FOC->hall_angle_detect_flag){
-	        q31_i_d=200;
+	        q31_i_d=300;
 	        q31_i_q=0;
 	}else{
 #if 1

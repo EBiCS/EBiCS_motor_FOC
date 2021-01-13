@@ -252,7 +252,7 @@ void autodetect(){
    	q31_rotorposition_absolute=11930465/2;//1<<31;
    	HAL_Delay(5);
    	for(i=0;i<1080;i++){
-//        while(1){ 
+//        while(1){     
    		q31_rotorposition_absolute+=1*11930465; //drive motor in open loop with steps of 1°
    		HAL_Delay(1);
    		if(ui8_hall_state_old!=ui8_hall_state){
@@ -687,13 +687,20 @@ int main(void)
 	  if(ui8_Push_Assist_flag)int16_current_target=PUSHASSIST_CURRENT;
 
 	  if (int16_current_target>0&&!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
-		  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
+
+                  TIM1->CCR1 = 1023; //set initial PWM values
+                  TIM1->CCR2 = 1023;
+                  TIM1->CCR3 = 1023;
 		  uint16_half_rotation_counter=0;
 		  uint16_full_rotation_counter=0;
 		  __HAL_TIM_SET_COUNTER(&htim2,0); //reset tim2 counter
 		  ui16_timertics=20000; //set interval between two hallevents to a large value
 		  i8_recent_rotor_direction=i8_direction*i8_reverse_flag;
 		  get_standstill_position();
+
+                  printf_("startup %d\n", q31_rotorposition_absolute);
+
+		  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
 	  }
 
 	 //slow loop procedere @16Hz, for LEV standard every 4th loop run, send page,
@@ -706,7 +713,7 @@ int main(void)
 			  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
 
 			  get_standstill_position();
-
+                          printf_("shutdown %d\n", q31_rotorposition_absolute);
 		  }
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG && !defined(FAST_LOOP_LOG))
@@ -1770,6 +1777,7 @@ static void set_inj_channel(char state){
 void get_standstill_position(){
 	  HAL_Delay(100);
 	  HAL_GPIO_EXTI_Callback(GPIO_PIN_4); //read in initial rotor position
+#if 0
 		switch (ui8_hall_state)
 			{
 			//6 cases for forward direction
@@ -1793,7 +1801,7 @@ void get_standstill_position(){
 				break;
 
 			}
-
+#endif
 		 q31_rotorposition_absolute = q31_rotorposition_hall;
 }
 
