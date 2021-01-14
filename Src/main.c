@@ -196,6 +196,8 @@ const q31_t tics_higher_limit = WHEEL_CIRCUMFERENCE*5*3600/(6*GEAR_RATIO*(SPEEDL
 q31_t q31_tics_filtered=128000;
 //variables for display communication
 
+#define iabs(x) (((x) >= 0)?(x):-(x))
+
 #if (DISPLAY_TYPE & DISPLAY_TYPE_KINGMETER)
 KINGMETER_t KM;
 #endif
@@ -459,19 +461,21 @@ int main(void)
 
    	ui8_adc_offset_done_flag=1;
 
-#if 1 //(DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
+#if 0 //(DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
 
         autodetect();
    
 
-        //Motor specific angle:  1908874660, direction -1 
-  //      q31_rotorposition_motor_specific = 1908874660;
-//        i16_hall_order = -1;
 
 //        while(1){}
 
 #else
-   	q31_rotorposition_motor_specific = SPEC_ANGLE;
+//   	q31_rotorposition_motor_specific = SPEC_ANGLE;
+        //Motor specific angle:  1908874660, direction -1 
+        q31_rotorposition_motor_specific = 1175151010;
+
+        i16_hall_order = 1;
+
 
 #endif
 
@@ -535,11 +539,18 @@ int main(void)
 		  MS.Battery_Current = q31_t_Battery_Current_accumulated>>8*i8_direction*i8_reverse_flag; //Battery current in mA
 
 		  	//Control id
-		  q31_u_d_temp = -PI_control_i_d(MS.i_d, 0); //control direct current to zero
+		  q31_u_d_temp = -PI_control_i_d(MS.i_d, 0, iabs(q31_u_q_temp)); //control direct current to zero
 
+
+                  if(q31_u_d_temp > iabs(q31_u_q_temp) >> 4)
+                      q31_u_d_temp = iabs(q31_u_q_temp) >> 4;
+                  
+                  if(q31_u_d_temp < (-iabs(q31_u_q_temp)) >> 4)
+                      q31_u_d_temp = (-iabs(q31_u_q_temp)) >> 4;
 
 		  	//limit voltage in rotating frame, refer chapter 4.10.1 of UM1052
 		  MS.u_abs = (q31_t)hypot((double)q31_u_d_temp, (double)q31_u_q_temp); //absolute value of U in static frame
+
 
 
 #if 1
@@ -552,10 +563,7 @@ int main(void)
 #endif
                         {
 				MS.u_q=q31_u_q_temp;
-                                if(q31_u_d_temp < q31_u_q_temp / 2)
-  				    MS.u_d=q31_u_d_temp;
-                                else
-  				    MS.u_d=q31_u_q_temp / 2;
+  			        MS.u_d=q31_u_d_temp;
 
 			}
 		  	PI_flag=0;
@@ -686,7 +694,7 @@ int main(void)
 
 	  if(ui8_Push_Assist_flag)int16_current_target=PUSHASSIST_CURRENT;
 
-	  if (int16_current_target>0&&!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
+	  if (int16_current_target>0&&uint16_mapped_throttle>0&&!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
 
                   TIM1->CCR1 = 1023; //set initial PWM values
                   TIM1->CCR2 = 1023;
@@ -701,7 +709,15 @@ int main(void)
                   printf_("startup %d\n", q31_rotorposition_absolute);
 
 		  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
-	  }
+	  }else{
+#ifdef KILL_ON_ZERO
+                  if(uint16_mapped_throttle==0&&READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
+			  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
+			  get_standstill_position();
+                          printf_("shutdown %d\n", q31_rotorposition_absolute);
+                  }
+#endif
+          }
 
 	 //slow loop procedere @16Hz, for LEV standard every 4th loop run, send page,
 	  if(ui32_tim3_counter>500){
@@ -720,7 +736,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, Q: %d, D: %d, %d, %d, %d, %d\r\n", int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.i_q,q31_tics_filtered>>3,tics_higher_limit);//((q31_i_q_fil*q31_u_abs)>>14)*
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, Q: %d, D: %d, %d, %d, %d, %d\r\n", int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit);//((q31_i_q_fil*q31_u_abs)>>14)*
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;

@@ -33,8 +33,8 @@
 #define BATTERY_LEVEL_5 380000
 #define P_FACTOR_I_Q 1
 #define I_FACTOR_I_Q 0.01
-#define P_FACTOR_I_D 0.1
-#define I_FACTOR_I_D 0.001
+#define P_FACTOR_I_D 1
+#define I_FACTOR_I_D 0.01
 #define TS_COEF 30000
 #define PAS_TIMEOUT 8000
 #define RAMP_END 1600

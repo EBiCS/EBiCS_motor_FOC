@@ -41,8 +41,6 @@ TIM_HandleTypeDef htim1;
 
 void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int16_t int16_i_q_target, int16_t throttle, MotorState_t* MS_FOC);
 void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta);
-q31_t PI_control_i_q (q31_t ist, q31_t soll);
-q31_t PI_control_i_d (q31_t ist, q31_t soll);
 void observer_update(q31_t v_alpha, q31_t v_beta, q31_t i_alpha, q31_t i_beta, volatile q31_t x1, volatile q31_t x2, volatile q31_t phase);
 
 
@@ -130,7 +128,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 	        q31_i_q=0;
 	}else{
 #if 1
-	        q31_i_d=0;//-MS_FOC->u_d;
+	        q31_i_d=MS_FOC->u_d;
 	        q31_i_q=MS_FOC->u_q;
 #endif
         }
@@ -203,19 +201,19 @@ q31_t PI_control_i_q (q31_t ist, q31_t soll)
 }
 
 //PI Control for direct current id (loss)
-q31_t PI_control_i_d (q31_t ist, q31_t soll)
+q31_t PI_control_i_d (q31_t ist, q31_t soll, int clamp)
   {
     static tmp=0;
- //   if(tmp++%512==0)
- //     printf_("D: %d, %d\n", ist, soll);
+//    if(tmp++%512==0)
+//       printf_("D: %d, %d\n", ist, soll);
   q31_t q31_p; //proportional part
   static float flt_q_i = 0; //integral part
   static q31_t q31_q_dc = 0; // sum of proportional and integral part
   q31_p = (soll - ist)*P_FACTOR_I_D;
   flt_q_i += ((float)(soll - ist))*I_FACTOR_I_D;
 
-  if ((q31_t)flt_q_i>_U_MAX) flt_q_i=(float)_U_MAX;
-  if ((q31_t)flt_q_i<-_U_MAX) flt_q_i = -(float)_U_MAX ;
+  if ((q31_t)flt_q_i>clamp) flt_q_i=(float)clamp;
+  if ((q31_t)flt_q_i<clamp) flt_q_i = -(float)clamp ;
   if(!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))flt_q_i = 0 ; //reset integral part if PWM is disabled
 
     //avoid too big steps in one loop run
@@ -224,8 +222,8 @@ q31_t PI_control_i_d (q31_t ist, q31_t soll)
   else q31_q_dc=q31_p+(q31_t)flt_q_i;
 
 
-  if (q31_q_dc>_U_MAX) q31_q_dc = _U_MAX;
-  if (q31_q_dc<-_U_MAX) q31_q_dc = -_U_MAX; // allow no negative voltage.
+  if (q31_q_dc>clamp) q31_q_dc = clamp;
+  if (q31_q_dc<-clamp) q31_q_dc = -clamp; // allow no negative voltage.
 
     return (q31_q_dc);
 }
