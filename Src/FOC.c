@@ -172,7 +172,7 @@ extern MotorState_t MS;
 //PI Control for quadrature current iq (torque) float operation without division
 q31_t PI_control_i_q (q31_t ist, q31_t soll)
 {
-  static tmp=0;
+  //static tmp=0;
 //  if(tmp++%512==0)
 //      printf_("Q: %d, %d\n", ist, soll);
 
@@ -203,7 +203,7 @@ q31_t PI_control_i_q (q31_t ist, q31_t soll)
 //PI Control for direct current id (loss)
 q31_t PI_control_i_d (q31_t ist, q31_t soll, int clamp)
   {
-    static tmp=0;
+    //static tmp=0;
 //    if(tmp++%512==0)
 //       printf_("D: %d, %d\n", ist, soll);
   q31_t q31_p; //proportional part
