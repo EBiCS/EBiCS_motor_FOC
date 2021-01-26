@@ -31,7 +31,7 @@ void process_ant_page(MotorState_t* MS, MotorParams_t* MP){
 	  chkSum ^= ui8_rx_buffer[i];
 	 }
 
-	 if(chkSum == ui8_rx_buffer[11]){
+	// if(chkSum == ui8_rx_buffer[11]){
 
 		 switch (ui8_rx_buffer[3]){
 		 	 case 16:
@@ -48,6 +48,7 @@ void process_ant_page(MotorState_t* MS, MotorParams_t* MP){
 		 	 		 MP->wheel_cirumference = ui8_rx_buffer[5]<<8 | ui8_rx_buffer[4];
 		 	 		 MS->regen_level = ui8_rx_buffer[6] & 0x07;
 		 	 		 MS->assist_level = ui8_rx_buffer[6]>>3 & 0x07;
+		 	 		 MS->i_q_setpoint = ui8_rx_buffer[8]<<8 | ui8_rx_buffer[7];
 
 		 
 		 	 	}// end case 16
@@ -58,7 +59,7 @@ void process_ant_page(MotorState_t* MS, MotorParams_t* MP){
 		 		 //do nothing
 		 	   }
 		 }//end switch
-	 }// end if chkSum
+	 //}// end if chkSum
 }//end process_ant_page
 
 void send_ant_page(uint8_t page, MotorState_t* MS, MotorParams_t* MP){

@@ -102,6 +102,7 @@ typedef struct
 	q31_t       	Voltage;
 	uint32_t       	Speed;
 	q31_t          	i_d;
+	q31_t          	i_q_setpoint;
 	q31_t          	i_q;
 	q31_t          	u_d;
 	q31_t          	u_q;

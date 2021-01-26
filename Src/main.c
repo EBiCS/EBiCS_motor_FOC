@@ -40,7 +40,7 @@
   #include "display_kunteng.h"
 #endif
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS)
+#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS ||DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
   #include "display_ebics.h"
 #endif
 
@@ -333,6 +333,7 @@ int main(void)
   MS.Speed=128000;
   MS.assist_level=1;
   MS.regen_level=7;
+  MS.i_q_setpoint=0;
 
   MX_ADC1_Init();
   /* Run the ADC calibration */
@@ -429,7 +430,7 @@ int main(void)
        kunteng_init();
 #endif
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS)
+#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS || DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
        ebics_init();
 #endif
 
@@ -587,8 +588,9 @@ int main(void)
 	  }
 #endif
 
-#if (DISPLAY_TYPE & DISPLAY_TYPE_EBiCS)
+#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS || DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
 	  process_ant_page(&MS, &MP);
+
 #endif
 
 	  ui8_UART_flag=0;
@@ -683,7 +685,7 @@ int main(void)
 	  }
 	  else 
                   int16_current_target = uint16_mapped_throttle;//throttle override: set recent throttle value as current target
-
+	  int16_current_target = MS.i_q_setpoint;
 
 #endif
 
@@ -736,7 +738,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, T: %d, Q: %d, D: %d, %d, %d,S: %d, %d, V: %d\r\n", int16_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value-THROTTLE_OFFSET),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit, adcData[ADC_VOLTAGE]);//((q31_i_q_fil*q31_u_abs)>>14)*
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int16_current_target, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_absolute, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3, MS.i_q_setpoint);
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
@@ -1227,6 +1229,8 @@ static void MX_USART3_UART_Init(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 }
+
+
 
 /**
   * Enable DMA controller clock

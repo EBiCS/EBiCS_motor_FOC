@@ -469,7 +469,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 2, 1);
     HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
 
-    __HAL_AFIO_REMAP_USART1_ENABLE();
+   // __HAL_AFIO_REMAP_USART1_ENABLE();
 
   /* USER CODE BEGIN USART1_MspInit 1 */
 
