@@ -31,8 +31,8 @@
 #define BATTERY_LEVEL_3 344000
 #define BATTERY_LEVEL_4 368000
 #define BATTERY_LEVEL_5 380000
-#define P_FACTOR_I_Q 1
-#define I_FACTOR_I_Q 0.01
+#define P_FACTOR_I_Q 0.1
+#define I_FACTOR_I_Q 0.001
 #define P_FACTOR_I_D 1
 #define I_FACTOR_I_D 0.01
 #define TS_COEF 30000
