@@ -704,7 +704,7 @@ int main(void)
 		  uint16_half_rotation_counter=0;
 		  uint16_full_rotation_counter=0;
 		  __HAL_TIM_SET_COUNTER(&htim2,0); //reset tim2 counter
-		  ui16_timertics=20000; //set interval between two hallevents to a large value
+		  ui16_timertics=40000; //set interval between two hallevents to a large value
 		  i8_recent_rotor_direction=i8_direction*i8_reverse_flag;
 		  get_standstill_position();
 
@@ -738,7 +738,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int16_current_target, MS.i_q, MS.i_d,ui8_hall_state, MS.u_d, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_absolute, q31_tics_filtered>>3, MS.i_q_setpoint);
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int16_current_target, MS.i_q,q31_tics_filtered>>3, MS.i_d,ui8_hall_state, MS.u_d, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_absolute,  MS.i_q_setpoint);
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
@@ -1054,8 +1054,8 @@ static void MX_TIM1_Init(void)
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH; //TODO: depends on gate driver!
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
