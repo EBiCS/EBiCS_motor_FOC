@@ -262,7 +262,7 @@ void autodetect(){
 
    		if(ui8_hall_case==64)
    		{
-   			q31_rotorposition_motor_specific=q31_rotorposition_absolute;
+   			q31_rotorposition_motor_specific=q31_rotorposition_absolute+(35791394<<1);
    		}
    		if(ui8_hall_case==23)
    		{
@@ -440,6 +440,8 @@ int main(void)
     TIM1->CCR3 = 1023;
 
     CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);//Disable PWM
+
+    HAL_Delay(1000);
 
     for(i=0;i<16;i++){
     	while(!ui8_adc_regular_flag){}
@@ -708,7 +710,6 @@ int main(void)
 		  i8_recent_rotor_direction=i8_direction*i8_reverse_flag;
 		  get_standstill_position();
 
-                  printf_("startup %d\n", q31_rotorposition_absolute);
 
 		  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
 	  }else{
@@ -1797,6 +1798,7 @@ static void set_inj_channel(char state){
 void get_standstill_position(){
 	  HAL_Delay(100);
 	  HAL_GPIO_EXTI_Callback(GPIO_PIN_4); //read in initial rotor position
+	  HAL_Delay(100);
 #if 1
 		switch (ui8_hall_state)
 			{
@@ -1822,7 +1824,10 @@ void get_standstill_position(){
 
 			}
 #endif
-		// q31_rotorposition_absolute = q31_rotorposition_hall;
+		q31_rotorposition_absolute = q31_rotorposition_hall;
+		temp6=q31_rotorposition_absolute;
+		printf_("standstill position %d, %d, %d\n", temp6,(int16_t)(((temp6>>23)*180)>>8), ui8_hall_state);
+
 }
 
 /* USER CODE END 4 */
