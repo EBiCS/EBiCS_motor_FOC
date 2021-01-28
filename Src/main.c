@@ -323,7 +323,7 @@ void autodetect(){
 
 	   		if(ui8_hall_case==zerocrossing)
 	   		{
-	   			q31_rotorposition_motor_specific = q31_rotorposition_absolute-diffangle-59652323*4;
+	   			q31_rotorposition_motor_specific = q31_rotorposition_absolute-diffangle+(1<<31)+59652323;//*4;
 	   		}
 
 
