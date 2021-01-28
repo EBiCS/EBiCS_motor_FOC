@@ -1492,8 +1492,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
     if(MS.hall_angle_detect_flag){
 	   if (ui16_tim2_recent < ui16_timertics && !ui8_overflow_flag){ //prevent angle running away at standstill
 		// float with division necessary!
-           		   //normal forward function
-                q31_rotorposition_absolute = q31_rotorposition_hall*i16_hall_order + (q31_t)(i16_hall_order * i8_recent_rotor_direction * (715827883.0*((float)ui16_tim2_recent/(float)ui16_timertics))); //interpolate angle between two hallevents by scaling timer2 tics
+		   q31_rotorposition_absolute = q31_rotorposition_hall + (q31_t)(i16_hall_order * i8_recent_rotor_direction * ((10923 * ui16_tim2_recent)/ui16_timertics)<<16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60°
 
 	   }
 	   else
