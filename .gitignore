@@ -13,7 +13,5 @@ main.hex
 *.rst
 *.sym
 
-Debug
-/build/
-
+Debug/
 Release/
