@@ -790,6 +790,8 @@ int main(void) {
 
 			ui8_print_flag = 0;
 
+			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+
 #endif
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS)
