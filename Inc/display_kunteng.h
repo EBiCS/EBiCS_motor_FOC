@@ -11,18 +11,17 @@
 #include "config.h"
 
 void kunteng_init();
-void display_update(MotorState_t* MS_U);
-void check_message(MotorState_t* MS_D);
+void display_update(MotorState_t *MS_U);
+void check_message(MotorState_t *MS_D);
 
-typedef struct _lcd_configuration_variables
-{
-  uint8_t ui8_assist_level;
-  uint8_t ui8_light;
-  uint8_t ui8_motor_characteristic;
-  uint8_t ui8_wheel_size;
-  uint8_t ui8_max_speed;
-  uint8_t ui8_power_assist_control_mode;
-  uint8_t ui8_controller_max_current;
+typedef struct _lcd_configuration_variables {
+	uint8_t ui8_assist_level;
+	uint8_t ui8_light;
+	uint8_t ui8_motor_characteristic;
+	uint8_t ui8_wheel_size;
+	uint8_t ui8_max_speed;
+	uint8_t ui8_power_assist_control_mode;
+	uint8_t ui8_controller_max_current;
 } struc_lcd_configuration_variables;
 
 #define COMMUNICATIONS_BATTERY_VOLTAGE	(BATTERY_LI_ION_CELLS_NUMBER * 3.45) // example: 7S battery, should be = 24

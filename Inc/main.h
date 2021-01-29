@@ -1,22 +1,22 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.h
+ * @brief          : Header for main.c file.
+ *                   This file contains the common defines of the application.
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -90,58 +90,56 @@ void Error_Handler(void);
 
 #define PUSHASSIST_CURRENT 30
 
-int32_t map (int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);
+int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
+		int32_t out_max);
 
 extern q31_t switchtime[3];
 extern uint32_t ui32_tim1_counter;
 extern uint32_t uint32_PAS_counter;
 
-typedef struct
-{
+typedef struct {
 
-	q31_t       	Voltage;
-	uint32_t       	Speed;
-	q31_t          	i_d;
-	q31_t          	i_q_setpoint;
-	q31_t          	i_q;
-	q31_t          	u_d;
-	q31_t          	u_q;
-	q31_t          	u_abs;
-	q31_t          	Battery_Current;
-	uint8_t 		hall_angle_detect_flag;
-	uint8_t 		char_dyn_adc_state;
-	uint8_t 		assist_level;
-	uint8_t 		regen_level;
-	int8_t         	Temperature;
-	int8_t         	system_state;
-	int8_t         	gear_state;
-	int8_t         	error_state;
+	q31_t Voltage;
+	uint32_t Speed;
+	q31_t i_d;
+	q31_t i_q_setpoint;
+	q31_t i_q;
+	q31_t u_d;
+	q31_t u_q;
+	q31_t u_abs;
+	q31_t Battery_Current;
+	uint8_t hall_angle_detect_flag;
+	uint8_t char_dyn_adc_state;
+	uint8_t assist_level;
+	uint8_t regen_level;
+	int8_t Temperature;
+	int8_t system_state;
+	int8_t gear_state;
+	int8_t error_state;
 
-}MotorState_t;
+} MotorState_t;
 
-typedef struct
-{
+typedef struct {
 
-	uint16_t       	wheel_cirumference;
-	uint16_t       	p_Iq;
-	uint16_t       	i_Iq;
-	uint16_t       	p_Id;
-	uint16_t       	i_Id;
-	uint16_t       	TS_coeff;
-	uint16_t       	PAS_timeout;
-	uint16_t       	ramp_end;
-	uint16_t       	throttle_offset;
-	uint16_t       	throttle_max;
-	uint16_t       	gear_ratio;
-	uint8_t       	speedLimit;
-	uint8_t       	pulses_per_revolution;
-	uint16_t       	phase_current_max;
-	uint16_t       	spec_angle;
+	uint16_t wheel_cirumference;
+	uint16_t p_Iq;
+	uint16_t i_Iq;
+	uint16_t p_Id;
+	uint16_t i_Id;
+	uint16_t TS_coeff;
+	uint16_t PAS_timeout;
+	uint16_t ramp_end;
+	uint16_t throttle_offset;
+	uint16_t throttle_max;
+	uint16_t gear_ratio;
+	uint8_t speedLimit;
+	uint8_t pulses_per_revolution;
+	uint16_t phase_current_max;
+	uint16_t spec_angle;
 
+} MotorParams_t;
 
-}MotorParams_t;
-
-void _Error_Handler(char *, int);
+void _Error_Handler(char*, int);
 
 /* USER CODE END Private defines */
 

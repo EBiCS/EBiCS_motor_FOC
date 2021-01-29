@@ -5,14 +5,10 @@
  *      Author: Admin
  */
 
-
 #ifndef _print
 #define _print
 
 int printf_(const char *format, ...);
 int sprintf_(char *buffer, const char *format, ...);
-
-
-
 
 #endif /* PRINT_H_ */
