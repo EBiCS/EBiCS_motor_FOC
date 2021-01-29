@@ -214,7 +214,7 @@ MotorState_t MS;
 MotorParams_t MP;
 
 int16_t battery_percent_fromcapacity = 50; //Calculation of used watthours not implemented yet
-int16_t wheel_time = 1000;//duration of one wheel rotation for speed calculation
+int16_t wheel_time = 1000; //duration of one wheel rotation for speed calculation
 int16_t current_display;				//pepared battery current for display
 
 int16_t power;
@@ -481,15 +481,10 @@ int main(void) {
 
 	HAL_Delay(1000);
 
-	for (i = 0; i < 16; i++) {
-		while (!ui8_adc_regular_flag) {
-		}
-		ui16_ph1_offset += adcData[ADC_CHANA];
-		ui16_ph2_offset += adcData[ADC_CHANB];
-		ui16_ph3_offset += adcData[ADC_CHANC];
-		ui8_adc_regular_flag = 0;
-
+	// wait for current ADC calibration
+	while (ui8_adc_regular_flag < 16) {
 	}
+
 	ui16_ph1_offset = ui16_ph1_offset >> 4;
 	ui16_ph2_offset = ui16_ph2_offset >> 4;
 	ui16_ph3_offset = ui16_ph3_offset >> 4;
@@ -681,7 +676,7 @@ int main(void) {
 		//uint16_mapped_PAS = map(uint32_PAS, RAMP_END, PAS_TIMEOUT, (PH_CURRENT_MAX*(int32_t)(assist_factor[7]))>>8, 0); // level in range 0...9
 		if (uint32_PAS_counter < PAS_TIMEOUT)
 			uint16_mapped_PAS = map(uint32_PAS, RAMP_END, PAS_TIMEOUT,
-					PH_CURRENT_MAX, 0); // Full amps in debug mode
+			PH_CURRENT_MAX, 0); // Full amps in debug mode
 		else
 			uint16_mapped_PAS = 0;
 #endif
@@ -699,7 +694,7 @@ int main(void) {
 #else		// torque-simulation mode with throttle override
 
 		uint16_mapped_throttle = map(ui16_reg_adc_value, THROTTLE_OFFSET,
-				THROTTLE_MAX, 0, PH_CURRENT_MAX);
+		THROTTLE_MAX, 0, PH_CURRENT_MAX);
 
 #ifdef DIRDET
 	  if (uint32_PAS_counter< PAS_TIMEOUT){
@@ -714,7 +709,7 @@ int main(void) {
 
 				{
 			if (uint32_PAS_counter < PAS_TIMEOUT)
-				int16_current_target = uint16_mapped_PAS;//set current target in torque-simulation-mode, if pedals are turning
+				int16_current_target = uint16_mapped_PAS; //set current target in torque-simulation-mode, if pedals are turning
 			else {
 				int16_current_target = 0;	//pedals are not turning, stop motor
 				uint32_PAS_cumulated = 32000;
@@ -1178,7 +1173,6 @@ static void MX_TIM3_Init(void) {
 
 }
 
-
 /**
  * @brief USART3 Initialization Function
  * @param None
@@ -1314,7 +1308,13 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	ui32_reg_adc_value_filter += adcData[ADC_THROTTLE]; //HAL_ADC_GetValue(hadc);
 	ui16_reg_adc_value = ui32_reg_adc_value_filter >> 4;
 
-	ui8_adc_regular_flag = 1;
+	if (ui8_adc_regular_flag < 16) {
+		ui16_ph1_offset += adcData[ADC_CHANA];
+		ui16_ph2_offset += adcData[ADC_CHANB];
+		ui16_ph3_offset += adcData[ADC_CHANC];
+		ui8_adc_regular_flag++;
+	}
+
 }
 
 //injected ADC
@@ -1330,9 +1330,9 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
 	if (!ui8_adc_offset_done_flag) {
 		i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1,
-				ADC_INJECTED_RANK_1);
+		ADC_INJECTED_RANK_1);
 		i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2,
-				ADC_INJECTED_RANK_1);
+		ADC_INJECTED_RANK_1);
 
 		ui8_adc_inj_flag = 1;
 	} else {
@@ -1349,11 +1349,11 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		case 1: //Phase C at high dutycycles, read from A+B directly
 		{
 			raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-					ADC_INJECTED_RANK_1);
+			ADC_INJECTED_RANK_1);
 			i16_ph1_current = raw_inj1;
 
 			raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-					ADC_INJECTED_RANK_1);
+			ADC_INJECTED_RANK_1);
 			i16_ph2_current = raw_inj2;
 		}
 			break;
@@ -1361,11 +1361,11 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		{
 
 			raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-					ADC_INJECTED_RANK_1);
+			ADC_INJECTED_RANK_1);
 			i16_ph2_current = raw_inj2;
 
 			raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-					ADC_INJECTED_RANK_1);
+			ADC_INJECTED_RANK_1);
 			i16_ph1_current = -i16_ph2_current - raw_inj1;
 
 		}
@@ -1373,10 +1373,10 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		case 3: //Phase B at high dutycycles, read from A+C (B=-A-C)
 		{
 			raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-					ADC_INJECTED_RANK_1);
+			ADC_INJECTED_RANK_1);
 			i16_ph1_current = raw_inj1;
 			raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-					ADC_INJECTED_RANK_1);
+			ADC_INJECTED_RANK_1);
 			i16_ph2_current = -i16_ph1_current - raw_inj2;
 		}
 			break;
