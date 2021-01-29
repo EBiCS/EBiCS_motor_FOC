@@ -428,7 +428,7 @@ int main(void) {
 	HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_4);
 
 	TIM1->CCR4 = TRIGGER_DEFAULT; //ADC sampling just before timer overflow (just before middle of PWM-Cycle)
-//PWM Mode 1: Interrupt at counting down.
+	//PWM Mode 1: Interrupt at counting down.
 
 	//TIM1->BDTR |= 1L<<15;
 	// TIM1->BDTR &= ~(1L<<15); //reset MOE (Main Output Enable) bit to disable PWM output
@@ -454,10 +454,8 @@ int main(void) {
 
 	 __HAL_UNLOCK(&htim1);
 	 SET_BIT(ADC1->CR2, ADC_CR2_JEXTTRIG);//external trigger enable
-
 	 */
 
-	//Init KingMeter Display
 	//Init KingMeter Display
 #if (DISPLAY_TYPE & DISPLAY_TYPE_KINGMETER)
        KingMeter_Init (&KM);
