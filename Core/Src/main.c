@@ -1256,10 +1256,10 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-	HAL_GPIO_WritePin(HALL_A_GPIO_Port, HALL_A_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
 
 	/*Configure GPIO pins : HALL_1_Pin HALL_2_Pin */
-	GPIO_InitStruct.Pin = HALL_A_Pin | HALL_B_Pin | HALL_C_Pin;
+	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin | HALL_3_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
