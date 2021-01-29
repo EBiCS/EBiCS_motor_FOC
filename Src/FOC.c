@@ -122,20 +122,15 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, int
 
 	PI_flag=1;
 
-        //set static volatage for hall angle detection
-        if(!MS_FOC->hall_angle_detect_flag){
-	        q31_i_d=100;
-	        q31_i_q=0;
-	}else{
-#if 1
-	        q31_i_d=MS_FOC->u_d;
-	        q31_i_q=MS_FOC->u_q;
-#endif
-        }
+	//set static volatage for hall angle detection
+	if(!MS_FOC->hall_angle_detect_flag){
+		MS_FOC->u_q=0;
+		MS_FOC->u_d=200;
+		}
 
 
-	//inverse Park transformation
-	arm_inv_park_q31(q31_i_d, q31_i_q, &q31_u_alpha, &q31_u_beta, -sinevalue, cosinevalue);
+		//inverse Park transformation
+		arm_inv_park_q31(MS_FOC->u_d, MS_FOC->u_q, &q31_u_alpha, &q31_u_beta, -sinevalue, cosinevalue);
 
 	temp1=int16_i_as;
 	temp2=int16_i_bs;
