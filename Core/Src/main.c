@@ -489,35 +489,6 @@ int main(void)
    	}
 
 
-   		 HAL_GPIO_EXTI_Callback(GPIO_PIN_4); //read in initial rotor position
-
-
-   	 	 switch (ui8_hall_state)
-   			{
-   			//6 cases for forward direction
-   			case 4:
-   				q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;
-   				break;
-   			case 5:
-   				q31_rotorposition_hall = DEG_plus60 + q31_rotorposition_motor_specific;
-   				break;
-   			case 1:
-   				q31_rotorposition_hall = DEG_plus120 + q31_rotorposition_motor_specific;
-   				break;
-   			case 3:
-   				q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;
-   				break;
-   			case 2:
-   				q31_rotorposition_hall = DEG_minus120 + q31_rotorposition_motor_specific;
-   				break;
-   			case 6:
-   				q31_rotorposition_hall = DEG_minus60 + q31_rotorposition_motor_specific;
-   				break;
-
-   			}
-
-   		 q31_rotorposition_absolute = q31_rotorposition_hall; // set absolute position to corresponding hall pattern.
-
 
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
@@ -549,10 +520,10 @@ int main(void)
 		  		  if(MS.Battery_Current>BATTERYCURRENT_MAX) ui8_BC_limit_flag=1;
 		  		  if(MS.Battery_Current<-REGEN_CURRENT_MAX) ui8_BC_limit_flag=1;
 		  		  //reset battery current flag with small hysteresis
-		  		  if(MS.i_q*i8_direction*i8_reverse_flag<-100){
+		  		  if(MS.i_q*i8_direction*i8_reverse_flag>100){ //motor mode
 		  			  if(((int32_current_target*MS.u_abs)>>11)*(uint16_t)(CAL_I>>8)<(BATTERYCURRENT_MAX*7)>>3)ui8_BC_limit_flag=0;
 		  		  }
-		  		  else{
+		  		  else{ //generator mode
 		  			  if(((int32_current_target*MS.u_abs)>>11)*(uint16_t)(CAL_I>>8)>(-REGEN_CURRENT_MAX*7)>>3)ui8_BC_limit_flag=0;
 		  		  }
 
@@ -563,10 +534,10 @@ int main(void)
 		  			  q31_u_q_temp =  PI_control_i_q(MS.i_q, (q31_t) i8_direction*i8_reverse_flag*int32_current_target);
 		  		  }
 		  		  else{
-		  			  if(MS.i_q*i8_direction*i8_reverse_flag>100){
+		  			  if(MS.i_q*i8_direction*i8_reverse_flag>100){//motor mode
 		  			  q31_u_q_temp =  PI_control_i_q((MS.Battery_Current>>6)*i8_direction*i8_reverse_flag, (q31_t) (BATTERYCURRENT_MAX>>6)*i8_direction*i8_reverse_flag);
 		  			  }
-		  			  else{
+		  			  else{//generator mode
 		  			  q31_u_q_temp =  PI_control_i_q((MS.Battery_Current>>6)*i8_direction*i8_reverse_flag, (q31_t) (-REGEN_CURRENT_MAX>>6)*i8_direction*i8_reverse_flag);
 		  			  }
 		  		  }
@@ -675,7 +646,7 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int32_current_target, MS.i_q,q31_tics_filtered>>3, MS.i_d,ui8_hall_state, MS.u_d, MS.u_q , MS.u_abs,  MS.Battery_Current);
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int32_current_target, MS.i_q,q31_tics_filtered>>3, DMA1_Channel3->CNDTR,ui8_hall_state, MS.u_d, MS.u_q , MS.u_abs,  MS.Battery_Current);
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;

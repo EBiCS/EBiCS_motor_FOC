@@ -57,7 +57,8 @@ void process_ant_page(MotorState_t *MS, MotorParams_t *MP) {
 	 	break;
 
 	default: {
-		//do nothing
+		MS->i_q_setpoint = 0; // stop motor for safety reason
+		DMA1_Channel3->CNDTR = 12; //reset buffer pointer
 	}
 	} //end switch
 	//}// end if chkSum
