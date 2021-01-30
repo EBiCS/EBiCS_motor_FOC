@@ -52,12 +52,9 @@ void process_ant_page(MotorState_t *MS, MotorParams_t *MP) {
 	 case 6:
 	 	{
 	 		if(ui8_rx_buffer[4])autodetect();
-	 		if((ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7])<(1<<15)){
-	 		MS->i_q_setpoint =(ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7]);
-	 		}
-	 		else{
-	 			MS->i_q_setpoint =(ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7])-(1<<16);
-	 		}
+
+	 		MS->i_q_setpoint = (int16_t)(ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7]);
+
 	 	}
 	 	break;
 
