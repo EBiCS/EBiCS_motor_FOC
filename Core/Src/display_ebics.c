@@ -44,10 +44,17 @@ void process_ant_page(MotorState_t *MS, MotorParams_t *MP) {
 		MP->wheel_cirumference = ui8_rx_buffer[5] << 8 | ui8_rx_buffer[4];
 		MS->regen_level = ui8_rx_buffer[6] & 0x07;
 		MS->assist_level = ui8_rx_buffer[6] >> 3 & 0x07;
-		MS->i_q_setpoint = ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7];
+
 
 	} // end case 16
 		break;
+
+	 case 6:
+	 	{
+	 		if(ui8_rx_buffer[4])autodetect();
+	 		MS->i_q_setpoint = ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7];
+	 	}
+	 	break;
 
 	default: {
 		//do nothing

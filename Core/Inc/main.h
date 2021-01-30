@@ -93,6 +93,8 @@ void Error_Handler(void);
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);
 
+void autodetect();
+
 extern q31_t switchtime[3];
 extern uint32_t ui32_tim1_counter;
 extern uint32_t uint32_PAS_counter;
@@ -135,7 +137,7 @@ typedef struct {
 	uint8_t speedLimit;
 	uint8_t pulses_per_revolution;
 	uint16_t phase_current_max;
-	uint16_t spec_angle;
+	int16_t spec_angle;
 
 } MotorParams_t;
 
