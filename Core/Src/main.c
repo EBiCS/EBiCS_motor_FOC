@@ -34,7 +34,7 @@
   #include "display_ebics.h"
 #endif
 
-
+#include <stdlib.h>
 #include <arm_math.h>
 /* USER CODE END Includes */
 
@@ -543,7 +543,7 @@ int main(void)
 		  		  }
 
 		  		  //Control id
-		  		  q31_u_d_temp = -PI_control_i_d(MS.i_d, 0); //control direct current to zero
+		  		  q31_u_d_temp = -PI_control_i_d(MS.i_d, 0,abs(q31_u_q_temp/MAX_D_FACTOR)); //control direct current to zero
 
 
 		  		  	//limit voltage in rotating frame, refer chapter 4.10.1 of UM1052
@@ -646,7 +646,9 @@ int main(void)
 		  //print values for debugging
 
 
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int32_current_target, MS.i_q,q31_tics_filtered>>3, DMA1_Channel3->CNDTR,MS.i_q_setpoint, MS.u_d, MS.u_q , MS.u_abs,  MS.Battery_Current);
+                //Jon Pry uses this crazy string for automated data collection
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, T: %d, Q: %d, D: %d, %d, %d, S: %d, %d, V: %d\r\n", int32_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit, adcData[ADC_VOLTAGE]);
+	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int32_current_target, MS.i_q,q31_tics_filtered>>3, DMA1_Channel3->CNDTR,MS.i_q_setpoint, MS.u_d, MS.u_q , MS.u_abs,  MS.Battery_Current);
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
