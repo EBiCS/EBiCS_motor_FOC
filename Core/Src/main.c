@@ -1332,6 +1332,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 
 
+__disable_irq(); //ENTER CRITICAL SECTION!!!!!!!!!!!!!
 
 	//extrapolate recent rotor position
 	ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
@@ -1346,6 +1347,8 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 	   }
     }//end if hall angle detect
+
+__enable_irq(); //EXIT CRITICAL SECTION!!!!!!!!!!!!!!
 
 #ifndef DISABLE_DYNAMIC_ADC
 
