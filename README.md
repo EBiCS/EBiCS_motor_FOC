@@ -29,3 +29,5 @@ the Free Software Foundation, either version 3 of the License, or
 # Remote control from ESP32
 You can use analog throttle and brake and a ESP32 to remote control the SmartESC :
 https://github.com/Koxx3/SmartESC_ESP32_serial_control/tree/SmarESC_V3
+
+![wiring diagram](https://www.pedelecforum.de/forum/index.php?attachments/1611936761066-png.364172/)
