@@ -36,12 +36,13 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
-Src/main.c \
-Src/FOC.c \
-Src/display_ebics.c \
-Src/stm32f1xx_it.c \
-Stc/print.c \
-Src/stm32f1xx_hal_msp.c \
+Core/Src/main.c \
+Core/Src/FOC.c \
+Core/Src/eeprom.c \
+Core/Src/display_ebics.c \
+Core/Src/stm32f1xx_it.c \
+Core/Src/print.c \
+Core/Src/stm32f1xx_hal_msp.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc_ex.c \
@@ -62,7 +63,7 @@ Src/system_stm32f1xx.c
 
 # ASM sources
 ASM_SOURCES =  \
-startup_stm32f103xb.s
+Core/Startup/startup_stm32f103c8tx.s
 
 
 #######################################
@@ -116,7 +117,7 @@ AS_INCLUDES =
 
 # C includes
 C_INCLUDES =  \
--IInc \
+-ICore/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc \
 -IDrivers/STM32F1xx_HAL_Driver/Inc/Legacy \
 -IDrivers/CMSIS/Device/ST/STM32F1xx/Include \
