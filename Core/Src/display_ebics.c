@@ -45,25 +45,24 @@ void process_ant_page(MotorState_t *MS, MotorParams_t *MP) {
 		MS->regen_level = ui8_rx_buffer[6] & 0x07;
 		MS->assist_level = ui8_rx_buffer[6] >> 3 & 0x07;
 
-
 	} // end case 16
 		break;
 
-	 case 6:
-	 	{
-	 		if(ui8_rx_buffer[4])autodetect();
+	case 6: {
+		if (ui8_rx_buffer[4])
+			autodetect();
 
-	 		MS->i_q_setpoint = (int16_t)(ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7]);
+		MS->i_q_setpoint = (int16_t) (ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7]);
 
-	 	}
-	 	break;
+	}
+		break;
 
 	default: {
 		MS->i_q_setpoint = 0; // stop motor for safety reason
 		DMA1_Channel3->CNDTR = 12; //reset buffer pointer
 	}
 	} //end switch
-	//}// end if chkSum
+	  //}// end if chkSum
 }	 //end process_ant_page
 
 void send_ant_page(uint8_t page, MotorState_t *MS, MotorParams_t *MP) {
