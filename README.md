@@ -2,11 +2,24 @@ Fork of EBiCS firmware for Lishui devices. Ported to Xaiomi M365 controller.
 
 
 Note:  This is WiP, use at your own risk. 
-Note:  Makes no attempt to implement M365 protocols between BMS/BLE controllers, currently targets analog throttle soldered to CPU pin 11(PA1)
-Note:  On my controller I had to short the Hall A input resistor, some pullup current is very high. Unsure of cause. 
+Note:  Makes no attempt to implement M365 protocols between BMS/BLE controller.
 
-Currently can do hall autodetection, and then run in sinusoidal mode with throttle controlled voltage. 
-FoC and current limiting in general is not working right yet. 
+Send @56000BAUD via UART3 commands of 12 Bytes (Ant+LEV syntax)
+
+run autodetect routine for proper hallsignal processing once first, keep the wheel in the air for this procedure:
+
+00 00 00 06 01 00 00 00 00 00 00 00
+
+to set the setpoint for the motor current:
+
+00 00 00 06 00 00 00 LL MM 00 00 00
+
+LL is the LSB and MM the MSB of the 16bit signed integer. Values from -2096 to +2096 are senseful.
+
+Negative values give negative torque, means breaking / reverse motor spinning direction.
+
+All system parameters have to be set edited in the config.h at the moment.
+A serial protocol to set the parameters at runtime is in development.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

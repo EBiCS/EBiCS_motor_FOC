@@ -31,7 +31,7 @@
 #define I_FACTOR_I_Q 2
 #define P_FACTOR_I_D 1
 #define I_FACTOR_I_D 1
-#define MAX_D_FACTOR 4
+#define MAX_D_FACTOR 1
 
 #define WHEEL_CIRCUMFERENCE 2200
 #define GEAR_RATIO 83 //dummy for testing
