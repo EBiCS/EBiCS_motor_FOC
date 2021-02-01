@@ -120,7 +120,7 @@ uint16_t k = 0;
 uint8_t ui8_overflow_flag = 0;
 uint8_t ui8_slowloop_counter = 0;
 uint8_t ui8_adc_inj_flag = 0;
-uint8_t ui8_adc_regular_flag = 0;
+volatile uint8_t ui8_adc_regular_flag = 0;
 int8_t i8_direction = REVERSE;
 int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
 
