@@ -62,6 +62,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_Pin GPIO_PIN_1
 #define LED_GPIO_Port GPIOD
+#define UART1_Tx_Pin GPIO_PIN_6
+#define UART1_Tx_GPIO_Port GPIOB
 #define Temp_Pin GPIO_PIN_0
 #define Temp_GPIO_Port GPIOA
 #define Throttle_Pin GPIO_PIN_1
