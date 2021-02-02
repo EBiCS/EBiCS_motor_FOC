@@ -201,6 +201,7 @@ int16_t power;
 static void dyn_adc_state(q31_t angle);
 static void set_inj_channel(char state);
 void get_standstill_position();
+void runPIcontrol();
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);
 int32_t speed_to_tics(uint8_t speed);
@@ -485,76 +486,7 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 
-		//PI-control processing
-		if (PI_flag) {
 
-			q31_t_Battery_Current_accumulated -=
-					q31_t_Battery_Current_accumulated >> 8;
-			q31_t_Battery_Current_accumulated += ((MS.i_q * MS.u_abs) >> 11)
-					* (uint16_t) (CAL_I >> 8);
-
-			MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
-					* i8_direction * i8_reverse_flag; //Battery current in mA
-
-			//Check battery current limit
-			if (MS.Battery_Current > BATTERYCURRENT_MAX)
-				ui8_BC_limit_flag = 1;
-			if (MS.Battery_Current < -REGEN_CURRENT_MAX)
-				ui8_BC_limit_flag = 1;
-			//reset battery current flag with small hysteresis
-			if (MS.i_q * i8_direction * i8_reverse_flag > 100) { //motor mode
-				if (((int32_current_target * MS.u_abs) >> 11)
-						* (uint16_t) (CAL_I >> 8)
-						< (BATTERYCURRENT_MAX * 7) >> 3)
-					ui8_BC_limit_flag = 0;
-			} else { //generator mode
-				if (((int32_current_target * MS.u_abs) >> 11)
-						* (uint16_t) (CAL_I >> 8)
-						> (-REGEN_CURRENT_MAX * 7) >> 3)
-					ui8_BC_limit_flag = 0;
-			}
-
-			//control iq
-
-			//if
-			if (!ui8_BC_limit_flag) {
-				q31_u_q_temp = PI_control_i_q(MS.i_q,
-						(q31_t) i8_direction * i8_reverse_flag
-								* int32_current_target);
-			} else {
-				if (MS.i_q * i8_direction * i8_reverse_flag > 100) { //motor mode
-					q31_u_q_temp = PI_control_i_q(
-							(MS.Battery_Current >> 6) * i8_direction
-									* i8_reverse_flag,
-							(q31_t) (BATTERYCURRENT_MAX >> 6) * i8_direction
-									* i8_reverse_flag);
-				} else { //generator mode
-					q31_u_q_temp = PI_control_i_q(
-							(MS.Battery_Current >> 6) * i8_direction
-									* i8_reverse_flag,
-							(q31_t) (-REGEN_CURRENT_MAX >> 6) * i8_direction
-									* i8_reverse_flag);
-				}
-			}
-
-			//Control id
-			q31_u_d_temp = -PI_control_i_d(MS.i_d, 0,
-					abs(q31_u_q_temp / MAX_D_FACTOR)); //control direct current to zero
-
-			//limit voltage in rotating frame, refer chapter 4.10.1 of UM1052
-			MS.u_abs = (q31_t) hypot((double) q31_u_d_temp,
-					(double) q31_u_q_temp); //absolute value of U in static frame
-
-			if (MS.u_abs > _U_MAX) {
-				MS.u_q = (q31_u_q_temp * _U_MAX) / MS.u_abs; //division!
-				MS.u_d = (q31_u_d_temp * _U_MAX) / MS.u_abs; //division!
-				MS.u_abs = _U_MAX;
-			} else {
-				MS.u_q = q31_u_q_temp;
-				MS.u_d = q31_u_d_temp;
-			}
-			PI_flag = 0;
-		}
 		//display message processing
 		if (ui8_UART_flag) {
 
@@ -1221,7 +1153,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	//for oszi-check of used time in FOC procedere
-	HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
 	ui32_tim1_counter++;
 
 	/*  else {
@@ -1339,7 +1271,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		TIM1->CCR2 = (uint16_t) switchtime[1];
 		TIM1->CCR3 = (uint16_t) switchtime[2];
 
-		HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
+		//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
 
 	} // end else
 
@@ -1564,10 +1496,88 @@ void get_standstill_position() {
 	}
 
 	q31_rotorposition_absolute = q31_rotorposition_hall;
-	temp6 = q31_rotorposition_absolute;
-	printf_("standstill position %d, %d, %d\n", temp6,
+
+	printf_("standstill position %d, %d, %d\n", q31_rotorposition_absolute,
 			(int16_t) (((temp6 >> 23) * 180) >> 8), ui8_hall_state);
 
+}
+
+void runPIcontrol(){
+	//PI-control processing
+			if (PI_flag) {
+				//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
+				q31_t_Battery_Current_accumulated -=
+						q31_t_Battery_Current_accumulated >> 8;
+				q31_t_Battery_Current_accumulated += ((MS.i_q * MS.u_abs) >> 11)
+						* (uint16_t) (CAL_I >> 8);
+
+				MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
+						* i8_direction * i8_reverse_flag; //Battery current in mA
+
+				//Check battery current limit
+				if (MS.Battery_Current > BATTERYCURRENT_MAX)
+					ui8_BC_limit_flag = 1;
+				if (MS.Battery_Current < -REGEN_CURRENT_MAX)
+					ui8_BC_limit_flag = 1;
+				//reset battery current flag with small hysteresis
+				if (MS.i_q * i8_direction * i8_reverse_flag > 100) { //motor mode
+					if (((int32_current_target * MS.u_abs) >> 11)
+							* (uint16_t) (CAL_I >> 8)
+							< (BATTERYCURRENT_MAX * 7) >> 3)
+						ui8_BC_limit_flag = 0;
+				} else { //generator mode
+					if (((int32_current_target * MS.u_abs) >> 11)
+							* (uint16_t) (CAL_I >> 8)
+							> (-REGEN_CURRENT_MAX * 7) >> 3)
+						ui8_BC_limit_flag = 0;
+				}
+
+				//control iq
+
+				//if
+				if (!ui8_BC_limit_flag) {
+					q31_u_q_temp = PI_control_i_q(MS.i_q,
+							(q31_t) i8_direction * i8_reverse_flag
+									* int32_current_target);
+				} else {
+					if (MS.i_q * i8_direction * i8_reverse_flag > 100) { //motor mode
+						q31_u_q_temp = PI_control_i_q(
+								(MS.Battery_Current >> 6) * i8_direction
+										* i8_reverse_flag,
+								(q31_t) (BATTERYCURRENT_MAX >> 6) * i8_direction
+										* i8_reverse_flag);
+					} else { //generator mode
+						q31_u_q_temp = PI_control_i_q(
+								(MS.Battery_Current >> 6) * i8_direction
+										* i8_reverse_flag,
+								(q31_t) (-REGEN_CURRENT_MAX >> 6) * i8_direction
+										* i8_reverse_flag);
+					}
+				}
+
+				//Control id
+				q31_u_d_temp = -PI_control_i_d(MS.i_d, 0,
+						abs(q31_u_q_temp / MAX_D_FACTOR)); //control direct current to zero
+
+				//limit voltage in rotating frame, refer chapter 4.10.1 of UM1052
+				//MS.u_abs = (q31_t) hypot((double) q31_u_d_temp,	(double) q31_u_q_temp); //absolute value of U in static frame
+
+
+				arm_sqrt_q31((q31_u_d_temp*q31_u_d_temp+q31_u_q_temp*q31_u_q_temp)<<1,&MS.u_abs);
+				MS.u_abs = (MS.u_abs>>16)+1;
+
+
+				if (MS.u_abs > _U_MAX) {
+					MS.u_q = (q31_u_q_temp * _U_MAX) / MS.u_abs; //division!
+					MS.u_d = (q31_u_d_temp * _U_MAX) / MS.u_abs; //division!
+					MS.u_abs = _U_MAX;
+				} else {
+					MS.u_q = q31_u_q_temp;
+					MS.u_d = q31_u_d_temp;
+				}
+				PI_flag = 0;
+				//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
+			}
 }
 
 int32_t speed_to_tics(uint8_t speed) {

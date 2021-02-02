@@ -48,7 +48,7 @@ void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta);
 
 void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 		int16_t int16_i_q_target, MotorState_t *MS_FOC) {
-
+	HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
 	q31_t q31_i_alpha = 0;
 	q31_t q31_i_beta = 0;
 	q31_t q31_u_alpha = 0;
@@ -82,6 +82,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 	//Control iq
 
 	PI_flag = 1;
+	runPIcontrol();
 
 //set static volatage for hall angle detection
 	if (!MS_FOC->hall_angle_detect_flag) {
@@ -123,6 +124,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 	//call SVPWM calculation
 	svpwm(q31_u_alpha, q31_u_beta);
 	//temp6=__HAL_TIM_GET_COUNTER(&htim1);
+	HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
 
 }
 //PI Control for quadrature current iq (torque)
@@ -133,8 +135,8 @@ q31_t PI_control_i_q(q31_t ist, q31_t soll) {
 	static q31_t q31_q_dc = 0; // sum of proportional and integral part
 	q31_p = ((soll - ist) * P_FACTOR_I_Q);
 	q31_q_i += ((soll - ist) * I_FACTOR_I_Q);
-	temp5 = q31_p;
-	temp6 = q31_q_i;
+	//temp5 = q31_p;
+	//temp6 = q31_q_i;
 
 	if (q31_q_i > _U_MAX << 10)
 		q31_q_i = _U_MAX << 10;
