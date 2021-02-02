@@ -117,20 +117,20 @@ int16_t i16_ph3_current = 0;
 uint16_t i = 0;
 uint16_t j = 0;
 uint16_t k = 0;
-uint8_t ui8_overflow_flag = 0;
+volatile uint8_t ui8_overflow_flag = 0;
 uint8_t ui8_slowloop_counter = 0;
-uint8_t ui8_adc_inj_flag = 0;
+volatile uint8_t ui8_adc_inj_flag = 0;
 volatile uint8_t ui8_adc_regular_flag = 0;
 int8_t i8_direction = REVERSE;
-int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
+volatile int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
 
-uint8_t ui8_adc_offset_done_flag = 0;
-uint8_t ui8_print_flag = 0;
-uint8_t ui8_UART_flag = 0;
-uint8_t ui8_Push_Assist_flag = 0;
-uint8_t ui8_UART_TxCplt_flag = 1;
-uint8_t ui8_PAS_flag = 0;
-uint8_t ui8_SPEED_flag = 0;
+volatile uint8_t ui8_adc_offset_done_flag = 0;
+volatile uint8_t ui8_print_flag = 0;
+volatile uint8_t ui8_UART_flag = 0;
+volatile uint8_t ui8_Push_Assist_flag = 0;
+volatile uint8_t ui8_UART_TxCplt_flag = 1;
+volatile uint8_t ui8_PAS_flag = 0;
+volatile uint8_t ui8_SPEED_flag = 0;
 
 uint32_t uint32_PAS_HIGH_counter = 0;
 uint32_t uint32_PAS_HIGH_accumulated = 32000;
@@ -648,6 +648,7 @@ int main(void) {
 			}
 			HAL_UART_Transmit_DMA(&huart3, (uint8_t*) &buffer, i);
 			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+			HAL_GPIO_TogglePin(BrakeLight_GPIO_Port,BrakeLight_Pin);
 
 			ui8_print_flag = 0;
 
@@ -1146,6 +1147,14 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(UART1_Tx_GPIO_Port, &GPIO_InitStruct);
+
+	HAL_GPIO_WritePin(BrakeLight_GPIO_Port, BrakeLight_Pin, GPIO_PIN_RESET);
+	/*Configure GPIO pin : BrakeLight_Pin */
+	GPIO_InitStruct.Pin = BrakeLight_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(BrakeLight_GPIO_Port, &GPIO_InitStruct);
 
 	HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
 
