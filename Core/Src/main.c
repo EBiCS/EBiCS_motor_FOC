@@ -463,12 +463,20 @@ int main(void) {
 
 //while(1){}
 
-	ADC1->JSQR = JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
-	ADC1->JOFR1 = ui16_ph1_offset;
+        ADC1->JSQR=JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+   	ADC1->JOFR1 = ui16_ph1_offset;
 
-	ui8_adc_offset_done_flag = 1;
+   	ui8_adc_offset_done_flag=1;
 
-	EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
+   	EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
+
+   	// set motor specific angle to value from emulated EEPROM only if valid
+   	if(MP.spec_angle!=0xFFFF) {
+   		q31_rotorposition_motor_specific = MP.spec_angle<<16;
+   		EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
+   	}else{
+                autodetect();
+        }
 
 	// set motor specific angle to value from emulated EEPROM only if valid
 	if (MP.spec_angle != 0xFFFF) {
@@ -569,25 +577,21 @@ int main(void) {
 			}
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG && !defined(FAST_LOOP_LOG))
-			//print values for debugging
+		  //print values for debugging
 
-			//Jon Pry uses this crazy string for automated data collection
-			//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, T: %d, Q: %d, D: %d, %d, %d, S: %d, %d, V: %d\r\n", int32_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit, adcData[ADC_VOLTAGE]);
-			sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n",
-					int32_current_target, MS.i_q, q31_tics_filtered >> 3,
-					DMA1_Channel3->CNDTR, MS.i_q_setpoint, MS.u_d, MS.u_q,
-					MS.u_abs, MS.Battery_Current);
-			//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
-			i = 0;
-			while (buffer[i] != '\0') {
-				i++;
-			}
-			HAL_UART_Transmit_DMA(&huart3, (uint8_t*) &buffer, i);
-			HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-			HAL_GPIO_TogglePin(BrakeLight_GPIO_Port,BrakeLight_Pin);
+                //Jon Pry uses this crazy string for automated data collection
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, T: %d, Q: %d, D: %d, %d, %d, S: %d, %d, V: %d, C: %d\r\n", int32_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit, adcData[ADC_VOLTAGE], MS.Battery_Current);
+	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int32_current_target, MS.i_q,q31_tics_filtered>>3, DMA1_Channel3->CNDTR,MS.i_q_setpoint, MS.u_d, MS.u_q , MS.u_abs,  MS.Battery_Current);
+	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
-			ui8_print_flag = 0;
+	  	  i=0;
+		  while (buffer[i] != '\0')
+		  {i++;}
+		 HAL_UART_Transmit_DMA(&huart3, (uint8_t *)&buffer, i);
+		 HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+
+		 ui8_print_flag = 0;
 
 #endif
 
