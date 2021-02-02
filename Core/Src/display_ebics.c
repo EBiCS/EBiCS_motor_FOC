@@ -10,27 +10,18 @@
 #include "print.h"
 
 UART_HandleTypeDef huart3;
-uint8_t ui8_rx_buffer[12];
+uint8_t ui8_rx_buffer[64];
 uint8_t ui8_tx_buffer[12];
 
 void ebics_init() {
 
-	if (HAL_UART_Receive_DMA(&huart3, (uint8_t*) ui8_rx_buffer, 12) != HAL_OK) {
+	if (HAL_UART_Receive_DMA(&huart3, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
 		Error_Handler();
 	}
 }
 
-void process_ant_page(MotorState_t *MS, MotorParams_t *MP) {
-
-	int chkSum = 0;
-
-	for (uint8_t i = 0; i < 11; i++) {
-		chkSum ^= ui8_rx_buffer[i];
-	}
-
-	// if(chkSum == ui8_rx_buffer[11]){
-
-	switch (ui8_rx_buffer[3]) {
+void process_ant_page_one(uint8_t *ui8_pkt, MotorState_t *MS, MotorParams_t *MP){
+	switch (ui8_pkt[3]) {
 	case 16: {
 		/*
 		 message[4] = State.Wheel_Circumference & 0xFF; //Low Byte
@@ -41,29 +32,65 @@ void process_ant_page(MotorState_t *MS, MotorParams_t *MP) {
 		 message[9] = State.Manufacturer_ID & 0xFF; //Low Byte
 		 message[10] = State.Manufacturer_ID >> 8 & 0xFF; //Hi Byte
 		 */
-		MP->wheel_cirumference = ui8_rx_buffer[5] << 8 | ui8_rx_buffer[4];
-		MS->regen_level = ui8_rx_buffer[6] & 0x07;
-		MS->assist_level = ui8_rx_buffer[6] >> 3 & 0x07;
+		MP->wheel_cirumference = ui8_pkt[5] << 8 | ui8_pkt[4];
+		MS->regen_level = ui8_pkt[6] & 0x07;
+		MS->assist_level = ui8_pkt[6] >> 3 & 0x07;
 
 	} // end case 16
 		break;
 
 	case 6: {
-		if (ui8_rx_buffer[4])
+		if (ui8_pkt[4])
 			autodetect();
 
-		MS->i_q_setpoint = (int16_t) (ui8_rx_buffer[8] << 8 | ui8_rx_buffer[7]);
+		MS->i_q_setpoint = (int16_t) (ui8_pkt[8] << 8 | ui8_pkt[7]);
 
 	}
 		break;
 
 	default: {
 		MS->i_q_setpoint = 0; // stop motor for safety reason
-		DMA1_Channel3->CNDTR = 12; //reset buffer pointer
 	}
 	} //end switch
 	  //}// end if chkSum
 }	 //end process_ant_page
+
+
+enum { STATE_LOST, STATE_PAYLOAD };
+
+void process_ant_page(MotorState_t *MS, MotorParams_t *MP) {
+        static int tail=0;
+        static uint8_t ui8_pkt[12];
+        int head = 64 - DMA1_Channel3->CNDTR;
+        static int state = STATE_LOST; 
+        static int pkt_pos=0;
+	int chkSum = 0; 
+
+        while(tail != head) { //Consume available bytes
+                switch(state){
+                        case STATE_LOST: {
+                                if(ui8_rx_buffer[tail] == 0xAA){
+                                        pkt_pos=1;
+                                        ui8_pkt[0] = ui8_rx_buffer[tail];
+                                        chkSum = 0xAA;
+                                        state = STATE_PAYLOAD;
+                                }
+                                }break;
+                        case STATE_PAYLOAD: {
+                                        ui8_pkt[pkt_pos++] = ui8_rx_buffer[tail];
+                                        chkSum ^= ui8_rx_buffer[tail];
+                                        if(pkt_pos==12){
+                                                if(chkSum == 0){ //CRC was good
+                                                        process_ant_page_one(ui8_pkt,MS,MP);
+                                                }
+                                                state = STATE_LOST;
+                                        }
+                                }break;
+                }
+                tail = (tail + 1) % sizeof(ui8_rx_buffer);
+        }
+}
+
 
 void send_ant_page(uint8_t page, MotorState_t *MS, MotorParams_t *MP) {
 
