@@ -14,7 +14,7 @@ uint8_t ui8_rx_buffer[64];
 uint8_t ui8_tx_buffer[12];
 
 void ebics_init() {
-
+        CLEAR_BIT(huart3.Instance->CR3, USART_CR3_EIE);
 	if (HAL_UART_Receive_DMA(&huart3, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
 		Error_Handler();
 	}
@@ -61,10 +61,11 @@ enum { STATE_LOST, STATE_PAYLOAD };
 void process_ant_page(MotorState_t *MS, MotorParams_t *MP) {
         static int tail=0;
         static uint8_t ui8_pkt[12];
-        int head = 64 - DMA1_Channel3->CNDTR;
         static int state = STATE_LOST; 
         static int pkt_pos=0;
-	int chkSum = 0; 
+	static int chkSum = 0; 
+
+        int head = 64 - DMA1_Channel3->CNDTR;
 
         while(tail != head) { //Consume available bytes
                 switch(state){
