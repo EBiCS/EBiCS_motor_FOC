@@ -1387,6 +1387,10 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
 	ui8_UART_TxCplt_flag = 1;
 }
 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
+	ebics_init();
+}
+
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max) {
 	// if input is smaller/bigger than expected return the min/max out ranges value
