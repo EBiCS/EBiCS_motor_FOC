@@ -155,6 +155,10 @@ q31_t q31_t_Battery_Current_accumulated = 0;
 q31_t q31_rotorposition_absolute;
 q31_t q31_rotorposition_hall;
 q31_t q31_rotorposition_motor_specific = SPEC_ANGLE;
+
+q31_t q31_rotorposition_PLL = 0;
+q31_t q31_angle_per_tic = 0;
+
 q31_t q31_u_d_temp = 0;
 q31_t q31_u_q_temp = 0;
 int16_t i16_sinus = 0;
@@ -206,6 +210,7 @@ int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);
 int32_t speed_to_tics(uint8_t speed);
 int8_t tics_to_speed(uint32_t tics);
+q31_t speed_PLL (q31_t ist, q31_t soll);
 
 #define JSQR_PHASE_A 0b00011000000000000000 //3
 #define JSQR_PHASE_B 0b00100000000000000000 //4
@@ -1228,13 +1233,21 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		//extrapolate recent rotor position
 		ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
 		if (MS.hall_angle_detect_flag) {
+
+#ifdef SPEED_PLL
+		   q31_rotorposition_PLL += q31_angle_per_tic;
+		  // temp4=q31_angle_per_tic*ui16_timertics;
+#endif
+
 			if (ui16_tim2_recent < ui16_timertics+(ui16_timertics>>2) && !ui8_overflow_flag && ui16_timertics<SIXSTEPTHRESHOLD) { //prevent angle running away at standstill
-				// float with division necessary!
+#ifdef SPEED_PLL
+			q31_rotorposition_absolute=q31_rotorposition_PLL;
+#else
 				q31_rotorposition_absolute = q31_rotorposition_hall
 						+ (q31_t) (i16_hall_order * i8_recent_rotor_direction
 								* ((10923 * ui16_tim2_recent) / ui16_timertics)
 								<< 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
-
+#endif
 			} else {
 				ui8_overflow_flag = 1;
 				q31_rotorposition_absolute = q31_rotorposition_hall-(DEG_plus60>>0);
@@ -1375,6 +1388,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			break;
 
 		} // end case
+
+#ifdef SPEED_PLL
+		q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL,q31_rotorposition_hall);
+
+#endif
 
 	} //end if
 }
@@ -1592,6 +1610,21 @@ int32_t speed_to_tics(uint8_t speed) {
 int8_t tics_to_speed(uint32_t tics) {
 	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * tics * 10);;
 }
+
+q31_t speed_PLL (q31_t ist, q31_t soll)
+  {
+    q31_t q31_p;
+    static q31_t q31_d_i = 0;
+    static q31_t q31_d_dc = 0;
+
+    q31_p=(soll - ist)>>P_FACTOR_PLL;   				//7 for Shengyi middrive, 10 for BionX IGH3
+    q31_d_i+=(soll - ist)>>I_FACTOR_PLL;				//11 for Shengyi middrive, 10 for BionX IGH3
+
+    if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))q31_d_i=0;
+
+    q31_d_dc=q31_p+q31_d_i;
+    return (q31_d_dc);
+  }
 /* USER CODE END 4 */
 
 /**
