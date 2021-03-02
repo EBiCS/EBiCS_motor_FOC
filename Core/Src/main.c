@@ -554,7 +554,7 @@ int main(void) {
 			if (uint32_SPEED_counter > 127999)
 				MS.Speed = 128000;
 
-			if ((uint16_full_rotation_counter > 7999
+			if (!int32_current_target&&(uint16_full_rotation_counter > 7999
 					|| uint16_half_rotation_counter > 7999)
 					&& READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
 				CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
@@ -1228,7 +1228,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		//extrapolate recent rotor position
 		ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
 		if (MS.hall_angle_detect_flag) {
-			if (ui16_tim2_recent < ui16_timertics && !ui8_overflow_flag) { //prevent angle running away at standstill
+			if (ui16_tim2_recent < ui16_timertics+(ui16_timertics>>2) && !ui8_overflow_flag && ui16_timertics<SIXSTEPTHRESHOLD) { //prevent angle running away at standstill
 				// float with division necessary!
 				q31_rotorposition_absolute = q31_rotorposition_hall
 						+ (q31_t) (i16_hall_order * i8_recent_rotor_direction
@@ -1237,6 +1237,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
 			} else {
 				ui8_overflow_flag = 1;
+				q31_rotorposition_absolute = q31_rotorposition_hall-(DEG_plus60>>0);
 
 			}
 		} //end if hall angle detect
