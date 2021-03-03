@@ -468,6 +468,8 @@ int main(void) {
 
    	ui8_adc_offset_done_flag=1;
 
+        autodetect();
+
    	EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
  
    	// set motor specific angle to value from emulated EEPROM only if valid
