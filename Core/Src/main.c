@@ -335,8 +335,9 @@ void autodetect() {
 			(int16_t) (((q31_rotorposition_motor_specific >> 23) * 180) >> 8),
 			i16_hall_order, zerocrossing);
 #endif
-
 	HAL_Delay(5);
+	NVIC_SystemReset();
+
 }
 
 /* USER CODE END 0 */
