@@ -82,13 +82,14 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,
 	//Control iq
 
 	PI_flag = 1;
-	runPIcontrol();
+
 
 //set static volatage for hall angle detection
 	if (!MS_FOC->hall_angle_detect_flag) {
 		MS_FOC->u_q = 0;
 		MS_FOC->u_d = 200;
 	}
+	else runPIcontrol();
 
 	//inverse Park transformation
 	arm_inv_park_q31(MS_FOC->u_d, MS_FOC->u_q, &q31_u_alpha, &q31_u_beta,
@@ -135,8 +136,10 @@ q31_t PI_control_i_q(q31_t ist, q31_t soll) {
 	static q31_t q31_q_dc = 0; // sum of proportional and integral part
 	q31_p = ((soll - ist) * P_FACTOR_I_Q);
 	q31_q_i += ((soll - ist) * I_FACTOR_I_Q);
-	//temp5 = q31_p;
-	//temp6 = q31_q_i;
+	temp3=soll;
+	temp4=ist;
+	temp5=q31_p;
+	temp6=q31_q_i;
 
 	if (q31_q_i > _U_MAX << 10)
 		q31_q_i = _U_MAX << 10;
@@ -145,7 +148,7 @@ q31_t PI_control_i_q(q31_t ist, q31_t soll) {
 	if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
 		q31_q_i = 0; //reset integral part if PWM is disabled
 		q31_q_dc=0;
-	}
+		}
 	//avoid too big steps in one loop run
 	if ((q31_p + q31_q_i) >> 10 > q31_q_dc + 5)
 		q31_q_dc += 5;

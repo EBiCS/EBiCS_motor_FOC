@@ -314,6 +314,8 @@ void autodetect() {
     MS.hall_angle_detect_flag=1;
     MS.i_d = 0;
     MS.i_q = 0;
+    MS.u_d=0;
+    MS.u_q=0;
     q31_tics_filtered=1000000;
 
 	HAL_FLASH_Unlock();
@@ -336,7 +338,7 @@ void autodetect() {
 			i16_hall_order, zerocrossing);
 #endif
 	HAL_Delay(5);
-	NVIC_SystemReset();
+	//NVIC_SystemReset();
 
 }
 
@@ -589,9 +591,8 @@ int main(void) {
 			//Jon Pry uses this crazy string for automated data collection
 			//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, T: %d, Q: %d, D: %d, %d, %d, S: %d, %d, V: %d\r\n", int32_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit, adcData[ADC_VOLTAGE]);
 			sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n",
-					int32_current_target, MS.i_q, q31_tics_filtered >> 3,
-					DMA1_Channel3->CNDTR, MS.i_q_setpoint, MS.u_d, MS.u_q,
-					MS.u_abs, MS.Battery_Current);
+					int32_current_target, MS.i_q, temp3, temp4, temp5,
+					temp6, MS.i_q_setpoint, MS.u_d, MS.u_q);
 			//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 			i = 0;
@@ -1536,7 +1537,7 @@ void get_standstill_position() {
 	q31_rotorposition_absolute = q31_rotorposition_hall;
 
 	printf_("standstill position %d, %d, %d\n", q31_rotorposition_absolute,
-			(int16_t) (((temp6 >> 23) * 180) >> 8), ui8_hall_state);
+			(int16_t) (((q31_rotorposition_absolute >> 23) * 180) >> 8), ui8_hall_state);
 
 }
 
