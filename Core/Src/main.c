@@ -306,6 +306,16 @@ void autodetect() {
 			ui8_hall_state_old = ui8_hall_state;
 		}
 	}
+
+   	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
+    TIM1->CCR1 = 1023; //set initial PWM values
+    TIM1->CCR2 = 1023;
+    TIM1->CCR3 = 1023;
+    MS.hall_angle_detect_flag=1;
+    MS.i_d = 0;
+    MS.i_q = 0;
+    q31_tics_filtered=1000000;
+
 	HAL_FLASH_Unlock();
 	EE_WriteVariable(EEPROM_POS_SPEC_ANGLE,
 			q31_rotorposition_motor_specific >> 16);
@@ -534,14 +544,18 @@ int main(void) {
 			TIM1->CCR1 = 1023; //set initial PWM values
 			TIM1->CCR2 = 1023;
 			TIM1->CCR3 = 1023;
+		    MS.i_d = 0;
+		    MS.i_q = 0;
+
 			uint16_half_rotation_counter = 0;
 			uint16_full_rotation_counter = 0;
 			__HAL_TIM_SET_COUNTER(&htim2, 0); //reset tim2 counter
 			ui16_timertics = 40000; //set interval between two hallevents to a large value
 			i8_recent_rotor_direction = i8_direction * i8_reverse_flag;
+			SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
 			get_standstill_position();
 
-			SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
+
 		} else {
 #ifdef KILL_ON_ZERO
                   if(uint16_mapped_throttle==0&&READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
