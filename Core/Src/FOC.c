@@ -157,7 +157,7 @@ q31_t PI_control_i_q(q31_t ist, q31_t soll) {
 	if (q31_q_dc > _U_MAX)
 		q31_q_dc = _U_MAX;
 	if (q31_q_dc < -_U_MAX)
-		q31_q_dc = -_U_MAX; // allow no negative voltage.
+		q31_q_dc = -_U_MAX;
 
 	return (q31_q_dc);
 }
