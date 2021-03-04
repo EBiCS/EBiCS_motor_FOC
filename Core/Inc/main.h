@@ -93,7 +93,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 
 #define PUSHASSIST_CURRENT 30
-#define SIXSTEPTHRESHOLD 10000
+#define SIXSTEPTHRESHOLD 9000
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);

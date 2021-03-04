@@ -131,6 +131,7 @@ volatile uint8_t ui8_Push_Assist_flag = 0;
 volatile uint8_t ui8_UART_TxCplt_flag = 1;
 volatile uint8_t ui8_PAS_flag = 0;
 volatile uint8_t ui8_SPEED_flag = 0;
+volatile uint8_t ui8_6step_flag = 0;
 
 uint32_t uint32_PAS_HIGH_counter = 0;
 uint32_t uint32_PAS_HIGH_accumulated = 32000;
@@ -549,7 +550,7 @@ int main(void) {
 			TIM1->CCR3 = 1023;
 		    MS.i_d = 0;
 		    MS.i_q = 0;
-
+		    speed_PLL(0,0);//reset integral part
 			uint16_half_rotation_counter = 0;
 			uint16_full_rotation_counter = 0;
 			__HAL_TIM_SET_COUNTER(&htim2, 0); //reset tim2 counter
@@ -590,9 +591,9 @@ int main(void) {
 
 			//Jon Pry uses this crazy string for automated data collection
 			//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, T: %d, Q: %d, D: %d, %d, %d, S: %d, %d, V: %d\r\n", int32_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit, adcData[ADC_VOLTAGE]);
-			sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n",
-					int32_current_target, MS.i_q, temp3, temp4, temp5,
-					temp6, MS.i_q_setpoint, MS.u_d, MS.u_q);
+			sprintf_(buffer, "%d, %d, %d, %u, %d, %d, %d, %d, %d\r\n",
+					int32_current_target, MS.i_q, q31_angle_per_tic, ui16_timertics, ui8_6step_flag,
+					((temp6 >> 23) * 180) >> 8,((temp4 >> 23) * 180) >> 8, MS.u_d, MS.u_q);
 			//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 			i = 0;
@@ -1249,13 +1250,16 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		//extrapolate recent rotor position
 		ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
 		if (MS.hall_angle_detect_flag) {
+			if(ui16_timertics<SIXSTEPTHRESHOLD && ui16_tim2_recent<200)ui8_6step_flag=0;
+			if(ui16_timertics>(SIXSTEPTHRESHOLD*6)>>2)ui8_6step_flag=1;
+
 
 #ifdef SPEED_PLL
 		   q31_rotorposition_PLL += q31_angle_per_tic;
 		  // temp4=q31_angle_per_tic*ui16_timertics;
 #endif
 
-			if (ui16_tim2_recent < ui16_timertics+(ui16_timertics>>2) && !ui8_overflow_flag && ui16_timertics<SIXSTEPTHRESHOLD) { //prevent angle running away at standstill
+			if (ui16_tim2_recent < ui16_timertics+(ui16_timertics>>2) && !ui8_overflow_flag && !ui8_6step_flag) { //prevent angle running away at standstill
 #ifdef SPEED_PLL
 			q31_rotorposition_absolute=q31_rotorposition_PLL;
 #else
@@ -1266,7 +1270,13 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 #endif
 			} else {
 				ui8_overflow_flag = 1;
-				q31_rotorposition_absolute = q31_rotorposition_hall-(DEG_plus60>>0);
+				//q31_rotorposition_absolute = q31_rotorposition_hall-(DEG_plus60>>1);
+
+				if(ui16_timertics>SIXSTEPTHRESHOLD<<1)q31_rotorposition_absolute = q31_rotorposition_hall-(DEG_plus60);
+				else {
+					temp4=((((DEG_plus60>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
+					q31_rotorposition_absolute = q31_rotorposition_hall-((((DEG_plus60>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
+				}
 
 			}
 		} //end if hall angle detect
@@ -1632,11 +1642,11 @@ q31_t speed_PLL (q31_t ist, q31_t soll)
     q31_t q31_p;
     static q31_t q31_d_i = 0;
     static q31_t q31_d_dc = 0;
-
+    temp6 = soll-ist;
     q31_p=(soll - ist)>>P_FACTOR_PLL;   				//7 for Shengyi middrive, 10 for BionX IGH3
     q31_d_i+=(soll - ist)>>I_FACTOR_PLL;				//11 for Shengyi middrive, 10 for BionX IGH3
 
-    if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))q31_d_i=0;
+   if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))q31_d_i=0;
 
     q31_d_dc=q31_p+q31_d_i;
     return (q31_d_dc);

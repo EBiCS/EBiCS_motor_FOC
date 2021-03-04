@@ -136,10 +136,7 @@ q31_t PI_control_i_q(q31_t ist, q31_t soll) {
 	static q31_t q31_q_dc = 0; // sum of proportional and integral part
 	q31_p = ((soll - ist) * P_FACTOR_I_Q);
 	q31_q_i += ((soll - ist) * I_FACTOR_I_Q);
-	temp3=soll;
-	temp4=ist;
-	temp5=q31_p;
-	temp6=q31_q_i;
+
 
 	if (q31_q_i > _U_MAX << 10)
 		q31_q_i = _U_MAX << 10;
