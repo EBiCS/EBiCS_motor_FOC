@@ -352,6 +352,7 @@ void autodetect() {
 int main(void) {
 	/* USER CODE BEGIN 1 */
 
+        SCB->VTOR = 0x08001000;
 	/* USER CODE END 1 */
 
 	/* MCU Configuration----------------------------------------------------------*/
@@ -482,7 +483,7 @@ int main(void) {
 
    	ui8_adc_offset_done_flag=1;
 
-       // autodetect();
+  //     autodetect();
 
    	EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
  
