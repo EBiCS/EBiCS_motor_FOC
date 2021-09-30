@@ -16,7 +16,7 @@ AA 00 00 06 00 00 00 LL MM 00 00 CC
 
 LL is the LSB and MM the MSB of the 16bit signed integer. Values from -2096 to +2096 are senseful.
 
-CC is the checksum simple XOR of bytes 0 to 11, see the online compiler example:
+CC is the checksum, the XOR of bytes 0 to 11, see the online compiler example:
 https://onlinegdb.com/VIHGUEOwa
 
 Negative values give negative torque, means breaking / reverse motor spinning direction.
