@@ -8,13 +8,16 @@ Send @56000BAUD via UART3 commands of 12 Bytes (Ant+LEV syntax)
 
 run autodetect routine for proper hallsignal processing once first, keep the wheel in the air for this procedure:
 
-00 00 00 06 01 00 00 00 00 00 00 00
+AA 00 00 06 01 00 00 00 00 00 00 AD
 
 to set the setpoint for the motor current:
 
-00 00 00 06 00 00 00 LL MM 00 00 00
+AA 00 00 06 00 00 00 LL MM 00 00 CC
 
 LL is the LSB and MM the MSB of the 16bit signed integer. Values from -2096 to +2096 are senseful.
+
+CC is the checksum simple XOR of bytes 0 to 11, see the online compiler example:
+https://onlinegdb.com/VIHGUEOwa
 
 Negative values give negative torque, means breaking / reverse motor spinning direction.
 
