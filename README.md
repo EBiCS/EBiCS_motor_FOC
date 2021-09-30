@@ -10,6 +10,9 @@ run autodetect routine for proper hallsignal processing once first, keep the whe
 
 AA 00 00 06 01 00 00 00 00 00 00 AD
 
+to stop:  
+AA 00 00 06 00 00 00 00 00 00 00 AC  
+
 to set the setpoint for the motor current:
 
 AA 00 00 06 00 00 00 LL MM 00 00 CC
