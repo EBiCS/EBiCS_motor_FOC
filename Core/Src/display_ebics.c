@@ -6,6 +6,7 @@
  */
 
 #include "main.h"
+#include "config.h"
 #include "stm32f1xx_hal.h"
 #include "print.h"
 
@@ -60,9 +61,9 @@ void process_ant_page_one(uint8_t *ui8_pkt, MotorState_t *MS, MotorParams_t *MP)
 	case 6: {
 		if (ui8_pkt[4])
 			autodetect();
-
+#ifndef ADCTHROTTLE
 		MS->i_q_setpoint = (int16_t) (ui8_pkt[8] << 8 | ui8_pkt[7]);
-
+#endif
 	}
 		break;
 
