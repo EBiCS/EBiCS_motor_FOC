@@ -32,8 +32,13 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
+# Direct control by Throttle on PA7
+you can remove the 22k resistor on the PCB and solder a wire to the pad to connect an analogue throttle.
+To activate this option uncomment the line //#define ADCTHROTTLE in the config.h
+
+
 # Remote control from ESP32
-You can use analog throttle and brake and a ESP32 to remote control the SmartESC :
+You can use analogue throttle and brake and an ESP32 to remote control the SmartESC :
 https://github.com/Koxx3/SmartESC_ESP32_serial_control/tree/SmarESC_V3
 
 ![wiring diagram](https://www.pedelecforum.de/forum/index.php?attachments/1611936761066-png.364172/)
