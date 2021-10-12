@@ -33,7 +33,7 @@ the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 # Direct control by throttle on PA7
-you can remove the 22k resistor on the PCB and solder a wire to the pad to connect an analogue throttle.
+you can remove the 22k R21 resistor on the PCB and solder a wire to the pad to connect an analogue throttle.
 To activate this option uncomment the line //#define ADCTHROTTLE in the config.h
 
 ![wiring diagram](https://github.com/Koxx3/SmartESC_STM32_v3/blob/master/Documentation/analog%20throttle%20input.jpg)
