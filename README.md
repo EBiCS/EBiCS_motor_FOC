@@ -1,4 +1,5 @@
 Fork of EBiCS firmware for Lishui devices. Ported to Xaiomi M365 controller. 
+Use JST PA series 2mm pitch for the connectors. (need to be confirmed) 
 
 
 Note:  This is WiP, use at your own risk. 
