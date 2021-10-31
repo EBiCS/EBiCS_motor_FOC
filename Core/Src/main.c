@@ -1270,7 +1270,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 				ui8_overflow_flag = 1;
 				//q31_rotorposition_absolute = q31_rotorposition_hall-(DEG_plus60>>1);
 
-				if(ui16_timertics>SIXSTEPTHRESHOLD<<1)q31_rotorposition_absolute = q31_rotorposition_hall-(REVERSE*DEG_plus60);
+				if(ui16_timertics>SIXSTEPTHRESHOLD<<1)q31_rotorposition_absolute = q31_rotorposition_hall-(REVERSE*DEG_plus60>>1);
 				else {
 					temp4=((((DEG_plus60>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
 					q31_rotorposition_absolute = q31_rotorposition_hall-(((((REVERSE*DEG_plus60)>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
