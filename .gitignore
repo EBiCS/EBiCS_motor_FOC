@@ -15,5 +15,6 @@ main.hex
 
 Debug/
 Release/
+build/
 
 .settings/language.settings.xml
