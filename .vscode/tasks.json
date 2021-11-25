@@ -1,0 +1,48 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "linux": {
+                "command": "make"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "linux": {
+                "command": "make",
+                "args": [
+                    "clean"
+                ]
+            },
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+          "label": "OpenOCD",
+          "type": "shell",
+          "args": [],
+          "linux": {
+              "command": "openocd -c 'interface jlink; transport select swd; source [find target/stm32f1x.cfg]'"
+          },
+          "problemMatcher": []
+        }
+    ]
+}
