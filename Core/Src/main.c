@@ -455,6 +455,11 @@ int main(void) {
 	ebics_init();
 #endif
 
+#if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
+	M365Dashboard_init();
+
+#endif
+
 	TIM1->CCR1 = 1023; //set initial PWM values
 	TIM1->CCR2 = 1023;
 	TIM1->CCR3 = 1023;
@@ -1108,7 +1113,7 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-	HAL_GPIO_Init(UART1_Tx_GPIO_Port, &GPIO_InitStruct);
+//	HAL_GPIO_Init(UART1_Tx_GPIO_Port, &GPIO_InitStruct);
 
 	HAL_GPIO_WritePin(BrakeLight_GPIO_Port, BrakeLight_Pin, GPIO_PIN_RESET);
 	/*Configure GPIO pin : BrakeLight_Pin */
@@ -1433,6 +1438,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
 	ui8_UART_TxCplt_flag = 1;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
+	printf_("Lishui FOC v0.9 \n ");
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {

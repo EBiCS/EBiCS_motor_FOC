@@ -27,18 +27,19 @@ static uint8_t ui8_state= STATE_LOST;
 
 void M365Dashboard_init() {
 //        CLEAR_BIT(huart3.Instance->CR3, USART_CR3_EIE);
-	if (HAL_UART_Receive_DMA(&huart1, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
+	if (HAL_UART_Receive_DMA(&huart3, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
 		Error_Handler();
 	}
 }
 
 void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP){
 
-	ui8_recentpointerposition = DMA1_Channel5->CNDTR; //Pointer of UART1RX DMA Channel
+	ui8_recentpointerposition = sizeof(ui8_rx_buffer) - DMA1_Channel3->CNDTR; //Pointer of UART1RX DMA Channel
 
-		while(ui8_oldpointerposition!=ui8_recentpointerposition-1){
+		while(ui8_oldpointerposition!=ui8_recentpointerposition){
 
-			switch (ui8_state) {			case STATE_LOST: { //if no message start is detected yet, search for start pattern 0x55 0xAA
+			switch (ui8_state) {
+			case STATE_LOST: { //if no message start is detected yet, search for start pattern 0x55 0xAA
 				if(ui8_rx_buffer[ui8_oldpointerposition]==0xAA&&ui8_rx_buffer[ui8_oldpointerposition-1]==0x55){
 					ui8_messagestartpos=ui8_oldpointerposition-1;
 					ui8_state=STATE_START_DETECTED;
@@ -55,8 +56,8 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP){
 				break;
 			case STATE_LENGTH_DETECTED: { //read whole message and call processing
 				if(ui8_oldpointerposition==ui8_messagestartpos+ui8_messagelength){
-					memcpy(((uint8_t*) ui8_rx_buffer)+ui8_messagestartpos,(uint8_t*)ui8_dashboardmessage,ui8_messagelength);
-					process_DashboardMessage( MS,  MP, (uint8_t*)ui8_dashboardmessage,ui8_messagelength);
+					memcpy(ui8_rx_buffer+ui8_messagestartpos,ui8_dashboardmessage,ui8_messagelength);
+					process_DashboardMessage( MS,  MP, (uint8_t*)&ui8_dashboardmessage,ui8_messagelength);
 					ui8_state=STATE_LOST;
 				}
 			}
