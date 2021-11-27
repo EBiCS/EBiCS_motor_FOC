@@ -9,7 +9,7 @@
 #define CONFIG_H_
 #include "stdint.h"
 #define DISPLAY_TYPE_EBiCS (1<<5)                  // ANT+LEV protocol
-
+#define DISPLAY_TYPE_M365DASHBOARD (1<<1)
 #define DISPLAY_TYPE_DEBUG (1<<0)							// For ASCII-Output in Debug mode);
 
 #define TRIGGER_OFFSET_ADC 50
@@ -43,7 +43,7 @@
 #define BATTERYCURRENT_MAX 10000
 #define SPEC_ANGLE -167026406L //BionX IGH3 -143165476
 
-#define DISPLAY_TYPE DISPLAY_TYPE_DEBUG
+#define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
 #define REVERSE 1
 
 #define VOLTAGE_MIN 300

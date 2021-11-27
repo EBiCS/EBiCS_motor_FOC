@@ -32,6 +32,10 @@
 #include "display_ebics.h"
 #endif
 
+#if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
+#include "M365_Dashboard.h"
+#endif
+
 #include <stdlib.h>
 #include <arm_math.h>
 /* USER CODE END Includes */
@@ -373,7 +377,7 @@ int main(void) {
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
 	MX_DMA_Init();
-	//MX_USART1_UART_Init();
+	MX_USART1_UART_Init();
 	MX_USART3_UART_Init();
 
 	//initialize MS struct.
@@ -513,6 +517,12 @@ int main(void) {
 		//display message processing
 #if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS || DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
 		process_ant_page(&MS, &MP);
+
+#endif
+
+		//display message processing
+#if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
+		search_DashboardMessage(&MS, &MP);
 
 #endif
 
@@ -1030,7 +1040,7 @@ static void MX_USART3_UART_Init(void) {
 
 	huart3.Instance = USART3;
 
-	huart3.Init.BaudRate = 56000;
+	huart3.Init.BaudRate = 115200;
 
 	huart3.Init.WordLength = UART_WORDLENGTH_8B;
 	huart3.Init.StopBits = UART_STOPBITS_1;
@@ -1426,7 +1436,9 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
+#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS)
         ebics_reset();
+#endif
 }
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
