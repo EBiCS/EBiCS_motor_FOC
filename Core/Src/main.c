@@ -458,7 +458,7 @@ int main(void) {
 #endif
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
-	M365Dashboard_init();
+	M365Dashboard_init(huart1);
 
 #endif
 
@@ -1109,10 +1109,10 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-	HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
+//	HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
 	/*Configure GPIO pin : UART1Tx_Pin */
 	GPIO_InitStruct.Pin = UART1_Tx_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 //	HAL_GPIO_Init(UART1_Tx_GPIO_Port, &GPIO_InitStruct);

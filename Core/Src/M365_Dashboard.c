@@ -12,12 +12,12 @@
 #include "print.h"
 #include "M365_Dashboard.h"
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
-UART_HandleTypeDef huart1;
+
 UART_HandleTypeDef huart3;
 static uint8_t ui8_rx_buffer[64];
 static uint8_t ui8_dashboardmessage[64];
 static uint8_t ui8_tx_buffer[64];
-static uint8_t ui8_oldpointerposition=0;
+static uint8_t ui8_oldpointerposition=64;
 static uint8_t ui8_recentpointerposition=0;
 static uint8_t ui8_messagestartpos=255;
 static uint8_t ui8_messagelength=0;
@@ -25,9 +25,9 @@ static uint8_t ui8_state= STATE_LOST;
 
 
 
-void M365Dashboard_init() {
+void M365Dashboard_init(UART_HandleTypeDef huart1) {
 //        CLEAR_BIT(huart3.Instance->CR3, USART_CR3_EIE);
-	if (HAL_UART_Receive_DMA(&huart3, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
+	if (HAL_UART_Receive_DMA(&huart1, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
 		Error_Handler();
 	}
 }
@@ -35,7 +35,8 @@ void M365Dashboard_init() {
 void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP){
 
 
-	ui8_recentpointerposition = sizeof(ui8_rx_buffer) - (DMA1_Channel3->CNDTR); //Pointer of UART1RX DMA Channel
+
+	ui8_recentpointerposition = sizeof(ui8_rx_buffer) - (DMA1_Channel5->CNDTR); //Pointer of UART1RX DMA Channel
 		if (ui8_recentpointerposition<ui8_oldpointerposition){
 			ui8_oldpointerposition=ui8_recentpointerposition-1;
 			ui8_state=STATE_LOST;
