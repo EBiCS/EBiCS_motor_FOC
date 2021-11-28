@@ -529,7 +529,7 @@ int main(void) {
 
 		//display message processing
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
-		search_DashboardMessage(&MS, &MP);
+		search_DashboardMessage(&MS, &MP, huart1);
 
 #endif
 
@@ -1440,6 +1440,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
 	ui8_UART_TxCplt_flag = 1;
+
+	if(UartHandle==&huart1)	HAL_HalfDuplex_EnableReceiver(&huart1);
+
 }
 /*
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
