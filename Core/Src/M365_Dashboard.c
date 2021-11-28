@@ -34,8 +34,12 @@ void M365Dashboard_init() {
 
 void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP){
 
-	ui8_recentpointerposition = sizeof(ui8_rx_buffer) - DMA1_Channel3->CNDTR; //Pointer of UART1RX DMA Channel
 
+	ui8_recentpointerposition = sizeof(ui8_rx_buffer) - (DMA1_Channel3->CNDTR); //Pointer of UART1RX DMA Channel
+		if (ui8_recentpointerposition<ui8_oldpointerposition){
+			ui8_oldpointerposition=ui8_recentpointerposition-1;
+			ui8_state=STATE_LOST;
+		}
 		while(ui8_oldpointerposition!=ui8_recentpointerposition){
 
 			switch (ui8_state) {
@@ -55,16 +59,17 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP){
 			}
 				break;
 			case STATE_LENGTH_DETECTED: { //read whole message and call processing
-				if(ui8_oldpointerposition==ui8_messagestartpos+ui8_messagelength){
+				if(ui8_oldpointerposition==ui8_messagestartpos+ui8_messagelength-1){
 					memcpy(ui8_dashboardmessage,ui8_rx_buffer+ui8_messagestartpos,ui8_messagelength);
 					process_DashboardMessage( MS,  MP, (uint8_t*)&ui8_dashboardmessage,ui8_messagelength);
 					ui8_state=STATE_LOST;
+
 				}
 			}
 				break;
 			} //end switch
-			ui8_oldpointerposition=(ui8_oldpointerposition+1)% sizeof(ui8_rx_buffer);
 
+			ui8_oldpointerposition=(ui8_oldpointerposition+1)% sizeof(ui8_rx_buffer);
 		}// end of while
 
 }
