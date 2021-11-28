@@ -16,7 +16,7 @@ enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 UART_HandleTypeDef huart3;
 static uint8_t ui8_rx_buffer[64];
 static uint8_t ui8_dashboardmessage[64];
-static uint8_t ui8_tx_buffer[64];
+static uint8_t	ui8_tx_buffer[] = {0x55, 0xAA, 0x06, 0x21, 0x64, 0x00, 0x01, 0x255, 0x00, 0x00, 0x00, 0x00};
 static uint8_t ui8_oldpointerposition=64;
 static uint8_t ui8_recentpointerposition=0;
 static uint8_t ui8_messagestartpos=255;
@@ -54,7 +54,7 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTyp
 
 			case STATE_START_DETECTED: { //read the lenght of the message
 				if(ui8_oldpointerposition==ui8_messagestartpos+2){
-					ui8_messagelength=ui8_rx_buffer[ui8_oldpointerposition]+4;
+					ui8_messagelength=ui8_rx_buffer[ui8_oldpointerposition]+6;
 					ui8_state=STATE_LENGTH_DETECTED;
 				}
 			}
@@ -81,9 +81,35 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTyp
 
 void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *message, uint8_t length, UART_HandleTypeDef huart1 ){
 	//while(HAL_UART_GetState(&huart1)!=HAL_UART_STATE_READY){}
-	HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
-	HAL_HalfDuplex_EnableTransmitter(&huart1);
-	HAL_UART_Transmit_DMA(&huart1, message, length);
-	//HAL_UART_Transmit_DMA(&huart3, message, length);
+	//HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
+	if(!checkCRC(message, length)){
+	//	55 AA 06 21 64 00 00 00 00 00 74 FF
+		switch (message[4]) {
 
+		case 0x64: {
+
+			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
+			HAL_HalfDuplex_EnableTransmitter(&huart1);
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, sizeof(ui8_tx_buffer));
+			}
+		}
+
+	//HAL_UART_Transmit_DMA(&huart3, message, length);
+	}
+
+}
+
+void addCRC(uint8_t * message, uint8_t size){
+    unsigned long cksm = 0;
+    for(int i = 2; i < size - 2; i++) cksm += message[i];
+    cksm ^= 0xFFFF;
+    message[size - 2] = (uint8_t)(cksm&0xFF);
+    message[size - 1] = (uint8_t)((cksm&0xFF00) >> 8);
+}
+
+int16_t checkCRC(uint8_t * message, uint8_t size){
+    unsigned long cksm = 0;
+    for(int i = 2; i < size - 2; i++) cksm += message[i];
+    cksm ^= 0xFFFF;
+    return cksm-(message[size - 2]+(message[size - 1]<<8));
 }
