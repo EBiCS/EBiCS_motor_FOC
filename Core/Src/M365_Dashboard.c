@@ -64,6 +64,10 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTyp
 					memcpy(ui8_dashboardmessage,ui8_rx_buffer+ui8_messagestartpos,ui8_messagelength);
 					process_DashboardMessage( MS,  MP, (uint8_t*)&ui8_dashboardmessage,ui8_messagelength,huart1);
 					ui8_state=STATE_LOST;
+				  	   CLEAR_BIT(DMA1_Channel5->CCR, DMA_CCR_EN);
+				  	   DMA1_Channel5->CNDTR=sizeof(ui8_rx_buffer);
+				  	   SET_BIT(DMA1_Channel5->CCR, DMA_CCR_EN);
+
 
 				}
 			}
@@ -77,7 +81,7 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTyp
 
 void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *message, uint8_t length, UART_HandleTypeDef huart1 ){
 	//while(HAL_UART_GetState(&huart1)!=HAL_UART_STATE_READY){}
-	HAL_Delay(2); // bad style, but wait for characters come in, if message is longer than expected
+	HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
 	HAL_HalfDuplex_EnableTransmitter(&huart1);
 	HAL_UART_Transmit_DMA(&huart1, message, length);
 	//HAL_UART_Transmit_DMA(&huart3, message, length);
