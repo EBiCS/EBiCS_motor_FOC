@@ -56,7 +56,7 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP){
 				break;
 			case STATE_LENGTH_DETECTED: { //read whole message and call processing
 				if(ui8_oldpointerposition==ui8_messagestartpos+ui8_messagelength){
-					memcpy(ui8_rx_buffer+ui8_messagestartpos,ui8_dashboardmessage,ui8_messagelength);
+					memcpy(ui8_dashboardmessage,ui8_rx_buffer+ui8_messagestartpos,ui8_messagelength);
 					process_DashboardMessage( MS,  MP, (uint8_t*)&ui8_dashboardmessage,ui8_messagelength);
 					ui8_state=STATE_LOST;
 				}
@@ -70,6 +70,6 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP){
 }
 
 void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *message, uint8_t length ){
-	HAL_UART_Transmit_DMA(&huart3, (uint8_t*) &message, length);
+	HAL_UART_Transmit_DMA(&huart3, message, length);
 
 }
