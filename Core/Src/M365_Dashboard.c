@@ -92,9 +92,18 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, sizeof(ui8_tx_buffer));
 			}
-		}
 
-	//HAL_UART_Transmit_DMA(&huart3, message, length);
+		case 0x65: {
+
+			MS->i_q_setpoint =map(message[7],THROTTLEOFFSET,THROTTLEMAX,0,PH_CURRENT_MAX);
+			}
+
+		default: {
+			MS->i_q_setpoint = 0; // stop motor for safety reason
+			}
+		}//end switch
+
+
 	}
 
 }
