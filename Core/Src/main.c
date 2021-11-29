@@ -504,7 +504,7 @@ int main(void) {
    	}else{
                 autodetect();
         }
-   	autodetect();
+
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
 	printf_("Lishui FOC v0.9 \n ");
