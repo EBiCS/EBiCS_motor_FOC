@@ -599,8 +599,7 @@ int main(void) {
 		if (ui32_tim3_counter > 500) {
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = adcData[ADC_VOLTAGE];
-			if (uint32_SPEED_counter > 127999)
-				MS.Speed = 128000;
+			MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
 			if (!int32_current_target&&(uint16_full_rotation_counter > 7999
 					|| uint16_half_rotation_counter > 7999)

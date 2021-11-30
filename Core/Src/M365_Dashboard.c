@@ -16,7 +16,7 @@ enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 UART_HandleTypeDef huart3;
 static uint8_t ui8_rx_buffer[64];
 static uint8_t ui8_dashboardmessage[64];
-static uint8_t	ui8_tx_buffer[] = {0x55, 0xAA, 0x06, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00};
+static uint8_t	ui8_tx_buffer[] = {0x55, 0xAA, 0x08, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static uint8_t ui8_oldpointerposition=64;
 static uint8_t ui8_recentpointerposition=0;
 static uint8_t ui8_messagestartpos=255;
@@ -87,7 +87,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 		switch (message[4]) {
 
 		case 0x64: {
-
+			ui8_tx_buffer[10]=MS->Speed;
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, sizeof(ui8_tx_buffer));
