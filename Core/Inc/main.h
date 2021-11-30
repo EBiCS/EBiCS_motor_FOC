@@ -32,7 +32,10 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdlib.h>
 #include <arm_math.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -90,6 +93,11 @@ void Error_Handler(void);
 #define HALL_1_GPIO_Port GPIOB
 #define HALL_2_Pin GPIO_PIN_5
 #define HALL_2_GPIO_Port GPIOB
+
+#define PWR_BTN_Pin GPIO_PIN_14
+#define PWR_BTN_GPIO_Port GPIOC
+#define TPS_ENA_Pin GPIO_PIN_15
+#define TPS_ENA_GPIO_Port GPIOC
 /* USER CODE BEGIN Private defines */
 
 #define PUSHASSIST_CURRENT 30

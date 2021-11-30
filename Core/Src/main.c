@@ -27,6 +27,7 @@
 #include "FOC.h"
 #include "config.h"
 #include "eeprom.h"
+#include "button_processing.h"
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS ||DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
 #include "display_ebics.h"
@@ -459,6 +460,7 @@ int main(void) {
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 	M365Dashboard_init(huart1);
+	PWR_init();
 
 #endif
 
@@ -531,6 +533,7 @@ int main(void) {
 		//display message processing
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 		search_DashboardMessage(&MS, &MP, huart1);
+		checkButton();
 
 #endif
 
@@ -1096,9 +1099,24 @@ static void MX_GPIO_Init(void) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
 	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOD_CLK_ENABLE();
+
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_GPIOD_CLK_ENABLE();
+
+	  /*Configure GPIO pin : PWR_BTN_Pin */
+	  GPIO_InitStruct.Pin = PWR_BTN_Pin;
+	  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	  GPIO_InitStruct.Pull = GPIO_NOPULL;
+	  HAL_GPIO_Init(PWR_BTN_GPIO_Port, &GPIO_InitStruct);
+
+	  /*Configure GPIO pin : TPS_ENA_Pin */
+	  GPIO_InitStruct.Pin = TPS_ENA_Pin;
+	  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	  GPIO_InitStruct.Pull = GPIO_NOPULL;
+	  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+	  HAL_GPIO_Init(TPS_ENA_GPIO_Port, &GPIO_InitStruct);
 
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
