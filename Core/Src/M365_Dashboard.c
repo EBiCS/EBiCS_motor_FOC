@@ -88,6 +88,9 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 
 		case 0x64: {
 			ui8_tx_buffer[10]=MS->Speed;
+			ui8_tx_buffer[6]=MS->gear_state;
+			if(MS->light)ui8_tx_buffer[8]=64;
+			else ui8_tx_buffer[8]=0;
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, sizeof(ui8_tx_buffer));

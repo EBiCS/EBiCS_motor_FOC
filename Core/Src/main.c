@@ -175,7 +175,7 @@ char char_dyn_adc_state_old = 1;
 uint8_t assist_factor[10] = { 0, 51, 102, 153, 204, 255, 255, 255, 255, 255 };
 
 uint16_t VirtAddVarTab[NB_OF_VAR] = { 0x01, 0x02, 0x03 };
-
+enum{Stop, SixStep, Interpolation, PLL};
 q31_t switchtime[3];
 volatile uint16_t adcData[8]; //Buffer for ADC1 Input
 //static int8_t angle[256][4];
@@ -533,7 +533,7 @@ int main(void) {
 		//display message processing
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 		search_DashboardMessage(&MS, &MP, huart1);
-		checkButton();
+		checkButton(&MS);
 
 #endif
 
@@ -599,13 +599,14 @@ int main(void) {
 		if (ui32_tim3_counter > 500) {
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = adcData[ADC_VOLTAGE];
-			MS.Speed=tics_to_speed(q31_tics_filtered>>3);
+			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
+			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
 			if (!int32_current_target&&(uint16_full_rotation_counter > 7999
 					|| uint16_half_rotation_counter > 7999)
 					&& READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
 				CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
-
+				MS.system_state=Stop;
 				get_standstill_position();
 				printf_("shutdown %d\n", q31_rotorposition_absolute);
 			}
@@ -1295,21 +1296,24 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 			if (ui16_tim2_recent < ui16_timertics+(ui16_timertics>>2) && !ui8_overflow_flag && !ui8_6step_flag) { //prevent angle running away at standstill
 #ifdef SPEED_PLL
 			q31_rotorposition_absolute=q31_rotorposition_PLL;
+			MS.system_state=PLL;
 #else
 				q31_rotorposition_absolute = q31_rotorposition_hall
 						+ (q31_t) (i16_hall_order * i8_recent_rotor_direction
 								* ((10923 * ui16_tim2_recent) / ui16_timertics)
 								<< 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
+				MS.system_state=Interpolation;
 #endif
 			} else {
 				ui8_overflow_flag = 1;
 				//q31_rotorposition_absolute = q31_rotorposition_hall-(DEG_plus60>>1);
 
-				if(ui16_timertics>SIXSTEPTHRESHOLD<<1)q31_rotorposition_absolute = q31_rotorposition_hall+REVERSE*(DEG_plus60>>1);
-				else {
-					temp4=((((DEG_plus60>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
-					q31_rotorposition_absolute = q31_rotorposition_hall-(((((REVERSE*DEG_plus60)>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
-				}
+			//	if(ui16_timertics>SIXSTEPTHRESHOLD<<1)q31_rotorposition_absolute = q31_rotorposition_hall+REVERSE*(DEG_plus60>>1);
+			//	else {
+				//	temp4=((((DEG_plus60>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
+					q31_rotorposition_absolute = q31_rotorposition_hall;//-(((((REVERSE*DEG_plus60)>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
+					MS.system_state=SixStep;
+					//	}
 
 			}
 		} //end if hall angle detect

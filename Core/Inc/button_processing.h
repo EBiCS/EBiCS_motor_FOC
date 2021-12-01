@@ -21,6 +21,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 #include <arm_math.h>
+#include "main.h"
 #ifndef BUTTON_PROCESSING_H_
 #define BUTTON_PROCESSING_H_
 
@@ -38,7 +39,7 @@ typedef enum {
 	VERY_LONG_PRESS
 } eButtonEvent ;
 
-void checkButton();
+void checkButton(MotorState_t *MS);
 void PWR_init();
 void poweroff(void);
 int8_t check_power_button_pressed_state();

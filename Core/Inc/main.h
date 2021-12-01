@@ -132,6 +132,7 @@ typedef struct {
 	int8_t system_state;
 	int8_t gear_state;
 	int8_t error_state;
+	bool light;
 
 } MotorState_t;
 

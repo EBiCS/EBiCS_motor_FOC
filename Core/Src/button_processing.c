@@ -90,13 +90,14 @@ eButtonEvent getButtonEvent()
     return button_event ;
 }
 
-void checkButton() {
+void checkButton(MotorState_t *MS) {
 	/* Infinite loop */
 
 		if(main_loop_counter > 25){
 			switch( getButtonEvent() ){
 				  case NO_PRESS : break ;
 				  case SINGLE_PRESS : {
+					  MS->light = !MS->light;
 					 // commands_printf("SINGLE_PRESS");
 				  } break ;
 				  case LONG_PRESS :   {
@@ -107,6 +108,8 @@ void checkButton() {
 				  } break ;
 				  case DOUBLE_PRESS : {
 					 // commands_printf("DOUBLE_PRESS");
+					  MS->gear_state=MS->gear_state+2;
+					  if(MS->gear_state>4)MS->gear_state=0;
 				  } break ;
 			 }
 		}
