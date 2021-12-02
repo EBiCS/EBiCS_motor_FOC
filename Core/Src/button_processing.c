@@ -101,6 +101,7 @@ void checkButton(MotorState_t *MS) {
 					 // commands_printf("SINGLE_PRESS");
 				  } break ;
 				  case LONG_PRESS :   {
+					  autodetect();
 					 // commands_printf("LONG_PRESS");
 				  } break ;
 				  case VERY_LONG_PRESS :   {
