@@ -100,11 +100,11 @@ void checkButton(MotorState_t *MS) {
 					  MS->light = !MS->light;
 					 // commands_printf("SINGLE_PRESS");
 				  } break ;
-				  case LONG_PRESS :   {
+				  case VERY_LONG_PRESS :   {
 					  autodetect();
 					 // commands_printf("LONG_PRESS");
 				  } break ;
-				  case VERY_LONG_PRESS :   {
+				  case LONG_PRESS :   {
 					  power_control(DEV_PWR_OFF);
 				  } break ;
 				  case DOUBLE_PRESS : {
