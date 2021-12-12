@@ -128,7 +128,7 @@ volatile uint8_t ui8_adc_inj_flag = 0;
 volatile uint8_t ui8_adc_regular_flag = 0;
 int8_t i8_direction = REVERSE;
 volatile int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
-
+volatile int8_t i8_slow_loop_flag = 0;
 volatile uint8_t ui8_adc_offset_done_flag = 0;
 volatile uint8_t ui8_print_flag = 0;
 volatile uint8_t ui8_UART_flag = 0;
@@ -157,6 +157,7 @@ uint16_t uint16_full_rotation_counter = 0;
 int32_t int32_current_target = 0;
 
 q31_t q31_t_Battery_Current_accumulated = 0;
+q31_t q31_t_Battery_Voltage_accumulated = 0;
 
 q31_t q31_rotorposition_absolute;
 q31_t q31_rotorposition_hall;
@@ -594,13 +595,18 @@ int main(void) {
                   }
 #endif
 		}
+		if(i8_slow_loop_flag){
+		q31_t_Battery_Voltage_accumulated-=q31_t_Battery_Voltage_accumulated>>7;
+		q31_t_Battery_Voltage_accumulated+=	adcData[ADC_VOLTAGE];
+		i8_slow_loop_flag = 0;
+		}
 
 		//slow loop procedere @16Hz, for LEV standard every 4th loop run, send page,
 		if (ui32_tim3_counter > 500) {
 
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
-			MS.Voltage = adcData[ADC_VOLTAGE]*CAL_BAT_V;
+			MS.Voltage =(q31_t_Battery_Voltage_accumulated>>7) *CAL_BAT_V;
 			printf_("Battery Voltag %d\n", MS.Voltage);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
@@ -1187,6 +1193,7 @@ static void MX_GPIO_Init(void) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim == &htim3) {
+		i8_slow_loop_flag = 1;
 		if (ui32_tim3_counter < 32000)
 			ui32_tim3_counter++;
 		if (uint32_SPEED_counter < 128000) {
