@@ -107,7 +107,8 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 
 		case 0x65: {
 			if(map(message[8],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
-				MS->i_q_setpoint =-map(message[8],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
+				if(MS->Speed>2)	MS->i_q_setpoint =-map(message[8],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
+				else MS->i_q_setpoint =0;
 				}
 			else{
 				MS->i_q_setpoint = map(message[7],THROTTLEOFFSET,THROTTLEMAX,0,PH_CURRENT_MAX);
