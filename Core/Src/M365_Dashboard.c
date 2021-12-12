@@ -97,6 +97,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 		case 0x64: {
 			ui8_tx_buffer[10]=MS->Speed;
 			ui8_tx_buffer[6]=MS->gear_state;
+			ui8_tx_buffer[7]=map(MS->Voltage,33000,42000,0,96);
 			if(MS->light)ui8_tx_buffer[8]=64;
 			else ui8_tx_buffer[8]=0;
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);

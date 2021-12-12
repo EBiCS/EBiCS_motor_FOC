@@ -597,8 +597,11 @@ int main(void) {
 
 		//slow loop procedere @16Hz, for LEV standard every 4th loop run, send page,
 		if (ui32_tim3_counter > 500) {
+
+
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
-			MS.Voltage = adcData[ADC_VOLTAGE];
+			MS.Voltage = adcData[ADC_VOLTAGE]*CAL_BAT_V;
+			printf_("Battery Voltag %d\n", MS.Voltage);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
