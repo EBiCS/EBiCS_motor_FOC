@@ -130,9 +130,11 @@ typedef struct {
 	uint8_t regen_level;
 	int8_t Temperature;
 	int8_t system_state;
-	int8_t gear_state;
+	int8_t mode;
 	int8_t error_state;
 	bool light;
+	bool beep;
+	uint8_t shutdown;
 
 } MotorState_t;
 

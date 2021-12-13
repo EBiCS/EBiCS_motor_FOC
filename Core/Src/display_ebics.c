@@ -127,7 +127,7 @@ void send_ant_page(uint8_t page, MotorState_t *MS, MotorParams_t *MP) {
 		ui8_tx_buffer[4] = temperature_state;
 		ui8_tx_buffer[5] = MS->regen_level | MS->assist_level << 3;
 		ui8_tx_buffer[6] = MS->system_state;
-		ui8_tx_buffer[7] = MS->gear_state;
+		ui8_tx_buffer[7] = MS->mode;
 		ui8_tx_buffer[8] = MS->error_state;
 		ui8_tx_buffer[9] = speedx10 & 0xFF; //low byte of speed
 		ui8_tx_buffer[10] = speedx10 >> 8 & 0x07; // lower 3 Bytes of high byte

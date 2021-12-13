@@ -24,7 +24,18 @@ static uint8_t ui8_messagelength=0;
 static uint8_t ui8_state= STATE_LOST;
 static uint32_t ui32_timeoutcounter=0;
 
+enum bytesOfMessage65 {
+	Throttle = 7,
+	Brake = 8,
+} msg65;
 
+enum bytesOfMessage64 {
+	Speed = 10,
+	Mode = 6,
+	SOC = 7,
+	Light = 8,
+	Beep = 9
+} msg64;
 
 void M365Dashboard_init(UART_HandleTypeDef huart1) {
 //        CLEAR_BIT(huart3.Instance->CR3, USART_CR3_EIE);
@@ -95,23 +106,28 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 		switch (message[4]) {
 
 		case 0x64: {
-			ui8_tx_buffer[10]=MS->Speed;
-			ui8_tx_buffer[6]=MS->gear_state;
-			ui8_tx_buffer[7]=map(MS->Voltage,33000,42000,0,96);
-			if(MS->light)ui8_tx_buffer[8]=64;
-			else ui8_tx_buffer[8]=0;
+			ui8_tx_buffer[Speed]=MS->Speed;
+			ui8_tx_buffer[Mode]=MS->mode;
+			ui8_tx_buffer[SOC]=map(MS->Voltage,33000,42000,0,96);
+			if(MS->light)ui8_tx_buffer[Light]=64;
+			else ui8_tx_buffer[Light]=0;
+			ui8_tx_buffer[Beep]= MS->beep;
+
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, sizeof(ui8_tx_buffer));
+			if(MS->beep&&ui8_tx_buffer[Beep])MS->beep = 0;
+
 			}
 
+
 		case 0x65: {
-			if(map(message[8],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
-				if(MS->Speed>2)	MS->i_q_setpoint =-map(message[8],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
+			if(map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
+				if(MS->Speed>2)	MS->i_q_setpoint =-map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
 				else MS->i_q_setpoint =0;
 				}
 			else{
-				MS->i_q_setpoint = map(message[7],THROTTLEOFFSET,THROTTLEMAX,0,PH_CURRENT_MAX);
+				MS->i_q_setpoint = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,PH_CURRENT_MAX);
 				}
 			}
 
