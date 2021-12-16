@@ -386,6 +386,7 @@ int main(void) {
 	MS.assist_level = 1;
 	MS.regen_level = 7;
 	MS.i_q_setpoint = 0;
+	MS.i_d_setpoint = 0;
 
 	MS.phase_current_limit  =PH_CURRENT_MAX_NORMAL;
 	MS.speed_limit = SPEEDLIMIT_NORMAL;
@@ -566,11 +567,15 @@ int main(void) {
 		int32_current_target = MS.i_q_setpoint;
 		if (int32_current_target > MS.phase_current_limit)
 			int32_current_target = MS.phase_current_limit;
-		if (int32_current_target < MS.phase_current_limit)
+		if (int32_current_target < -MS.phase_current_limit)
 			int32_current_target = -MS.phase_current_limit;
 
 		int32_current_target = map(q31_tics_filtered >> 3, tics_higher_limit,
 				tics_lower_limit, 0, int32_current_target); //ramp down current at speed limit
+
+		if(MS.u_abs>(_U_MAX-10)&&MS.mode==sport){//do flux weakaning
+			//MS.i_d_setpoint=-map(MS.Speed,KV*MS.Voltage>>10,KV*MS.Voltage>>10,0,FW_CURRENT_MAX);
+		}
 
 		if (int32_current_target && !READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
 
@@ -1659,8 +1664,8 @@ void runPIcontrol(){
 				}
 
 				//Control id
-				q31_u_d_temp = -PI_control_i_d(MS.i_d, 0,
-						abs(q31_u_q_temp / MAX_D_FACTOR)); //control direct current to zero
+				q31_u_d_temp = -PI_control_i_d(MS.i_d, MS.i_d_setpoint,
+						abs(q31_u_q_temp / MAX_D_FACTOR)); //control direct current to recent setpoint
 
 				//limit voltage in rotating frame, refer chapter 4.10.1 of UM1052
 				//MS.u_abs = (q31_t) hypot((double) q31_u_d_temp,	(double) q31_u_q_temp); //absolute value of U in static frame

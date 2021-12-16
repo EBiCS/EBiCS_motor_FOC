@@ -47,6 +47,9 @@
 #define PH_CURRENT_MAX_NORMAL 1000
 #define PH_CURRENT_MAX_SPORT 1500
 
+#define FW_CURRENT_MAX 500 //max id
+#define KV 500 //kph per volt
+
 #define BATTERYCURRENT_MAX 14000
 #define SPEC_ANGLE -167026406L //BionX IGH3 -143165476
 
