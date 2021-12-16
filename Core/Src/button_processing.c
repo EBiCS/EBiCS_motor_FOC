@@ -116,7 +116,7 @@ void checkButton(MotorState_t *MS) {
 					 // commands_printf("DOUBLE_PRESS");
 					  MS->mode=MS->mode+2;
 					  if(MS->mode>4)MS->mode=0;
-
+					  set_mode(MS);
 				  } break ;
 			 }
 		}

@@ -163,7 +163,7 @@ typedef struct {
 
 } MotorParams_t;
 
-enum modes {eco=0,normal=2,sport=4};
+enum modes {eco=2,normal=0,sport=4};
 
 void _Error_Handler(char*, int);
 

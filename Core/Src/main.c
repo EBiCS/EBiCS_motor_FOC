@@ -615,7 +615,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage =(q31_t_Battery_Voltage_accumulated>>7) *CAL_BAT_V;
-			printf_("Battery Current %d\n", MS.Battery_Current);
+			printf_("tics %d, target %d\n", q31_tics_filtered >> 3,int32_current_target);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
