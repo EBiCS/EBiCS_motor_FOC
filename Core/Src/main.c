@@ -573,8 +573,8 @@ int main(void) {
 		MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit,
 				tics_lower_limit, 0, MS.i_q_setpoint_temp); //ramp down current at speed limit
 
-		if(MS.u_abs>(_U_MAX-10)&&MS.mode==sport){//do flux weakaning
-			MS.i_d_setpoint_temp=-map(MS.Speed,KV*MS.Voltage>>10,KV*MS.Voltage>>10,0,FW_CURRENT_MAX);
+		if(MS.mode==sport){//do flux weakaning MS.u_abs>(_U_MAX-10)&&
+			MS.i_d_setpoint_temp=map(MS.Speed,(KV*MS.Voltage/10000)-3,(KV*MS.Voltage/10000)+15,0,FW_CURRENT_MAX);
 		}
 		else MS.i_d_setpoint_temp=0;
 
@@ -635,7 +635,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage =(q31_t_Battery_Voltage_accumulated>>7) *CAL_BAT_V;
-			printf_("tics %d, target %d\n", q31_tics_filtered >> 3,MS.i_q_setpoint);
+			printf_("%d, %d, %d, %d, %d, %d, %d\n", MS.i_setpoint_abs, MS.i_q_setpoint, MS.i_q, MS.i_d_setpoint, MS.i_d, MS.u_abs, MS.Speed);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
@@ -645,7 +645,7 @@ int main(void) {
 				CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
 				MS.system_state=Stop;
 				get_standstill_position();
-				printf_("shutdown %d\n", q31_rotorposition_absolute);
+				//printf_("shutdown %d\n", q31_rotorposition_absolute);
 			}
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG && !defined(FAST_LOOP_LOG))
@@ -1623,8 +1623,7 @@ void get_standstill_position() {
 
 	q31_rotorposition_absolute = q31_rotorposition_hall;
 
-	printf_("standstill position %d, %d, %d\n", q31_rotorposition_absolute,
-			(int16_t) (((q31_rotorposition_absolute >> 23) * 180) >> 8), ui8_hall_state);
+
 
 }
 
@@ -1634,7 +1633,7 @@ void runPIcontrol(){
 				//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
 				q31_t_Battery_Current_accumulated -=
 						q31_t_Battery_Current_accumulated >> 8;
-				q31_t_Battery_Current_accumulated += ((MS.i_q * MS.u_abs) >> 11)
+				q31_t_Battery_Current_accumulated += ((MS.i_q * MS.u_abs) >> 11) //to be updated for Flux weakening!
 						* (uint16_t) (CAL_I >> 8);
 
 				MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)

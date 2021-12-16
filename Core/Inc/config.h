@@ -38,7 +38,7 @@
 #define BRAKEOFFSET 40
 #define BRAKEMAX 190
 #define WHEEL_CIRCUMFERENCE 550
-#define GEAR_RATIO 11
+#define GEAR_RATIO 22
 
 #define SPEEDLIMIT_ECO 20
 #define SPEEDLIMIT_NORMAL 25
@@ -48,7 +48,7 @@
 #define PH_CURRENT_MAX_SPORT 1500
 
 #define FW_CURRENT_MAX 500 //max id
-#define KV 500 //kph per volt
+#define KV 10 //kph*10 per volt
 
 #define BATTERYCURRENT_MAX 14000
 #define SPEC_ANGLE -167026406L //BionX IGH3 -143165476
