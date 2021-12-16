@@ -573,7 +573,7 @@ int main(void) {
 		MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit,
 				tics_lower_limit, 0, MS.i_q_setpoint_temp); //ramp down current at speed limit
 
-		if(MS.mode==sport){//do flux weakaning MS.u_abs>(_U_MAX-10)&&
+		if(MS.u_abs>(_U_MAX-10)&&MS.mode==sport){//do flux weakaning
 			MS.i_d_setpoint_temp=map(MS.Speed,(KV*MS.Voltage/10000)-3,(KV*MS.Voltage/10000)+15,0,FW_CURRENT_MAX);
 		}
 		else MS.i_d_setpoint_temp=0;
@@ -635,7 +635,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage =(q31_t_Battery_Voltage_accumulated>>7) *CAL_BAT_V;
-			printf_("%d, %d, %d, %d, %d, %d, %d\n", MS.i_setpoint_abs, MS.i_q_setpoint, MS.i_q, MS.i_d_setpoint, MS.i_d, MS.u_abs, MS.Speed);
+			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_setpoint_abs, MS.i_q_setpoint, MS.i_q, MS.i_d_setpoint, MS.i_d, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
@@ -1681,8 +1681,7 @@ void runPIcontrol(){
 				}
 
 				//Control id
-				q31_u_d_temp = -PI_control_i_d(MS.i_d, MS.i_d_setpoint,
-				abs(q31_u_q_temp / MAX_D_FACTOR)); //control direct current to recent setpoint
+				q31_u_d_temp = -PI_control_i_d(MS.i_d, MS.i_d_setpoint,	abs(q31_u_q_temp / MAX_D_FACTOR)); //control direct current to recent setpoint
 
 				arm_sqrt_q31((q31_u_d_temp*q31_u_d_temp+q31_u_q_temp*q31_u_q_temp)<<1,&MS.u_abs);
 				MS.u_abs = (MS.u_abs>>16)+1;

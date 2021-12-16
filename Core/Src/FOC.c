@@ -176,6 +176,7 @@ q31_t PI_control_i_d(q31_t ist, q31_t soll, q31_t clamp) {
 	if (q31_d_i > clamp - abs(q31_p))
 		q31_d_i = clamp - abs(q31_p);
 
+
 	if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
 		q31_d_i = 0; //reset integral part if PWM is disabled
 		q31_d_dc=0;

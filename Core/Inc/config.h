@@ -47,14 +47,14 @@
 #define PH_CURRENT_MAX_NORMAL 1000
 #define PH_CURRENT_MAX_SPORT 1500
 
-#define FW_CURRENT_MAX 500 //max id
+#define FW_CURRENT_MAX 400 //max id
 #define KV 10 //kph*10 per volt
 
 #define BATTERYCURRENT_MAX 14000
 #define SPEC_ANGLE -167026406L //BionX IGH3 -143165476
 
 #define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
-#define REVERSE 1
+#define REVERSE -1
 
 #define VOLTAGE_MIN 300
 #define REGEN_CURRENT 1000
@@ -63,7 +63,7 @@
 
 #define REGEN_CURRENT_MAX 10000
 
-#define SPEED_PLL
+//#define SPEED_PLL
 #define P_FACTOR_PLL 7
 #define I_FACTOR_PLL 7
 
