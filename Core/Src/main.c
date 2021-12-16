@@ -154,7 +154,7 @@ uint16_t uint16_mapped_throttle = 0;
 uint16_t uint16_mapped_PAS = 0;
 uint16_t uint16_half_rotation_counter = 0;
 uint16_t uint16_full_rotation_counter = 0;
-int32_t int32_current_target = 0;
+
 
 q31_t q31_t_Battery_Current_accumulated = 0;
 q31_t q31_t_Battery_Voltage_accumulated = 0;
@@ -562,22 +562,42 @@ int main(void) {
 
 #ifdef ADCTHROTTLE
 
-		MS.i_q_setpoint=map(ui16_reg_adc_value,THROTTLEOFFSET,THROTTLEMAX,0,MS.i16_modes[MS.mode][0]);
+		MS.i_q_setpoint=map(ui16_reg_adc_value,THROTTLEOFFSET,THROTTLEMAX,0,MS.phase_current_limit);
 #endif
-		int32_current_target = MS.i_q_setpoint;
-		if (int32_current_target > MS.phase_current_limit)
-			int32_current_target = MS.phase_current_limit;
-		if (int32_current_target < -MS.phase_current_limit)
-			int32_current_target = -MS.phase_current_limit;
 
-		int32_current_target = map(q31_tics_filtered >> 3, tics_higher_limit,
-				tics_lower_limit, 0, int32_current_target); //ramp down current at speed limit
+		if (MS.i_q_setpoint_temp > MS.phase_current_limit)
+			MS.i_q_setpoint_temp = MS.phase_current_limit;
+		if (MS.i_q_setpoint_temp < -MS.phase_current_limit)
+			MS.i_q_setpoint_temp = -MS.phase_current_limit;
+
+		MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit,
+				tics_lower_limit, 0, MS.i_q_setpoint_temp); //ramp down current at speed limit
 
 		if(MS.u_abs>(_U_MAX-10)&&MS.mode==sport){//do flux weakaning
-			//MS.i_d_setpoint=-map(MS.Speed,KV*MS.Voltage>>10,KV*MS.Voltage>>10,0,FW_CURRENT_MAX);
+			MS.i_d_setpoint_temp=-map(MS.Speed,KV*MS.Voltage>>10,KV*MS.Voltage>>10,0,FW_CURRENT_MAX);
+		}
+		else MS.i_d_setpoint_temp=0;
+
+		//Check and limit absolute value of current vector
+
+		arm_sqrt_q31((MS.i_q_setpoint_temp*MS.i_q_setpoint_temp+MS.i_d_setpoint_temp*MS.i_d_setpoint_temp)<<1,&MS.i_setpoint_abs);
+		MS.i_setpoint_abs = (MS.i_setpoint_abs>>16)+1;
+
+
+		if (MS.i_setpoint_abs > MS.phase_current_limit) {
+			MS.i_q_setpoint = (MS.i_q_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; //division!
+			MS.i_d_setpoint = (MS.i_d_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; //division!
+			MS.i_setpoint_abs = MS.phase_current_limit;
+		} else {
+			MS.i_q_setpoint=MS.i_q_setpoint_temp;
+			MS.i_d_setpoint=MS.i_d_setpoint_temp;
 		}
 
-		if (int32_current_target && !READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
+
+
+
+
+		if (MS.i_q_setpoint && !READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
 
 			TIM1->CCR1 = 1023; //set initial PWM values
 			TIM1->CCR2 = 1023;
@@ -615,11 +635,11 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage =(q31_t_Battery_Voltage_accumulated>>7) *CAL_BAT_V;
-			printf_("tics %d, target %d\n", q31_tics_filtered >> 3,int32_current_target);
+			printf_("tics %d, target %d\n", q31_tics_filtered >> 3,MS.i_q_setpoint);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
-			if (!int32_current_target&&(uint16_full_rotation_counter > 7999
+			if (!MS.i_q_setpoint&&(uint16_full_rotation_counter > 7999
 					|| uint16_half_rotation_counter > 7999)
 					&& READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
 				CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
@@ -631,7 +651,7 @@ int main(void) {
 #if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG && !defined(FAST_LOOP_LOG))
                 //Jon Pry uses this crazy string for automated data collection
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, T: %d, Q: %d, D: %d, %d, %d, S: %d, %d, V: %d, C: %d\r\n", int32_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit, adcData[ADC_VOLTAGE], MS.Battery_Current);
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", int32_current_target, MS.i_q,q31_tics_filtered>>3, adcData[ADC_THROTTLE],MS.i_q_setpoint, MS.u_d, MS.u_q , MS.u_abs,  MS.Battery_Current);
+	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", MS.i_q_setpoint, MS.i_q,q31_tics_filtered>>3, adcData[ADC_THROTTLE],MS.i_q_setpoint, MS.u_d, MS.u_q , MS.u_abs,  MS.Battery_Current);
 	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
 
 	  	  i=0;
@@ -1355,9 +1375,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
 		if (READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
 			FOC_calculation(i16_ph1_current, i16_ph2_current,
-					q31_rotorposition_absolute,
-					(((int16_t) i8_direction * i8_reverse_flag)
-							* int32_current_target), &MS);
+					q31_rotorposition_absolute, &MS);
 		}
 		//temp5=__HAL_TIM_GET_COUNTER(&htim1);
 		//set PWM
@@ -1629,12 +1647,12 @@ void runPIcontrol(){
 					ui8_BC_limit_flag = 1;
 				//reset battery current flag with small hysteresis
 				if (MS.i_q * i8_direction * i8_reverse_flag > 100) { //motor mode
-					if (((int32_current_target * MS.u_abs) >> 11)
+					if (((MS.i_q_setpoint * MS.u_abs) >> 11)
 							* (uint16_t) (CAL_I >> 8)
 							< (BATTERYCURRENT_MAX * 7) >> 3)
 						ui8_BC_limit_flag = 0;
 				} else { //generator mode
-					if (((int32_current_target * MS.u_abs) >> 11)
+					if (((MS.i_q_setpoint * MS.u_abs) >> 11)
 							* (uint16_t) (CAL_I >> 8)
 							> (-REGEN_CURRENT_MAX * 7) >> 3)
 						ui8_BC_limit_flag = 0;
@@ -1646,7 +1664,7 @@ void runPIcontrol(){
 				if (!ui8_BC_limit_flag) {
 					q31_u_q_temp = PI_control_i_q(MS.i_q,
 							(q31_t) i8_direction * i8_reverse_flag
-									* int32_current_target);
+									* MS.i_q_setpoint);
 				} else {
 					if (MS.i_q * i8_direction * i8_reverse_flag > 100) { //motor mode
 						q31_u_q_temp = PI_control_i_q(
@@ -1665,11 +1683,7 @@ void runPIcontrol(){
 
 				//Control id
 				q31_u_d_temp = -PI_control_i_d(MS.i_d, MS.i_d_setpoint,
-						abs(q31_u_q_temp / MAX_D_FACTOR)); //control direct current to recent setpoint
-
-				//limit voltage in rotating frame, refer chapter 4.10.1 of UM1052
-				//MS.u_abs = (q31_t) hypot((double) q31_u_d_temp,	(double) q31_u_q_temp); //absolute value of U in static frame
-
+				abs(q31_u_q_temp / MAX_D_FACTOR)); //control direct current to recent setpoint
 
 				arm_sqrt_q31((q31_u_d_temp*q31_u_d_temp+q31_u_q_temp*q31_u_q_temp)<<1,&MS.u_abs);
 				MS.u_abs = (MS.u_abs>>16)+1;
