@@ -36,11 +36,26 @@
             "group": "build"
         },
         {
-          "label": "OpenOCD",
+          "label": "OpenOCD - Jlink",
           "type": "shell",
           "args": [],
           "linux": {
               "command": "openocd -c 'interface jlink; transport select swd; source [find target/stm32f1x.cfg]'"
+          },
+          "problemMatcher": []
+        },
+        {
+          "label": "OpenOCD - STLinkV2",
+          "type": "shell",
+          "args": [],
+          "linux": {
+            "command": "openocd",
+            "args": [
+                "-f",
+                "${workspaceFolder}/tools/openocd-v0.10.0_dev-scripts/stlink-v2.cfg",
+                "-f",
+                "${workspaceFolder}/tools/openocd-v0.10.0_dev-scripts/stm32f1x.cfg"
+            ]
           },
           "problemMatcher": []
         }
