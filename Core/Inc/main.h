@@ -108,6 +108,7 @@ int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 
 void autodetect();
 void runPIcontrol();
+void calculate_tic_limits(void);
 
 extern q31_t switchtime[3];
 extern uint32_t ui32_tim1_counter;
@@ -135,6 +136,9 @@ typedef struct {
 	bool light;
 	bool beep;
 	uint8_t shutdown;
+	int8_t speed_limit;
+	int16_t phase_current_limit;
+
 
 } MotorState_t;
 
@@ -157,6 +161,8 @@ typedef struct {
 	int16_t spec_angle;
 
 } MotorParams_t;
+
+enum modes {eco=0,normal=2,sport=4};
 
 void _Error_Handler(char*, int);
 

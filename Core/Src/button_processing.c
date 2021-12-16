@@ -23,6 +23,7 @@
 
 #include "button_processing.h"
 #include "main.h"
+#include "config.h"
 
 
 volatile uint32_t main_loop_counter;
@@ -115,6 +116,7 @@ void checkButton(MotorState_t *MS) {
 					 // commands_printf("DOUBLE_PRESS");
 					  MS->mode=MS->mode+2;
 					  if(MS->mode>4)MS->mode=0;
+
 				  } break ;
 			 }
 		}
@@ -159,6 +161,29 @@ void power_control(uint8_t pwr)
 		/* Restart the system */
 		NVIC_SystemReset();
 	}
+}
+
+void set_mode(MotorState_t *MS){
+
+	switch( MS->mode){
+		case eco :{
+			MS->phase_current_limit=PH_CURRENT_MAX_ECO;
+			MS->speed_limit=SPEEDLIMIT_ECO;
+
+			} break ;
+		case normal :{
+			MS->phase_current_limit=PH_CURRENT_MAX_NORMAL;
+			MS->speed_limit=SPEEDLIMIT_NORMAL;
+
+			} break ;
+		case sport :{
+			MS->phase_current_limit=PH_CURRENT_MAX_SPORT;
+			MS->speed_limit=SPEEDLIMIT_SPORT;
+
+			} break ;
+
+	}
+	calculate_tic_limits();
 }
 
 

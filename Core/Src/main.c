@@ -179,9 +179,7 @@ uint16_t VirtAddVarTab[NB_OF_VAR] = { 0x01, 0x02, 0x03 };
 enum{Stop, SixStep, Interpolation, PLL};
 q31_t switchtime[3];
 volatile uint16_t adcData[8]; //Buffer for ADC1 Input
-//static int8_t angle[256][4];
-//static int8_t angle_old;
-//q31_t q31_startpoint_conversion = 2048;
+
 
 //Rotor angle scaled from degree to q31 for arm_math. -180°-->-2^31, 0°-->0, +180°-->+2^31
 const q31_t DEG_0 = 0;
@@ -191,10 +189,8 @@ const q31_t DEG_plus180 = 2147483647;
 const q31_t DEG_minus60 = -715827883;
 const q31_t DEG_minus120 = -1431655765;
 
-const q31_t tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
-		/ (6 * GEAR_RATIO * SPEEDLIMIT * 10); //tics=wheelcirc*timerfrequency/(no. of hallevents per rev*gear-ratio*speedlimit)*3600/1000000
-const q31_t tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
-		/ (6 * GEAR_RATIO * (SPEEDLIMIT + 2) * 10);
+static q31_t tics_lower_limit;
+static q31_t tics_higher_limit;
 q31_t q31_tics_filtered = 128000;
 //variables for display communication
 
@@ -391,6 +387,11 @@ int main(void) {
 	MS.regen_level = 7;
 	MS.i_q_setpoint = 0;
 
+	MS.phase_current_limit  =PH_CURRENT_MAX_NORMAL;
+	MS.speed_limit = SPEEDLIMIT_NORMAL;
+
+	calculate_tic_limits();
+
 	//Virtual EEPROM init
 	HAL_FLASH_Unlock();
 	EE_Init();
@@ -518,6 +519,8 @@ int main(void) {
 
 	get_standstill_position();
 
+
+
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
@@ -558,13 +561,13 @@ int main(void) {
 
 #ifdef ADCTHROTTLE
 
-		MS.i_q_setpoint=map(ui16_reg_adc_value,THROTTLEOFFSET,THROTTLEMAX,0,PH_CURRENT_MAX);
+		MS.i_q_setpoint=map(ui16_reg_adc_value,THROTTLEOFFSET,THROTTLEMAX,0,MS.i16_modes[MS.mode][0]);
 #endif
 		int32_current_target = MS.i_q_setpoint;
-		if (int32_current_target > PH_CURRENT_MAX)
-			int32_current_target = PH_CURRENT_MAX;
-		if (int32_current_target < -PH_CURRENT_MAX)
-			int32_current_target = -PH_CURRENT_MAX;
+		if (int32_current_target > MS.phase_current_limit)
+			int32_current_target = MS.phase_current_limit;
+		if (int32_current_target < MS.phase_current_limit)
+			int32_current_target = -MS.phase_current_limit;
 
 		int32_current_target = map(q31_tics_filtered >> 3, tics_higher_limit,
 				tics_lower_limit, 0, int32_current_target); //ramp down current at speed limit
@@ -1686,6 +1689,14 @@ int32_t speed_to_tics(uint8_t speed) {
 
 int8_t tics_to_speed(uint32_t tics) {
 	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * tics * 10);;
+}
+
+void calculate_tic_limits(void){
+	tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
+			/ (6 * GEAR_RATIO * MS.speed_limit * 10); //tics=wheelcirc*timerfrequency/(no. of hallevents per rev*gear-ratio*speedlimit)*3600/1000000
+	tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
+			/ (6 * GEAR_RATIO * (MS.speed_limit + 2) * 10);
+
 }
 
 q31_t speed_PLL (q31_t ist, q31_t soll)

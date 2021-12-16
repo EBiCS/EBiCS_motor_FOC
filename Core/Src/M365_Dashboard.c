@@ -127,7 +127,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 				else MS->i_q_setpoint =0;
 				}
 			else{
-				MS->i_q_setpoint = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,PH_CURRENT_MAX);
+				MS->i_q_setpoint = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,MS->phase_current_limit);
 				}
 			}
 
