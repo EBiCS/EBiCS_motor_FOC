@@ -29,10 +29,6 @@
 #include "eeprom.h"
 #include "button_processing.h"
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS ||DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-#include "display_ebics.h"
-#endif
-
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 #include "M365_Dashboard.h"
 #endif
@@ -123,7 +119,6 @@ uint16_t i = 0;
 uint16_t j = 0;
 uint16_t k = 0;
 volatile uint8_t ui8_overflow_flag = 0;
-uint8_t ui8_slowloop_counter = 0;
 volatile uint8_t ui8_adc_inj_flag = 0;
 volatile uint8_t ui8_adc_regular_flag = 0;
 int8_t i8_direction = REVERSE;
@@ -457,10 +452,6 @@ int main(void) {
 		Error_Handler();
 	}
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS || DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-	ebics_init();
-#endif
-
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 	M365Dashboard_init(huart1);
 	PWR_init();
@@ -528,18 +519,10 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 
-
-		//display message processing
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS || DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-		process_ant_page(&MS, &MP);
-
-#endif
-
 		//display message processing
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 		search_DashboardMessage(&MS, &MP, huart1);
 		checkButton(&MS);
-
 #endif
 
 #if 0 //(DISPLAY_TYPE == DISPLAY_TYPE_DEBUG) // && defined(FAST_LOOP_LOG))
@@ -649,37 +632,6 @@ int main(void) {
 
 #endif
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS)
-		  ui8_slowloop_counter++;
-		  if(ui8_slowloop_counter>3){
-			  ui8_slowloop_counter = 0;
-
-			  switch (ui8_main_LEV_Page_counter){
-			  case 1: {
-				  ui8_LEV_Page_to_send = 1;
-			  	  }
-			  	  break;
-			  case 2: {
-				  ui8_LEV_Page_to_send = 2;
-			  	  }
-			  	  break;
-			  case 3: {
-				  ui8_LEV_Page_to_send = 3;
-			  	  }
-			  	  break;
-			  case 4: {
-				  //to do, define other pages
-			  	  }
-			  	  break;
-			  }//end switch
-
-			  send_ant_page(ui8_LEV_Page_to_send, &MS, &MP);
-
-			  ui8_main_LEV_Page_counter++;
-			  if(ui8_main_LEV_Page_counter>4)ui8_main_LEV_Page_counter=1;
-		  }
-
-#endif
 			ui32_tim3_counter = 0;
 		}	  	// end of slow loop
 
@@ -1506,9 +1458,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
 }
 */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS)
-        ebics_reset();
-#endif
+
 }
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,

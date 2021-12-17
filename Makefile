@@ -39,7 +39,6 @@ C_SOURCES =  \
 Core/Src/main.c \
 Core/Src/FOC.c \
 Core/Src/eeprom.c \
-Core/Src/display_ebics.c \
 Core/Src/button_processing.c \
 Core/Src/M365_Dashboard.c \
 Core/Src/stm32f1xx_it.c \

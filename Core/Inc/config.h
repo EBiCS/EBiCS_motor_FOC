@@ -8,7 +8,6 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 #include "stdint.h"
-#define DISPLAY_TYPE_EBiCS (1<<5)                  // ANT+LEV protocol
 #define DISPLAY_TYPE_M365DASHBOARD (1<<1)
 #define DISPLAY_TYPE_DEBUG (1<<0)							// For ASCII-Output in Debug mode);
 
