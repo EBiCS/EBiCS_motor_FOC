@@ -1472,10 +1472,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			uint16_full_rotation_counter = 0;
 			break;
 
+		default:
+			MS.error_state |=hall;
+			break;
+
 		} // end case
 
 #ifdef SPEED_PLL
-		q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL,q31_rotorposition_hall);
+		if(MS.error_state&hall){
+			MS.error_state&= ~hall;
+		}
+		else q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL,q31_rotorposition_hall);
 
 #endif
 
