@@ -1704,29 +1704,25 @@ void calculate_tic_limits(void){
 
 }
 
-q31_t speed_PLL (q31_t ist, q31_t soll)
-  {
-    q31_t q31_p;
-    static q31_t q31_d_i = 0;
-    static q31_t q31_d_dc = 0;
-    temp6 = soll-ist;
-    q31_p=(soll - ist)>>P_FACTOR_PLL;   				//7 for Shengyi middrive, 10 for BionX IGH3
-    q31_d_i+=(soll - ist)>>I_FACTOR_PLL;				//11 for Shengyi middrive, 10 for BionX IGH3
+q31_t speed_PLL(q31_t actual, q31_t target) {
+  static q31_t q31_d_i = 0;
 
-    if(q31_d_i>((DEG_plus60>>19)*500/ui16_timertics)<<16)q31_d_i=((DEG_plus60>>19)*500/ui16_timertics)<<16;
-    if(q31_d_i<-((DEG_plus60>>19)*500/ui16_timertics)<<16)q31_d_i=-((DEG_plus60>>19)*500/ui16_timertics)<<16;
-/*
-    if ((q31_p + q31_d_i)  > q31_d_dc + 8000000)
-      		q31_d_dc += 8000000;
-      	else if ((q31_p + q31_d_i)  < q31_d_dc - 8000000)
-      		q31_d_dc -= 8000000;
-      	else*/ q31_d_dc=q31_p+q31_d_i;
+  temp6 = target - actual; // used on fast log only 
 
-   if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))q31_d_i=0;
+  q31_t delta = target - actual;
+  q31_t q31_p = (delta >> P_FACTOR_PLL);   	//7 for Shengyi middrive, 10 for BionX IGH3
+  q31_d_i += (delta >> I_FACTOR_PLL);				//11 for Shengyi middrive, 10 for BionX IGH3
 
+  if (q31_d_i>((DEG_plus60>>19)*500/ui16_timertics)<<16) q31_d_i = ((DEG_plus60>>19)*500/ui16_timertics)<<16;
+  if (q31_d_i<-((DEG_plus60>>19)*500/ui16_timertics)<<16) q31_d_i =- ((DEG_plus60>>19)*500/ui16_timertics)<<16;
 
-    return (q31_d_dc);
-  }
+  q31_t q31_d_dc = q31_p + q31_d_i;
+
+  // if PWM is disabled, reset q31_d_i
+  if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) q31_d_i = 0;
+
+  return q31_d_dc;
+}
 /* USER CODE END 4 */
 
 /**
