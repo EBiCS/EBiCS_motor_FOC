@@ -156,8 +156,8 @@ uint16_t uint16_half_rotation_counter = 0;
 uint16_t uint16_full_rotation_counter = 0;
 int32_t int32_current_target = 0;
 
+q31_t q31_Battery_Voltage = 0;
 q31_t q31_t_Battery_Current_accumulated = 0;
-q31_t q31_t_Battery_Voltage_accumulated = 0;
 
 q31_t q31_rotorposition_absolute;
 q31_t q31_rotorposition_hall;
@@ -451,7 +451,6 @@ int main(void) {
 	}
 
 	// Start Timer 3
-
 	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
 		/* Counter Enable Error */
 		Error_Handler();
@@ -603,10 +602,15 @@ int main(void) {
                   }
 #endif
 		}
-		if(i8_slow_loop_flag){
-		q31_t_Battery_Voltage_accumulated-=q31_t_Battery_Voltage_accumulated>>7;
-		q31_t_Battery_Voltage_accumulated+=	adcData[ADC_VOLTAGE];
-		i8_slow_loop_flag = 0;
+
+		if (i8_slow_loop_flag) {
+       i8_slow_loop_flag = 0;
+
+      // low pass filter measured battery voltage 
+      static q31_t q31_batt_voltage_acc = 0;
+      q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 7);
+      q31_batt_voltage_acc += adcData[ADC_VOLTAGE];
+      q31_Battery_Voltage = (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
 		}
 
 		//slow loop procedere @16Hz, for LEV standard every 4th loop run, send page,
@@ -614,7 +618,7 @@ int main(void) {
 			if(MS.shutdown)MS.shutdown++;
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
-			MS.Voltage =(q31_t_Battery_Voltage_accumulated>>7) *CAL_BAT_V;
+			MS.Voltage = q31_Battery_Voltage;
 			printf_("tics %d, target %d\n", q31_tics_filtered >> 3,int32_current_target);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
