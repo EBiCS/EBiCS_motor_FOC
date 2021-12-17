@@ -64,7 +64,7 @@
 #define REGEN_CURRENT_MAX 10000
 
 #define SPEED_PLL
-#define P_FACTOR_PLL 7
-#define I_FACTOR_PLL 7
+#define P_FACTOR_PLL 9
+#define I_FACTOR_PLL 9
 
 #endif /* CONFIG_H_ */

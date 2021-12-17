@@ -146,6 +146,7 @@ uint32_t uint32_PAS = 32000;
 
 uint8_t ui8_UART_Counter = 0;
 int8_t i8_recent_rotor_direction = 1;
+int8_t i8_old_rotor_direction = 1;
 int16_t i16_hall_order = 1;
 
 uint32_t uint32_torque_cumulated = 0;
@@ -619,7 +620,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = q31_Battery_Voltage;
-			printf_("tics %d, target %d\n", q31_tics_filtered >> 3,int32_current_target);
+			//printf_("tics %d, target %d\n", q31_tics_filtered >> 3,int32_current_target);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
@@ -1479,10 +1480,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		} // end case
 
 #ifdef SPEED_PLL
-		if(MS.error_state&hall){
+		if(MS.error_state&hall||i8_old_rotor_direction!=i8_recent_rotor_direction){
 			MS.error_state&= ~hall;
+			printf_("hall-error %d\n",ui8_hall_case);
 		}
-		else q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL,q31_rotorposition_hall);
+		else {
+			q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL,q31_rotorposition_hall);
+			i8_old_rotor_direction=i8_recent_rotor_direction;
+		}
 
 #endif
 
