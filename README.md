@@ -11,7 +11,7 @@ Import this repo from github (File --> Import --> git --> Projects from git)
 Edit the file config.h (in the folder Core/Inc) according to your wishes. The default settings should work out of the box, so only change if needed.  
 Click on "Build" (The icon with the hammer)  
 
-The file "SmartESC_v3.bin" is generated in the folder Debug.  
+The file "SmartESC_v3.bin" is generated in the folder Debug and rename it to FIRM.bin.  
 Copy this file to the folder tools/xiaotea  
 Double click on the file prepareZip.exe in the xiaotea folder 
 Copy the generated zip file to your mobile phone and flash it to the scooter by the app downG.
