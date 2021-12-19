@@ -18,10 +18,10 @@ Copy the generated zip file to your mobile phone and flash it to the scooter by 
 
 After flashing, lift the motor, so it can spin in the air without load. Press the dashboard button for 5s, the autodetect routine starts. The motor starts to turn slowly. After stopping, the scooter is ready to run.  
 
-Dashboard button use:
-short press: switch lights
-double click: switch ride modes
-long press: switch off
-very long press: run autodetect
+Dashboard button use:  
+short press: switch lights  
+double click: switch ride modes  
+long press: switch off  
+very long press: run autodetect  
 
 
