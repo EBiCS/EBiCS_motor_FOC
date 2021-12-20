@@ -63,7 +63,12 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	ui8_tx_buffer[1] = 0xAA;
 	MT.ESC_version = 0x0189;
 	MT.internal_battery_version = 0x0289;
-	MT.external_battery_version = 0x0389;
+	MT.total_riding_time[0]=0xFFFF;
+	MT.scooter_serial[0]=0x7453;
+	MT.scooter_serial[1]=0x6e61;
+	MT.scooter_serial[2]=0x6563;
+	MT.scooter_serial[3]=0x6f63;
+	MT.scooter_serial[4]=0x656b;
 
 }
 
@@ -141,7 +146,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, strlen((char*)ui8_tx_buffer));
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			if(MS->beep&&ui8_tx_buffer[Beep])MS->beep = 0;
 
 			}
@@ -183,7 +188,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			memcpy(target+ui8_target_offset,source+ui8_source_offset*2,message[payloadLength]);
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, strlen((char*)ui8_tx_buffer));
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			}
 			break;
 
