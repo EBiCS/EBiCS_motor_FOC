@@ -167,6 +167,7 @@ typedef struct {
 } MotorParams_t;
 
 enum modes {eco=2,normal=0,sport=4};
+enum errors {hall=1,lowbattery=2,overcuurent=4};
 
 void _Error_Handler(char*, int);
 

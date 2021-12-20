@@ -29,10 +29,6 @@
 #include "eeprom.h"
 #include "button_processing.h"
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS ||DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-#include "display_ebics.h"
-#endif
-
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 #include "M365_Dashboard.h"
 #endif
@@ -123,7 +119,6 @@ uint16_t i = 0;
 uint16_t j = 0;
 uint16_t k = 0;
 volatile uint8_t ui8_overflow_flag = 0;
-uint8_t ui8_slowloop_counter = 0;
 volatile uint8_t ui8_adc_inj_flag = 0;
 volatile uint8_t ui8_adc_regular_flag = 0;
 int8_t i8_direction = REVERSE;
@@ -154,7 +149,7 @@ uint16_t uint16_mapped_throttle = 0;
 uint16_t uint16_mapped_PAS = 0;
 uint16_t uint16_half_rotation_counter = 0;
 uint16_t uint16_full_rotation_counter = 0;
-
+int32_t int32_current_target = 0;
 
 q31_t q31_t_Battery_Current_accumulated = 0;
 q31_t q31_t_Battery_Voltage_accumulated = 0;
@@ -451,15 +446,10 @@ int main(void) {
 	}
 
 	// Start Timer 3
-
 	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
 		/* Counter Enable Error */
 		Error_Handler();
 	}
-
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS || DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-	ebics_init();
-#endif
 
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 	M365Dashboard_init(huart1);
@@ -528,18 +518,10 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 
-
-		//display message processing
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS || DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-		process_ant_page(&MS, &MP);
-
-#endif
-
 		//display message processing
 #if (DISPLAY_TYPE == DISPLAY_TYPE_M365DASHBOARD)
 		search_DashboardMessage(&MS, &MP, huart1);
 		checkButton(&MS);
-
 #endif
 
 #if 0 //(DISPLAY_TYPE == DISPLAY_TYPE_DEBUG) // && defined(FAST_LOOP_LOG))
@@ -623,10 +605,15 @@ int main(void) {
                   }
 #endif
 		}
-		if(i8_slow_loop_flag){
-		q31_t_Battery_Voltage_accumulated-=q31_t_Battery_Voltage_accumulated>>7;
-		q31_t_Battery_Voltage_accumulated+=	adcData[ADC_VOLTAGE];
-		i8_slow_loop_flag = 0;
+
+		if (i8_slow_loop_flag) {
+       i8_slow_loop_flag = 0;
+
+      // low pass filter measured battery voltage 
+      static q31_t q31_batt_voltage_acc = 0;
+      q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 7);
+      q31_batt_voltage_acc += adcData[ADC_VOLTAGE];
+      q31_Battery_Voltage = (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
 		}
 
 		//slow loop procedere @16Hz, for LEV standard every 4th loop run, send page,
@@ -664,37 +651,6 @@ int main(void) {
 
 #endif
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS)
-		  ui8_slowloop_counter++;
-		  if(ui8_slowloop_counter>3){
-			  ui8_slowloop_counter = 0;
-
-			  switch (ui8_main_LEV_Page_counter){
-			  case 1: {
-				  ui8_LEV_Page_to_send = 1;
-			  	  }
-			  	  break;
-			  case 2: {
-				  ui8_LEV_Page_to_send = 2;
-			  	  }
-			  	  break;
-			  case 3: {
-				  ui8_LEV_Page_to_send = 3;
-			  	  }
-			  	  break;
-			  case 4: {
-				  //to do, define other pages
-			  	  }
-			  	  break;
-			  }//end switch
-
-			  send_ant_page(ui8_LEV_Page_to_send, &MS, &MP);
-
-			  ui8_main_LEV_Page_counter++;
-			  if(ui8_main_LEV_Page_counter>4)ui8_main_LEV_Page_counter=1;
-		  }
-
-#endif
 			ui32_tim3_counter = 0;
 		}	  	// end of slow loop
 
@@ -1508,9 +1464,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle) {
 }
 */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
-#if (DISPLAY_TYPE == DISPLAY_TYPE_EBiCS)
-        ebics_reset();
-#endif
+
 }
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
@@ -1716,29 +1670,25 @@ void calculate_tic_limits(void){
 
 }
 
-q31_t speed_PLL (q31_t ist, q31_t soll)
-  {
-    q31_t q31_p;
-    static q31_t q31_d_i = 0;
-    static q31_t q31_d_dc = 0;
-    temp6 = soll-ist;
-    q31_p=(soll - ist)>>P_FACTOR_PLL;   				//7 for Shengyi middrive, 10 for BionX IGH3
-    q31_d_i+=(soll - ist)>>I_FACTOR_PLL;				//11 for Shengyi middrive, 10 for BionX IGH3
+q31_t speed_PLL(q31_t actual, q31_t target) {
+  static q31_t q31_d_i = 0;
 
-    if(q31_d_i>((DEG_plus60>>19)*500/ui16_timertics)<<16)q31_d_i=((DEG_plus60>>19)*500/ui16_timertics)<<16;
-    if(q31_d_i<-((DEG_plus60>>19)*500/ui16_timertics)<<16)q31_d_i=-((DEG_plus60>>19)*500/ui16_timertics)<<16;
-/*
-    if ((q31_p + q31_d_i)  > q31_d_dc + 8000000)
-      		q31_d_dc += 8000000;
-      	else if ((q31_p + q31_d_i)  < q31_d_dc - 8000000)
-      		q31_d_dc -= 8000000;
-      	else*/ q31_d_dc=q31_p+q31_d_i;
+  temp6 = target - actual; // used on fast log only 
 
-   if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE))q31_d_i=0;
+  q31_t delta = target - actual;
+  q31_t q31_p = (delta >> P_FACTOR_PLL);   	//7 for Shengyi middrive, 10 for BionX IGH3
+  q31_d_i += (delta >> I_FACTOR_PLL);				//11 for Shengyi middrive, 10 for BionX IGH3
 
+  if (q31_d_i>((DEG_plus60>>19)*500/ui16_timertics)<<16) q31_d_i = ((DEG_plus60>>19)*500/ui16_timertics)<<16;
+  if (q31_d_i<-((DEG_plus60>>19)*500/ui16_timertics)<<16) q31_d_i =- ((DEG_plus60>>19)*500/ui16_timertics)<<16;
 
-    return (q31_d_dc);
-  }
+  q31_t q31_d_dc = q31_p + q31_d_i;
+
+  // if PWM is disabled, reset q31_d_i
+  if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) q31_d_i = 0;
+
+  return q31_d_dc;
+}
 /* USER CODE END 4 */
 
 /**
