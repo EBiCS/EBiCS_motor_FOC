@@ -11,18 +11,26 @@
 #include "stm32f1xx_hal.h"
 #include "print.h"
 #include "M365_Dashboard.h"
+#include "M365_memory_table.h"
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 
 UART_HandleTypeDef huart3;
 static uint8_t ui8_rx_buffer[64];
 static uint8_t ui8_dashboardmessage[64];
-static uint8_t	ui8_tx_buffer[] = {0x55, 0xAA, 0x08, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static uint8_t	ui8_tx_buffer[96];// = {0x55, 0xAA, 0x08, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static uint8_t ui8_oldpointerposition=64;
 static uint8_t ui8_recentpointerposition=0;
 static uint8_t ui8_messagestartpos=255;
 static uint8_t ui8_messagelength=0;
 static uint8_t ui8_state= STATE_LOST;
 static uint32_t ui32_timeoutcounter=0;
+
+char *target;
+char *source;
+static uint8_t ui8_target_offset = 6;
+static uint8_t ui8_source_offset;
+
+M365_menory_table_t MT;
 
 enum bytesOfMessage65 {
 	Throttle = 7,
@@ -37,11 +45,23 @@ enum bytesOfMessage64 {
 	Beep = 9
 } msg64;
 
+enum bytesOfGeneralMessage {
+	msglength = 2,
+	receiver = 3,
+	command = 4,
+	startAddress = 5,
+	payloadLength = 6
+} gen_msg;
+
+
 void M365Dashboard_init(UART_HandleTypeDef huart1) {
 //        CLEAR_BIT(huart3.Instance->CR3, USART_CR3_EIE);
 	if (HAL_UART_Receive_DMA(&huart1, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
 		Error_Handler();
 	}
+	ui8_tx_buffer[0] = 0x55;
+	ui8_tx_buffer[1] = 0xAA;
+
 }
 
 void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTypeDef huart1){
@@ -103,9 +123,12 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 	//HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
 	if(!checkCRC(message, length)){
 	//	55 AA 06 21 64 00 00 00 00 00 74 FF
-		switch (message[4]) {
+		switch (message[command]) {
 
 		case 0x64: {
+			ui8_tx_buffer[msglength]=0x08;
+			ui8_tx_buffer[receiver]=0x21;
+			ui8_tx_buffer[command]=message[command];
 			ui8_tx_buffer[Speed]=MS->Speed;
 			ui8_tx_buffer[Mode]=MS->mode;
 			ui8_tx_buffer[SOC]=map(MS->Voltage,33000,42000,0,96);
@@ -119,7 +142,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			if(MS->beep&&ui8_tx_buffer[Beep])MS->beep = 0;
 
 			}
-
+			break;
 
 		case 0x65: {
 			if(map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
@@ -130,10 +153,41 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 				MS->i_q_setpoint_temp = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,MS->phase_current_limit);
 				}
 			}
+			break;
+
+		case 0x61: {
+			//55 AA 06 20 61 DA 0C 02 27 00 69 FE
+			//55 AA 0E 23 01 DA 48 FF 73 06 78 78 54 51 53 32 10 67 A2 FA
+
+			if(map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
+				if(MS->Speed>2)	MS->i_q_setpoint_temp =-map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
+				else MS->i_q_setpoint_temp =0;
+				}
+			else{
+				MS->i_q_setpoint_temp = map(message[8],THROTTLEOFFSET,THROTTLEMAX,0,MS->phase_current_limit);
+				}
+
+
+			ui8_tx_buffer[msglength]=message[payloadLength]+2;
+			ui8_tx_buffer[receiver]=message[receiver]+3;
+			ui8_tx_buffer[command]=0x01;
+			ui8_tx_buffer[startAddress] =message[startAddress];
+
+			source = (char *)&MT;
+			target = (char *)&ui8_tx_buffer;
+			ui8_source_offset = message[startAddress];
+
+			memcpy(target+ui8_target_offset,source+ui8_source_offset*2,message[payloadLength]);
+			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
+			HAL_HalfDuplex_EnableTransmitter(&huart1);
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, sizeof(ui8_tx_buffer));
+			}
+			break;
 
 		default: {
 		//	MS->i_q_setpoint = 0; // stop motor for safety reason
 			}
+			break;
 		}//end switch
 
 
