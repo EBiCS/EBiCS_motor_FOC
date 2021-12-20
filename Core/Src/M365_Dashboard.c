@@ -141,7 +141,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, sizeof(ui8_tx_buffer));
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, strlen((char*)ui8_tx_buffer));
 			if(MS->beep&&ui8_tx_buffer[Beep])MS->beep = 0;
 
 			}
@@ -183,7 +183,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			memcpy(target+ui8_target_offset,source+ui8_source_offset*2,message[payloadLength]);
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, sizeof(ui8_tx_buffer));
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, strlen((char*)ui8_tx_buffer));
 			}
 			break;
 
@@ -204,6 +204,7 @@ void addCRC(uint8_t * message, uint8_t size){
     cksm ^= 0xFFFF;
     message[size - 2] = (uint8_t)(cksm&0xFF);
     message[size - 1] = (uint8_t)((cksm&0xFF00) >> 8);
+    message[size] = '\0';
 }
 
 int16_t checkCRC(uint8_t * message, uint8_t size){
