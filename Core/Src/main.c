@@ -152,7 +152,7 @@ uint16_t uint16_full_rotation_counter = 0;
 int32_t int32_current_target = 0;
 
 q31_t q31_t_Battery_Current_accumulated = 0;
-q31_t q31_t_Battery_Voltage_accumulated = 0;
+q31_t q31_Battery_Voltage = 0;
 
 q31_t q31_rotorposition_absolute;
 q31_t q31_rotorposition_hall;
@@ -621,7 +621,7 @@ int main(void) {
 			if(MS.shutdown)MS.shutdown++;
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
-			MS.Voltage =(q31_t_Battery_Voltage_accumulated>>7) *CAL_BAT_V;
+			MS.Voltage = q31_Battery_Voltage;
 			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_setpoint_abs, MS.i_q_setpoint, MS.i_q, MS.i_d_setpoint, MS.i_d, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
