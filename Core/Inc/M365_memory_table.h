@@ -2,7 +2,7 @@
  * M365_memory_table.h
  *
  *  Created on: 19.12.2021
- *      Author: gaswerke
+ *      Author: Stancecoke
  */
 
 #ifndef INC_M365_MEMORY_TABLE_H_
