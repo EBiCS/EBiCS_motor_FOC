@@ -15,8 +15,8 @@
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 
 UART_HandleTypeDef huart3;
-static uint8_t ui8_rx_buffer[64];
-static uint8_t ui8_dashboardmessage[64];
+static uint8_t ui8_rx_buffer[140];
+static uint8_t ui8_dashboardmessage[140];
 static uint8_t	ui8_tx_buffer[96];// = {0x55, 0xAA, 0x08, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static uint8_t ui8_oldpointerposition=64;
 static uint8_t ui8_recentpointerposition=0;
@@ -69,6 +69,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.scooter_serial[2]=0x6563;
 	MT.scooter_serial[3]=0x6f63;
 	MT.scooter_serial[4]=0x656b;
+	MT.ESC_status_2= 0x0802;
 
 }
 
@@ -131,9 +132,14 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 	//HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
 	if(!checkCRC(message, length)){
 	//	55 AA 06 21 64 00 00 00 00 00 74 FF
+	//55	AA	8	21	64	0	20	0	0	1	0	12	3F	FF
+
 		switch (message[command]) {
 
 		case 0x64: {
+
+			ui8_tx_buffer[5]=0x00;
+			ui8_tx_buffer[11]=0x00;
 			ui8_tx_buffer[msglength]=0x08;
 			ui8_tx_buffer[receiver]=0x21;
 			ui8_tx_buffer[command]=message[command];
@@ -144,9 +150,9 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			else ui8_tx_buffer[Light]=0;
 			ui8_tx_buffer[Beep]= MS->beep;
 
-			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
+			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			if(MS->beep&&ui8_tx_buffer[Beep])MS->beep = 0;
 
 			}
@@ -186,9 +192,34 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			ui8_source_offset = message[startAddress];
 
 			memcpy(target+ui8_target_offset,source+ui8_source_offset*2,message[payloadLength]);
-			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
+			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
-			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[2]+6);
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
+			}
+			break;
+		case 0x07: {
+			//55 AA 06 20 07 00 08 61 00 00 69 FF
+			//55 AA 02 23 07 00 D3 FF
+			ui8_tx_buffer[msglength] = 2;
+			ui8_tx_buffer[receiver]=message[receiver]+3;
+			ui8_tx_buffer[command]=0x07;
+			ui8_tx_buffer[startAddress] =0;
+			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
+			HAL_HalfDuplex_EnableTransmitter(&huart1);
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
+			}
+			break;
+
+		case 0x08: {
+			//55 AA 42 20 08 00 FA 8B 7B 71 4F 4C 97 16 0B 71 34 89 96 24 DE C2 3B 3E FF 06 B7 3B 69 69 BB 8A 56 10 A0 A0 34 E0 15 65 D2 6E 04 62 4C EB BB 6B 49 C1 7F F6 EA B7 64 F7 AD 5D 4E 8C D1 2C DB 7E EC B6 F4 73 FC A3 2E DE
+			//55 AA 02 23 08 00 D2 FF
+			ui8_tx_buffer[msglength] = 2;
+			ui8_tx_buffer[receiver]=message[receiver]+3;
+			ui8_tx_buffer[command]=0x08;
+			ui8_tx_buffer[startAddress] =0;
+			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
+			HAL_HalfDuplex_EnableTransmitter(&huart1);
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			}
 			break;
 

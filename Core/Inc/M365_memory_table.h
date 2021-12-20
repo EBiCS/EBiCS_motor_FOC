@@ -3,6 +3,8 @@
  *
  *  Created on: 19.12.2021
  *      Author: Stancecoke
+ *      taken from https://github.com/rascafr/9-analyzer/blob/master/definitions.js
+ *      and
  */
 
 #ifndef INC_M365_MEMORY_TABLE_H_
@@ -58,7 +60,7 @@ typedef struct __attribute__ ((__packed__)) {
 	uint16_t unknown;
 	uint16_t regen_level;
 	uint16_t cruise_control;
-	uint16_t tail_light[18];
+	uint16_t tail_light[52];
 	uint16_t error_code_2;
 	uint16_t alarm_code_2;
 	uint16_t ESC_status_2;
