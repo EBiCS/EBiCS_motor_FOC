@@ -61,6 +61,9 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	}
 	ui8_tx_buffer[0] = 0x55;
 	ui8_tx_buffer[1] = 0xAA;
+	MT.ESC_version = 0x0189;
+	MT.internal_battery_version = 0x0289;
+	MT.external_battery_version = 0x0389;
 
 }
 
