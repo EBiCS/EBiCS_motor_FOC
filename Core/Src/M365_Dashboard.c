@@ -67,7 +67,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.ESC_version = 0x0189;
 	MT.internal_battery_version = 0x0289;
 	MT.total_riding_time[0]=0xFFFF;
-	strcpy(MT.scooter_serial, "Stancecoke_2");
+	strcpy(MT.scooter_serial, "Stancecoke_4");
 	MT.ESC_status_2= 0x0800;
 
 }
@@ -200,7 +200,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 		case 0x03: {
 			//55	AA	4	20	3	70	1	0	67	FF
 
-			source = (char *)&message;
+			source = (char *)message;
 			target = (char *)&MT;
 			ui8_target_offset = message[startAddress];
 
@@ -233,7 +233,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			//55 AA 42 20 08 00 FA 8B 7B 71 4F 4C 97 16 0B 71 34 89 96 24 DE C2 3B 3E FF 06 B7 3B 69 69 BB 8A 56 10 A0 A0 34 E0 15 65 D2 6E 04 62 4C EB BB 6B 49 C1 7F F6 EA B7 64 F7 AD 5D 4E 8C D1 2C DB 7E EC B6 F4 73 FC A3 2E DE
 			//55 AA 02 23 08 00 D2 FF
 
-			source = (char *)&message;
+			source = (char *)message;
 			target = (char *)&enc;
 
 			memcpy(target,source+6,128);
