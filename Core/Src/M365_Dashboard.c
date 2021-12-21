@@ -13,6 +13,7 @@
 #include "M365_Dashboard.h"
 #include "M365_memory_table.h"
 #include "decr_and_flash.h"
+#include "stm32f1xx_hal_flash.h"
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 
 UART_HandleTypeDef huart3;
@@ -69,6 +70,8 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.total_riding_time[0]=0xFFFF;
 	strcpy(MT.scooter_serial, "Stancecoke_4");
 	MT.ESC_status_2= 0x0800;
+
+
 
 }
 
@@ -205,7 +208,37 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			ui8_target_offset = message[startAddress];
 
 			memcpy(target+ui8_target_offset,source+6,1);
-			if (message[payloadLength]==1)MT.ESC_status_2= 0x0802;
+			if (message[payloadLength]==1){
+				MT.ESC_status_2= 0x0802;
+				HAL_FLASH_Unlock();
+				uint32_t PAGEError = 0;
+				/*Variable used for Erase procedure*/
+				static FLASH_EraseInitTypeDef EraseInitStruct;
+				 /* Erase the user Flash area
+				    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
+
+				  /* Fill EraseInit structure*/
+				  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+				  EraseInitStruct.PageAddress = 0x8008400;
+				  EraseInitStruct.NbPages     = 26;
+
+				  if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+				  {
+				    /*
+				      Error occurred while page erase.
+				      User can add here some code to deal with this error.
+				      PAGEError will contain the faulty page and then to know the code error on this page,
+				      user can call function 'HAL_FLASH_GetError()'
+				    */
+				    /* Infinite loop */
+				    while (1)
+				    {
+				      /* Make LED2 blink (100ms on, 2s off) to indicate error in Erase operation */
+
+				    }
+				  }
+				  HAL_FLASH_Lock();
+			}
 
 			}
 			break;
