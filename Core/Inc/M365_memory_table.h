@@ -16,7 +16,7 @@ typedef struct __attribute__ ((__packed__)) {
 	uint16_t currA;
 	uint16_t currB;
 	uint16_t currC;
-	uint16_t scooter_serial[7];
+	char scooter_serial[14];
 	uint16_t scooter_pin[3];
 	uint16_t ESC_version;
 	uint16_t error_code_1;

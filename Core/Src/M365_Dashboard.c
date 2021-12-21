@@ -64,11 +64,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.ESC_version = 0x0189;
 	MT.internal_battery_version = 0x0289;
 	MT.total_riding_time[0]=0xFFFF;
-	MT.scooter_serial[0]=0x7453;
-	MT.scooter_serial[1]=0x6e61;
-	MT.scooter_serial[2]=0x6563;
-	MT.scooter_serial[3]=0x6f63;
-	MT.scooter_serial[4]=0x656b;
+	strcpy(MT.scooter_serial, "Stancecoke_1");
 	MT.ESC_status_2= 0x0800;
 
 }
