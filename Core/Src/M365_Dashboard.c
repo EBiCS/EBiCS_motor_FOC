@@ -12,11 +12,13 @@
 #include "print.h"
 #include "M365_Dashboard.h"
 #include "M365_memory_table.h"
+#include "decr_and_flash.h"
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 
 UART_HandleTypeDef huart3;
 static uint8_t ui8_rx_buffer[140];
 static uint8_t ui8_dashboardmessage[140];
+static uint8_t enc[128];
 static uint8_t	ui8_tx_buffer[96];// = {0x55, 0xAA, 0x08, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static uint8_t ui8_oldpointerposition=64;
 static uint8_t ui8_recentpointerposition=0;
@@ -24,6 +26,7 @@ static uint8_t ui8_messagestartpos=255;
 static uint8_t ui8_messagelength=0;
 static uint8_t ui8_state= STATE_LOST;
 static uint32_t ui32_timeoutcounter=0;
+static uint32_t flashstartaddress = 0x8008400;
 
 char *target;
 char *source;
@@ -64,7 +67,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.ESC_version = 0x0189;
 	MT.internal_battery_version = 0x0289;
 	MT.total_riding_time[0]=0xFFFF;
-	strcpy(MT.scooter_serial, "Stancecoke_1");
+	strcpy(MT.scooter_serial, "Stancecoke_2");
 	MT.ESC_status_2= 0x0800;
 
 }
@@ -229,6 +232,15 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 		case 0x08: {
 			//55 AA 42 20 08 00 FA 8B 7B 71 4F 4C 97 16 0B 71 34 89 96 24 DE C2 3B 3E FF 06 B7 3B 69 69 BB 8A 56 10 A0 A0 34 E0 15 65 D2 6E 04 62 4C EB BB 6B 49 C1 7F F6 EA B7 64 F7 AD 5D 4E 8C D1 2C DB 7E EC B6 F4 73 FC A3 2E DE
 			//55 AA 02 23 08 00 D2 FF
+
+			source = (char *)&message;
+			target = (char *)&enc;
+
+			memcpy(target,source+6,128);
+
+			decr_and_flash(enc,flashstartaddress);
+			flashstartaddress+=128;
+
 			ui8_tx_buffer[msglength] = 2;
 			ui8_tx_buffer[receiver]=message[receiver]+3;
 			ui8_tx_buffer[command]=0x08;
