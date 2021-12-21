@@ -84,12 +84,11 @@ int decr_and_flash(uint8_t enc[], uint32_t flash_address)
     uint32_t data;
     decrypt(dec, enc, sizeof(dec));
     HAL_FLASH_Unlock();
-    char *source = (char *)&dec;
-    char *target = (char *)&data;
+
 
     for(int i =0 ; i<128; i+=4){
-		memcpy(target,source+i,4);
-    	HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, flash_address+i, data);
+		data = dec[i]<<24|dec[i+1]<<16|dec[i+2]<<8|dec[i+3];
+    	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, flash_address+i, data);
     }
     HAL_FLASH_Lock();
 
