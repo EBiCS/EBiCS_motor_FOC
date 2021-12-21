@@ -94,44 +94,19 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-q31_t raw_inj1;
-q31_t raw_inj2;
 
-uint32_t ui32_tim1_counter = 0;
-uint32_t ui32_tim3_counter = 0;
-uint8_t ui8_hall_state = 0;
-uint8_t ui8_hall_state_old = 0;
-uint8_t ui8_hall_case = 0;
-uint8_t ui8_BC_limit_flag = 0;
-uint16_t ui16_tim2_recent = 0;
-uint16_t ui16_timertics = 5000; //timertics between two hall events for 60° interpolation
-uint16_t ui16_reg_adc_value;
-uint32_t ui32_reg_adc_value_filter;
-uint16_t ui16_ph1_offset = 0;
-uint16_t ui16_ph2_offset = 0;
-uint16_t ui16_ph3_offset = 0;
-
-volatile int16_t i16_ph1_current = 0;
-volatile int16_t i16_ph2_current = 0;
-volatile int16_t i16_ph2_current_filter = 0;
 int16_t i16_ph3_current = 0;
 uint16_t i = 0;
 uint16_t j = 0;
 uint16_t k = 0;
-volatile uint8_t ui8_overflow_flag = 0;
-volatile uint8_t ui8_adc_inj_flag = 0;
 volatile uint8_t ui8_adc_regular_flag = 0;
-int8_t i8_direction = REVERSE;
-volatile int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
 volatile int8_t i8_slow_loop_flag = 0;
-volatile uint8_t ui8_adc_offset_done_flag = 0;
 volatile uint8_t ui8_print_flag = 0;
 volatile uint8_t ui8_UART_flag = 0;
 volatile uint8_t ui8_Push_Assist_flag = 0;
 volatile uint8_t ui8_UART_TxCplt_flag = 1;
 volatile uint8_t ui8_PAS_flag = 0;
 volatile uint8_t ui8_SPEED_flag = 0;
-volatile uint8_t ui8_6step_flag = 0;
 
 uint32_t uint32_PAS_HIGH_counter = 0;
 uint32_t uint32_PAS_HIGH_accumulated = 32000;
@@ -140,8 +115,6 @@ uint32_t uint32_SPEED_counter = 32000;
 uint32_t uint32_PAS = 32000;
 
 uint8_t ui8_UART_Counter = 0;
-int8_t i8_recent_rotor_direction = 1;
-int16_t i16_hall_order = 1;
 
 uint32_t uint32_torque_cumulated = 0;
 uint32_t uint32_PAS_cumulated = 32000;
@@ -151,42 +124,15 @@ uint16_t uint16_half_rotation_counter = 0;
 uint16_t uint16_full_rotation_counter = 0;
 int32_t int32_current_target = 0;
 
-q31_t q31_t_Battery_Current_accumulated = 0;
 q31_t q31_Battery_Voltage = 0;
 
-q31_t q31_rotorposition_absolute;
-q31_t q31_rotorposition_hall;
-q31_t q31_rotorposition_motor_specific = SPEC_ANGLE;
-
-q31_t q31_rotorposition_PLL = 0;
-q31_t q31_angle_per_tic = 0;
-
-q31_t q31_u_d_temp = 0;
-q31_t q31_u_q_temp = 0;
-int16_t i16_sinus = 0;
-int16_t i16_cosinus = 0;
 char buffer[256];
-char char_dyn_adc_state = 1;
-char char_dyn_adc_state_old = 1;
 uint8_t assist_factor[10] = { 0, 51, 102, 153, 204, 255, 255, 255, 255, 255 };
 
 uint16_t VirtAddVarTab[NB_OF_VAR] = { 0x01, 0x02, 0x03 };
-enum{Stop, SixStep, Interpolation, PLL};
-q31_t switchtime[3];
-volatile uint16_t adcData[8]; //Buffer for ADC1 Input
-
-
-//Rotor angle scaled from degree to q31 for arm_math. -180°-->-2^31, 0°-->0, +180°-->+2^31
-const q31_t DEG_0 = 0;
-const q31_t DEG_plus60 = 715827883;
-const q31_t DEG_plus120 = 1431655765;
-const q31_t DEG_plus180 = 2147483647;
-const q31_t DEG_minus60 = -715827883;
-const q31_t DEG_minus120 = -1431655765;
 
 static q31_t tics_lower_limit;
 static q31_t tics_higher_limit;
-q31_t q31_tics_filtered = 128000;
 //variables for display communication
 
 #define iabs(x) (((x) >= 0)?(x):-(x))
@@ -359,7 +305,7 @@ int main(void) {
 	HAL_Init();
 
 	/* USER CODE BEGIN Init */
-
+  HAL_SetTickFreq(HAL_TICK_FREQ_100HZ); // set systick at 10ms
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
