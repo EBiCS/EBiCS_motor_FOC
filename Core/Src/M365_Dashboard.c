@@ -27,7 +27,7 @@ static uint32_t ui32_timeoutcounter=0;
 
 char *target;
 char *source;
-static uint8_t ui8_target_offset = 6;
+static uint8_t ui8_target_offset;
 static uint8_t ui8_source_offset;
 
 M365_menory_table_t MT;
@@ -69,7 +69,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.scooter_serial[2]=0x6563;
 	MT.scooter_serial[3]=0x6f63;
 	MT.scooter_serial[4]=0x656b;
-	MT.ESC_status_2= 0x0802;
+	MT.ESC_status_2= 0x0800;
 
 }
 
@@ -190,13 +190,33 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			source = (char *)&MT;
 			target = (char *)&ui8_tx_buffer;
 			ui8_source_offset = message[startAddress];
-
+			ui8_target_offset = 6;
 			memcpy(target+ui8_target_offset,source+ui8_source_offset*2,message[payloadLength]);
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			}
 			break;
+
+		case 0x03: {
+			//55	AA	4	20	3	70	1	0	67	FF
+
+			source = (char *)&message;
+			target = (char *)&MT;
+			ui8_target_offset = message[startAddress];
+
+			memcpy(target+ui8_target_offset,source+6,1);
+			if (message[payloadLength]==1)MT.ESC_status_2= 0x0802;
+
+			}
+			break;
+
+		case 0x0A: {
+			NVIC_SystemReset();
+
+			}
+			break;
+
 		case 0x07: {
 			//55 AA 06 20 07 00 08 61 00 00 69 FF
 			//55 AA 02 23 07 00 D3 FF
@@ -216,6 +236,19 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			ui8_tx_buffer[msglength] = 2;
 			ui8_tx_buffer[receiver]=message[receiver]+3;
 			ui8_tx_buffer[command]=0x08;
+			ui8_tx_buffer[startAddress] =0;
+			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
+			HAL_HalfDuplex_EnableTransmitter(&huart1);
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
+			}
+			break;
+
+		case 0x09: {
+			//55	AA	6	20	9	0	91	9E	CF	FF	D3	FC
+			//55	AA	2	23	9	0	D1	FF
+			ui8_tx_buffer[msglength] = 2;
+			ui8_tx_buffer[receiver]=message[receiver]+3;
+			ui8_tx_buffer[command]=0x09;
 			ui8_tx_buffer[startAddress] =0;
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
