@@ -27,7 +27,9 @@ static uint8_t ui8_messagestartpos=255;
 static uint8_t ui8_messagelength=0;
 static uint8_t ui8_state= STATE_LOST;
 static uint32_t ui32_timeoutcounter=0;
+static uint16_t ui16_update_size=0;
 static uint32_t flashstartaddress = 0x8008400;
+static uint32_t updateflagaddress = 0x080FC00;
 
 char *target;
 char *source;
@@ -77,7 +79,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 
 void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTypeDef huart1){
 
-	if(ui32_timeoutcounter>3200){
+	if(ui32_timeoutcounter>3200&&MT.ESC_status_2 != 0x0802){
 		if (HAL_UART_Receive_DMA(&huart1, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
 			Error_Handler();
 		}
@@ -219,7 +221,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 
 				  /* Fill EraseInit structure*/
 				  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
-				  EraseInitStruct.PageAddress = 0x8008400;
+				  EraseInitStruct.PageAddress = flashstartaddress;
 				  EraseInitStruct.NbPages     = 26;
 
 				  if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
@@ -244,6 +246,41 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			break;
 
 		case 0x0A: {
+			HAL_FLASH_Unlock();
+
+							uint32_t PAGEError = 0;
+							/*Variable used for Erase procedure*/
+							static FLASH_EraseInitTypeDef EraseInitStruct;
+							 /* Erase the user Flash area
+							    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
+
+							  /* Fill EraseInit structure*/
+							  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+							  EraseInitStruct.PageAddress = updateflagaddress;
+							  EraseInitStruct.NbPages     = 1;
+
+							  if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+							  {
+							    /*
+							      Error occurred while page erase.
+							      User can add here some code to deal with this error.
+							      PAGEError will contain the faulty page and then to know the code error on this page,
+							      user can call function 'HAL_FLASH_GetError()'
+							    */
+							    /* Infinite loop */
+							    while (1)
+							    {
+							      /* Make LED2 blink (100ms on, 2s off) to indicate error in Erase operation */
+
+							    }
+							  }
+							  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, updateflagaddress, 0x5A50);
+
+							  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, updateflagaddress+4, 0x01);
+
+							  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, updateflagaddress+8, ui16_update_size);
+			HAL_FLASH_Lock();
+
 			NVIC_SystemReset();
 
 			}
@@ -252,6 +289,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 		case 0x07: {
 			//55 AA 06 20 07 00 08 61 00 00 69 FF
 			//55 AA 02 23 07 00 D3 FF
+			ui16_update_size = message[7]<<8|message[6];
 			ui8_tx_buffer[msglength] = 2;
 			ui8_tx_buffer[receiver]=message[receiver]+3;
 			ui8_tx_buffer[command]=0x07;
