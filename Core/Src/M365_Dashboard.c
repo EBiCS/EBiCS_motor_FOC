@@ -28,8 +28,8 @@ static uint8_t ui8_messagelength=0;
 static uint8_t ui8_state= STATE_LOST;
 static uint32_t ui32_timeoutcounter=0;
 static uint16_t ui16_update_size=0;
-static uint32_t flashstartaddress = 0x8008400;
-static uint32_t updateflagaddress = 0x080FC00;
+static uint32_t flashstartaddress = 0x08008400;
+static uint32_t updateflagaddress = 0x0800FC00;
 
 char *target;
 char *source;
