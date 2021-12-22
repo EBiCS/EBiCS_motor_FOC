@@ -106,68 +106,13 @@ void Error_Handler(void);
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);
 
-void autodetect();
-void runPIcontrol();
-void calculate_tic_limits(void);
-
 extern q31_t switchtime[3];
 extern uint32_t ui32_tim1_counter;
 extern uint32_t uint32_PAS_counter;
 
-typedef struct {
+void UserSysTickHandler();
 
-	q31_t Voltage;
-	uint32_t Speed;
-	q31_t i_d;
-	q31_t i_q;
-	q31_t i_q_setpoint;
-	q31_t i_d_setpoint;
-	q31_t i_setpoint_abs;
-	int32_t i_q_setpoint_temp;
-	int32_t i_d_setpoint_temp;
-	q31_t u_d;
-	q31_t u_q;
-	q31_t u_abs;
-	q31_t Battery_Current;
-	uint8_t hall_angle_detect_flag;
-	uint8_t char_dyn_adc_state;
-	uint8_t assist_level;
-	uint8_t regen_level;
-	int8_t Temperature;
-	int8_t system_state;
-	int8_t mode;
-	int8_t error_state;
-	bool light;
-	bool beep;
-	uint8_t shutdown;
-	int8_t speed_limit;
-	int16_t phase_current_limit;
-
-
-} MotorState_t;
-
-typedef struct {
-
-	uint16_t wheel_cirumference;
-	uint16_t p_Iq;
-	uint16_t i_Iq;
-	uint16_t p_Id;
-	uint16_t i_Id;
-	uint16_t TS_coeff;
-	uint16_t PAS_timeout;
-	uint16_t ramp_end;
-	uint16_t throttle_offset;
-	uint16_t throttle_max;
-	uint16_t gear_ratio;
-	uint8_t speedLimit;
-	uint8_t pulses_per_revolution;
-	uint16_t phase_current_max;
-	int16_t spec_angle;
-
-} MotorParams_t;
-
-enum modes {eco=2,normal=0,sport=4};
-enum errors {hall=1,lowbattery=2,overcurrent=4};
+void calculate_tic_limits(void);
 
 void _Error_Handler(char*, int);
 

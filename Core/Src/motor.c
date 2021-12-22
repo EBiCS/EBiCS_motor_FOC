@@ -4,13 +4,6 @@
 #include <arm_math.h>
 #include "FOC.h"
 
-enum {
-  Stop,
-  SixStep,
-  Interpolation,
-  PLL
-};
-
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 
@@ -31,7 +24,6 @@ volatile int16_t i16_ph2_current_filter = 0;
 volatile uint8_t ui8_adc_inj_flag = 0;
 q31_t raw_inj1;
 q31_t raw_inj2;
-uint32_t ui32_tim3_counter = 0;
 uint8_t ui8_hall_state = 0;
 uint8_t ui8_hall_state_old = 0;
 uint8_t ui8_hall_case = 0;
@@ -51,7 +43,6 @@ q31_t q31_angle_per_tic = 0;
 int8_t i8_recent_rotor_direction = 1;
 int16_t i16_hall_order = 1;
 q31_t switchtime[3];
-volatile uint16_t adcData[8]; //Buffer for ADC1 Input
 volatile uint8_t ui8_overflow_flag = 0;
 char char_dyn_adc_state = 1;
 char char_dyn_adc_state_old = 1;
@@ -192,6 +183,62 @@ void motor_autodetect() {
 
 }
 
+// call every 10ms
+int motor_slow_loop(void) {
+  if (MS.i_q_setpoint_temp > MS.phase_current_limit)
+    MS.i_q_setpoint_temp = MS.phase_current_limit;
+  if (MS.i_q_setpoint_temp < -MS.phase_current_limit)
+    MS.i_q_setpoint_temp = -MS.phase_current_limit;
+
+  MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit,
+      tics_lower_limit, 0, MS.i_q_setpoint_temp); //ramp down current at speed limit
+
+  if(MS.u_abs>(_U_MAX-10)&&MS.mode==sport){//do flux weakaning
+    MS.i_d_setpoint_temp=map(MS.Speed,(KV*MS.Voltage/10000)-3,(KV*MS.Voltage/10000)+15,0,FW_CURRENT_MAX);
+  }
+  else MS.i_d_setpoint_temp=0;
+
+  //Check and limit absolute value of current vector
+
+  arm_sqrt_q31((MS.i_q_setpoint_temp*MS.i_q_setpoint_temp+MS.i_d_setpoint_temp*MS.i_d_setpoint_temp)<<1,&MS.i_setpoint_abs);
+  MS.i_setpoint_abs = (MS.i_setpoint_abs>>16)+1;
+
+
+  if (MS.i_setpoint_abs > MS.phase_current_limit) {
+    MS.i_q_setpoint = (MS.i_q_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; //division!
+    MS.i_d_setpoint = (MS.i_d_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; //division!
+    MS.i_setpoint_abs = MS.phase_current_limit;
+  } else {
+    MS.i_q_setpoint=MS.i_q_setpoint_temp;
+    MS.i_d_setpoint=MS.i_d_setpoint_temp;
+  }
+
+  if (MS.i_q_setpoint && !READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
+
+    TIM1->CCR1 = 1023; //set initial PWM values
+    TIM1->CCR2 = 1023;
+    TIM1->CCR3 = 1023;
+      MS.i_d = 0;
+      MS.i_q = 0;
+      speed_PLL(0,0);//reset integral part
+    uint16_half_rotation_counter = 0;
+    uint16_full_rotation_counter = 0;
+    __HAL_TIM_SET_COUNTER(&htim2, 0); //reset tim2 counter
+    ui16_timertics = 40000; //set interval between two hallevents to a large value
+    i8_recent_rotor_direction = i8_direction * i8_reverse_flag;
+    SET_BIT(TIM1->BDTR, TIM_BDTR_MOE); //enable PWM if power is wanted
+    get_standstill_position();
+  } else {
+#ifdef KILL_ON_ZERO
+                if(uint16_mapped_throttle==0&&READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
+      CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
+      get_standstill_position();
+                        printf_("shutdown %d\n", q31_rotorposition_absolute);
+                }
+#endif
+  }
+}
+
 int motor_init(void) {
 	/* Initialize all configured peripherals */
 	GPIO_Init();
@@ -295,7 +342,7 @@ int motor_init(void) {
 
   ui8_adc_offset_done_flag=1;
 
-
+  // TODO init EEPROM
 
   EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
  
@@ -688,10 +735,6 @@ static void GPIO_Init(void) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim == &htim3) {
-		if (ui32_tim3_counter < 32000) {
-			ui32_tim3_counter++;
-    }
-		
     if (uint32_SPEED_counter < 128000) {
 			uint32_SPEED_counter++;
 		}
@@ -1098,27 +1141,22 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
 
   return q31_d_dc;
 }
-/* USER CODE END 4 */
 
 /**
  * @brief  This function is executed in case of error occurrence.
  * @retval None
  */
 void Error_Handler(void) {
-	/* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
 	__disable_irq();
 	while (1) {
 	}
-	/* USER CODE END Error_Handler_Debug */
 }
 
 void _Error_Handler(char *file, int line) {
-	/* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
 	while (1) {
 	}
-	/* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
@@ -1131,11 +1169,8 @@ void _Error_Handler(char *file, int line) {
   */
 void assert_failed(uint8_t *file, uint32_t line)
 {
-  /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

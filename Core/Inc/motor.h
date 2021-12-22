@@ -28,6 +28,9 @@ extern "C" {
 #define I_FACTOR_I_D 1
 #define MAX_D_FACTOR 1
 
+#define PUSHASSIST_CURRENT 30
+#define SIXSTEPTHRESHOLD 9000
+
 typedef struct {
 	q31_t Voltage;
 	uint32_t Speed;
@@ -57,13 +60,6 @@ typedef struct {
 	int16_t phase_current_limit;
 } MotorState_t;
 
-
-
-#define PUSHASSIST_CURRENT 30
-#define SIXSTEPTHRESHOLD 9000
-
-void autodetect();
-
 typedef struct {
 
 	uint16_t wheel_cirumference;
@@ -84,17 +80,22 @@ typedef struct {
 
 } MotorParams_t;
 
+enum {
+  Stop,
+  SixStep,
+  Interpolation,
+  PLL
+};
+
 enum modes {eco=2,normal=0,sport=4};
 enum errors {hall=1,lowbattery=2,overcurrent=4};
 
-void _Error_Handler(char*, int);
+extern volatile uint16_t adcData[8];
 
-/* USER CODE END Private defines */
+void autodetect();
+
+void _Error_Handler(char*, int);
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* __MAIN_H */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -144,7 +144,7 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = STM32F103C8Tx_FLASH.ld
+LDSCRIPT = STM32F103C8Tx_FLASH-development.ld
 
 # libraries
 LIBS = -lc -lm -lnosys -larm_cortexM3l_math
