@@ -8,6 +8,7 @@
 #ifndef INC_DECR_AND_FLASH_H_
 #define INC_DECR_AND_FLASH_H_
 
-int decr_and_flash(uint8_t enc[], uint32_t flash_address);
+int decr_and_flash(uint8_t enc[], uint32_t flash_address, uint16_t update_size);
+
 
 #endif /* INC_DECR_AND_FLASH_H_ */
