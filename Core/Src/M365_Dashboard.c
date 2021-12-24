@@ -402,7 +402,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 			static uint8_t k=0;
 			source = (char *)message;
 			target = (char *)&enc;
-			if(message[2]==0x42){ //chunk 128
+			if(message[2]!=0x42){ //chunk 128
 			memcpy(target,source+6,128);
 			decr_and_flash(enc,flashstartaddress,ui16_update_size);
 			flashstartaddress+=128;
