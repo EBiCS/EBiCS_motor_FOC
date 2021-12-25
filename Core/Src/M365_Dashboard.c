@@ -76,7 +76,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.ESC_version = 0x0222;
 	MT.internal_battery_version = 0x0289;
 	MT.total_riding_time[0]=0xFFFF;
-	strcpy(MT.scooter_serial, "Stancecoke_5");
+	strcpy(MT.scooter_serial, "EBiCS_0.3");
 	MT.ESC_status_2= 0x0800;
 	char *IDp = (char *)proc_ID_address;
 	char *IDs = ((char *)sysinfoaddress)+436;
@@ -135,12 +135,21 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 
 void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTypeDef huart1){
 
-	if(ui32_timeoutcounter>3200&&MT.ESC_status_2 != 0x0802){
+	if(ui32_timeoutcounter>6400&&MT.ESC_status_2 != 0x0802){
+
+
+		ui32_timeoutcounter=0;
+		//printf_("DMA Receive timeout! \n");
+		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		ui8_state=STATE_LOST;
+	  	CLEAR_BIT(DMA1_Channel5->CCR, DMA_CCR_EN);
+	  	DMA1_Channel5->CNDTR=sizeof(ui8_rx_buffer);
+	  	SET_BIT(DMA1_Channel5->CCR, DMA_CCR_EN);
+
 		if (HAL_UART_Receive_DMA(&huart1, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
 			Error_Handler();
 		}
-		ui32_timeoutcounter=0;
-		printf_("DMA Receive timeout! \n");
+
 	}
 
 	ui8_recentpointerposition = sizeof(ui8_rx_buffer) - (DMA1_Channel5->CNDTR); //Pointer of UART1RX DMA Channel
@@ -191,7 +200,7 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 	//while(HAL_UART_GetState(&huart1)!=HAL_UART_STATE_READY){}
 	//HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
 	if(!checkCRC(message, length)){
-	//	55 AA 06 21 64 00 00 00 00 00 74 FF
+	//55 AA 06 21 64 00 00 00 00 00 74 FF
 	//55	AA	8	21	64	0	20	0	0	1	0	12	3F	FF
 
 		switch (message[command]) {
