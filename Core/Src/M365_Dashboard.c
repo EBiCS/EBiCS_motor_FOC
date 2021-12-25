@@ -17,8 +17,8 @@
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 
 UART_HandleTypeDef huart3;
-static uint8_t ui8_rx_buffer[140];
-static uint8_t ui8_dashboardmessage[140];
+static uint8_t ui8_rx_buffer[132];
+static uint8_t ui8_dashboardmessage[132];
 static uint8_t enc[128];
 static uint8_t	ui8_tx_buffer[96];// = {0x55, 0xAA, 0x08, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static uint8_t ui8_oldpointerposition=64;
@@ -76,7 +76,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.ESC_version = 0x0222;
 	MT.internal_battery_version = 0x0289;
 	MT.total_riding_time[0]=0xFFFF;
-	strcpy(MT.scooter_serial, "EBiCS_0.3");
+	strcpy(MT.scooter_serial, "EBiCS_0.1");
 	MT.ESC_status_2= 0x0800;
 	char *IDp = (char *)proc_ID_address;
 	char *IDs = ((char *)sysinfoaddress)+436;
@@ -135,7 +135,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 
 void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTypeDef huart1){
 
-	if(ui32_timeoutcounter>6400&&MT.ESC_status_2 != 0x0802){
+	if(ui32_timeoutcounter>3200&&MT.ESC_status_2 != 0x0802){
 
 
 		ui32_timeoutcounter=0;
@@ -152,6 +152,7 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTyp
 
 	}
 
+
 	ui8_recentpointerposition = sizeof(ui8_rx_buffer) - (DMA1_Channel5->CNDTR); //Pointer of UART1RX DMA Channel
 		if (ui8_recentpointerposition<ui8_oldpointerposition){
 			ui8_oldpointerposition=ui8_recentpointerposition-1;
@@ -163,7 +164,9 @@ void search_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, UART_HandleTyp
 			case STATE_LOST: { //if no message start is detected yet, search for start pattern 0x55 0xAA
 				if(ui8_rx_buffer[ui8_oldpointerposition]==0xAA&&ui8_rx_buffer[ui8_oldpointerposition-1]==0x55){
 					ui8_messagestartpos=ui8_oldpointerposition-1;
+					if(ui8_messagestartpos<sizeof(ui8_rx_buffer)-24){
 					ui8_state=STATE_START_DETECTED;
+					}
 				}
 			}
 				break;
