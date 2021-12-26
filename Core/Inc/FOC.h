@@ -9,6 +9,7 @@
 #define FOC_H_
 
 #include <arm_math.h>
+#include "motor.h"
 #include "config.h"
 //exportetd functions
 void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,  MotorState_t* MS_FOC);

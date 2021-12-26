@@ -39,11 +39,11 @@ typedef enum {
 	VERY_LONG_PRESS
 } eButtonEvent ;
 
-void checkButton(MotorState_t *MS);
+void checkButton(M365State_t *M365State);
 void PWR_init();
 void poweroff(void);
 int8_t check_power_button_pressed_state();
 void power_control(uint8_t pwr);
-void set_mode(MotorState_t *MS);
+void set_mode(M365State_t *M365State);
 
 #endif /* TASK_PWR_H_ */

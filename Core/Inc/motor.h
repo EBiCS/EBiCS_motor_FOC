@@ -15,13 +15,6 @@ extern "C" {
 //#define FAST_LOOP_LOG
 //#define DISABLE_DYNAMIC_ADC
 
-#define SPEEDLIMIT_ECO 20
-#define SPEEDLIMIT_NORMAL 25
-#define SPEEDLIMIT_SPORT 50
-#define PH_CURRENT_MAX_ECO 500
-#define PH_CURRENT_MAX_NORMAL 1000
-#define PH_CURRENT_MAX_SPORT 1500
-
 #define P_FACTOR_I_Q 100
 #define I_FACTOR_I_Q 2
 #define P_FACTOR_I_D 1
@@ -61,7 +54,35 @@ typedef struct {
 } MotorState_t;
 
 typedef struct {
+	q31_t Voltage;
+	uint32_t speed;
+	q31_t i_d;
+	q31_t i_q;
+	q31_t i_q_setpoint;
+	q31_t i_d_setpoint;
+	q31_t i_setpoint_abs;
+	int32_t i_q_setpoint_temp;
+	int32_t i_d_setpoint_temp;
+	q31_t u_d;
+	q31_t u_q;
+	q31_t u_abs;
+	q31_t Battery_Current;
+	uint8_t hall_angle_detect_flag;
+	uint8_t char_dyn_adc_state;
+	uint8_t assist_level;
+	uint8_t regen_level;
+	int8_t Temperature;
+	int8_t system_state;
+	int8_t mode;
+	int8_t error_state;
+	bool light;
+	bool beep;
+	uint8_t shutdown;
+	int8_t speed_limit;
+	int16_t phase_current_limit;
+} MotorStatePublic_t;
 
+typedef struct {
 	uint16_t wheel_cirumference;
 	uint16_t p_Iq;
 	uint16_t i_Iq;
@@ -77,7 +98,6 @@ typedef struct {
 	uint8_t pulses_per_revolution;
 	uint16_t phase_current_max;
 	int16_t spec_angle;
-
 } MotorParams_t;
 
 enum {
@@ -87,12 +107,24 @@ enum {
   PLL
 };
 
-enum modes {eco=2,normal=0,sport=4};
+enum modes {
+  eco=2,
+  normal=0,
+  sport=4
+};
+
 enum errors {hall=1,lowbattery=2,overcurrent=4};
 
+extern q31_t q31_tics_filtered;
 extern volatile uint16_t adcData[8];
 
+int motor_init(MotorStatePublic_t* p_MotorStatePublic);
 void autodetect();
+void runPIcontrol();
+static void motor_slow_loop(void);
+static bool motor_pwm_get_state(void);
+static void motor_disable_pwm(void);
+static void motor_enable_pwm(void);
 
 void _Error_Handler(char*, int);
 

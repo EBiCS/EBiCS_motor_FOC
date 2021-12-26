@@ -91,39 +91,42 @@ eButtonEvent getButtonEvent()
     return button_event ;
 }
 
-void checkButton(MotorState_t *MS) {
-	/* Infinite loop */
-	  if(MS->shutdown>16) power_control(DEV_PWR_OFF);
-	  if(main_loop_counter > 25){
-			switch( getButtonEvent() ){
-				  case NO_PRESS : break ;
-				  case SINGLE_PRESS : {
-					  MS->light = !MS->light;
-					 // commands_printf("SINGLE_PRESS");
-				  } break ;
-				  case VERY_LONG_PRESS :   {
-					  autodetect();
-					 // commands_printf("LONG_PRESS");
-				  } break ;
-				  case LONG_PRESS :		{
+void checkButton(M365State *MS) {
 
-					  MS->beep = 1;
-					  if(MS->shutdown==0)MS->shutdown=1;
+  // check the shutdown counter
+  if (M365State->shutdown > 16) power_control(DEV_PWR_OFF);
+  
+  if (main_loop_counter > 25) {
+    switch (getButtonEvent()) {
+        case NO_PRESS:
+          break;
 
-				  } break ;
+        case SINGLE_PRESS:
+          M365State->light = !M365State->light;
+          break;
+        
+        case VERY_LONG_PRESS:
+          autodetect();
+          break;
+        
+        case LONG_PRESS:
+          M365State->beep = 1;
+          
+          if (M365State->shutdown == 0)
+            M365State->shutdown = 1;
+          
+          break;
 
-				  case DOUBLE_PRESS : {
-					 // commands_printf("DOUBLE_PRESS");
-					  MS->mode=MS->mode+2;
-					  if(MS->mode>4)MS->mode=0;
-					  set_mode(MS);
-				  } break ;
-			 }
-		}
-		main_loop_counter++;
-
-
-
+        case DOUBLE_PRESS:
+          M365State->mode=M365State->mode+2;
+          
+          if(M365State->mode>4)M365State->mode=0;
+            set_mode(MS);
+        
+          break;
+      }
+  }
+  main_loop_counter++;
 }
 
 void PWR_init() {
@@ -163,25 +166,23 @@ void power_control(uint8_t pwr)
 	}
 }
 
-void set_mode(MotorState_t *MS){
+void set_mode(M365State_t *M365State){
 
-	switch( MS->mode){
-		case eco :{
-			MS->phase_current_limit=PH_CURRENT_MAX_ECO;
-			MS->speed_limit=SPEEDLIMIT_ECO;
+	switch(M365State->mode){
+		case eco:
+			M365State->phase_current_limit=PH_CURRENT_MAX_ECO;
+			M365State->speed_limit=SPEEDLIMIT_ECO;
+			break;
 
-			} break ;
-		case normal :{
-			MS->phase_current_limit=PH_CURRENT_MAX_NORMAL;
-			MS->speed_limit=SPEEDLIMIT_NORMAL;
+		case normal:
+			M365State->phase_current_limit=PH_CURRENT_MAX_NORMAL;
+			M365State->speed_limit=SPEEDLIMIT_NORMAL;
+      break;
 
-			} break ;
-		case sport :{
-			MS->phase_current_limit=PH_CURRENT_MAX_SPORT;
-			MS->speed_limit=SPEEDLIMIT_SPORT;
-
-			} break ;
-
+		case sport:
+			M365State->phase_current_limit=PH_CURRENT_MAX_SPORT;
+			M365State->speed_limit=SPEEDLIMIT_SPORT;
+      break;
 	}
 	calculate_tic_limits();
 }

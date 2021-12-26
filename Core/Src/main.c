@@ -79,10 +79,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_TIM1_Init(void);
-static void MX_ADC2_Init(void);
-static void MX_TIM2_Init(void);
-static void MX_TIM3_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -95,8 +91,10 @@ int16_t i16_ph3_current = 0;
 uint16_t i = 0;
 uint16_t j = 0;
 uint16_t k = 0;
+volatile uint16_t adcData[8];
 volatile uint8_t ui8_adc_regular_flag = 0;
-volatile int8_t i8_slow_loop_flag = 0;
+volatile uint16_t ui16_reg_adc_value;
+volatile uint32_t ui32_reg_adc_value_filter;
 volatile uint8_t ui8_print_flag = 0;
 volatile uint8_t ui8_UART_flag = 0;
 volatile uint8_t ui8_Push_Assist_flag = 0;
@@ -116,8 +114,6 @@ uint32_t uint32_torque_cumulated = 0;
 uint32_t uint32_PAS_cumulated = 32000;
 uint16_t uint16_mapped_throttle = 0;
 uint16_t uint16_mapped_PAS = 0;
-uint16_t uint16_half_rotation_counter = 0;
-uint16_t uint16_full_rotation_counter = 0;
 int32_t int32_current_target = 0;
 
 q31_t q31_Battery_Voltage = 0;
@@ -127,13 +123,10 @@ uint8_t assist_factor[10] = { 0, 51, 102, 153, 204, 255, 255, 255, 255, 255 };
 
 uint16_t VirtAddVarTab[NB_OF_VAR] = { 0x01, 0x02, 0x03 };
 
-static q31_t tics_lower_limit;
-static q31_t tics_higher_limit;
-//variables for display communication
-
 #define iabs(x) (((x) >= 0)?(x):-(x))
 
-MotorState_t MS;
+M365State_t M365State;
+MotorStatePublic_t MSPublic;
 MotorParams_t MP;
 
 int16_t battery_percent_fromcapacity = 50; //Calculation of used watthours not implemented yet
@@ -142,10 +135,6 @@ int16_t current_display;				//pepared battery current for display
 
 int16_t power;
 
-static void dyn_adc_state(q31_t angle);
-static void set_inj_channel(char state);
-void get_standstill_position();
-void runPIcontrol();
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);
 int32_t speed_to_tics(uint8_t speed);
@@ -163,136 +152,80 @@ q31_t speed_PLL (q31_t ist, q31_t soll);
 #define ADC_CHANB 4
 #define ADC_CHANC 5
 
-volatile uint32_t systick_cnt1 = 0;
+volatile uint32_t systick_cnt = 0;
 
 void UserSysTickHandler(void) {
-  systick_cnt1++;
+  
+  systick_cnt++;
+
+  motor_slow_loop(&MSPublic);
 }
 
 int main(void) {
-	/* USER CODE BEGIN 1 */
-
-	/* USER CODE END 1 */
-
-	/* MCU Configuration----------------------------------------------------------*/
+	/* USER CODE BEGIN */
 
 	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 	HAL_Init();
 
-	/* USER CODE BEGIN Init */
   HAL_SetTickFreq(HAL_TICK_FREQ_100HZ); // set systick at 10ms
-	/* USER CODE END Init */
 
 	/* Configure the system clock */
 	SystemClock_Config();
 
-	/* USER CODE BEGIN SysInit */
-
-	/* USER CODE END SysInit */
-
-	/* Initialize all configured peripherals */
+  // init GPIOS
 	MX_GPIO_Init();
-	MX_DMA_Init();
+
+  // init DMA for ADC, USART_1 and USART_3
+	DMA_Init();
+
+  // init USART_1 and USART_3
 	MX_USART1_UART_Init();
 	MX_USART3_UART_Init();
 
-	calculate_tic_limits();
-
-	//Virtual EEPROM init
+	// Virtual EEPROM init
 	HAL_FLASH_Unlock();
 	EE_Init();
 	HAL_FLASH_Lock();
 
+  // init ADCs
+	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adcData, 6);
+	HAL_ADC_Start_IT(&hadc2);
+
+
 	M365Dashboard_init(huart1);
 	PWR_init();
 
-#if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-	printf_("Lishui FOC v0.9 \n ");
-#endif
-	/* USER CODE END 2 */
+  // set speed limit to 0. Once the dashboard communicates, it will overwrite this 0 speed limit
+  M365State.speed_limit = 0;
+  motor_init(&M365State);
 
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
 	while (1) {
 
-		//display message processing
-		search_DashboardMessage(&MS, &MP, huart1);
-		checkButton(&MS);
+		// display message processing
+		search_DashboardMessage(&M365State, &MP, huart1);
+		checkButton(&M365State);
 
-#if 0 //(DISPLAY_TYPE == DISPLAY_TYPE_DEBUG) // && defined(FAST_LOOP_LOG))
-		if(ui8_UART_TxCplt_flag){
-	        sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n", e_log[k][0], e_log[k][1], e_log[k][2],e_log[k][3],e_log[k][4],e_log[k][5]); //>>24
-			i=0;
-			while (buffer[i] != '\0')
-			{i++;}
-			ui8_UART_TxCplt_flag=0;
-			HAL_UART_Transmit_DMA(&huart3, (uint8_t *)&buffer, i);
-			k++;
-			if (k>299){
-				k=0;
-				ui8_debug_state=0;
-				//Obs_flag=0;
-			}
-		}
-#endif
-
-#ifdef ADCTHROTTLE
-		MS.i_q_setpoint=map(ui16_reg_adc_value,THROTTLEOFFSET,THROTTLEMAX,0,MS.phase_current_limit);
-#endif
-
-		if (i8_slow_loop_flag) {
-       i8_slow_loop_flag = 0;
+		//slow loop process, every 20ms
+		if ((systick_cnt % 2) == 0) {
 
       // low pass filter measured battery voltage 
       static q31_t q31_batt_voltage_acc = 0;
       q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 7);
       q31_batt_voltage_acc += adcData[ADC_VOLTAGE];
       q31_Battery_Voltage = (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
+
+      // increase shutdown counter
+			if (M365State.shutdown) M365State.shutdown++;
+
+      // temperature
+			M365State.Temperature = (adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
+
+      // battery voltage
+			M365State.Voltage = q31_Battery_Voltage;
 		}
-
-		//slow loop process, every 20ms
-		if ((systick_cnt1 % 2) == 0) {
-			if(MS.shutdown)MS.shutdown++;
-
-			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
-			MS.Voltage = q31_Battery_Voltage;
-			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_setpoint_abs, MS.i_q_setpoint, MS.i_q, MS.i_d_setpoint, MS.i_d, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
-			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
-			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
-
-			if (!MS.i_q_setpoint&&(uint16_full_rotation_counter > 7999
-					|| uint16_half_rotation_counter > 7999)
-					&& READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
-				CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
-				MS.system_state=Stop;
-				get_standstill_position();
-				//printf_("shutdown %d\n", q31_rotorposition_absolute);
-			}
-
-#if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG && !defined(FAST_LOOP_LOG))
-                //Jon Pry uses this crazy string for automated data collection
-	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, T: %d, Q: %d, D: %d, %d, %d, S: %d, %d, V: %d, C: %d\r\n", int32_current_target, (int16_t) raw_inj1,(int16_t) raw_inj2, (int32_t) MS.char_dyn_adc_state, q31_rotorposition_hall, q31_rotorposition_absolute, (int16_t) (ui16_reg_adc_value),adcData[ADC_CHANA],adcData[ADC_CHANB],adcData[ADC_CHANC],i16_ph1_current,i16_ph2_current, uint16_mapped_throttle, MS.i_q, MS.i_d, MS.u_q, MS.u_d,q31_tics_filtered>>3,tics_higher_limit, adcData[ADC_VOLTAGE], MS.Battery_Current);
-	  		sprintf_(buffer, "%d, %d, %d, %d, %d, %d, %d, %d, %d\r\n", MS.i_q_setpoint, MS.i_q,q31_tics_filtered>>3, adcData[ADC_THROTTLE],MS.i_q_setpoint, MS.u_d, MS.u_q , MS.u_abs,  MS.Battery_Current);
-	  	//	sprintf_(buffer, "%d, %d, %d, %d, %d, %d\r\n",(uint16_t)adcData[0],(uint16_t)adcData[1],(uint16_t)adcData[2],(uint16_t)adcData[3],(uint16_t)(adcData[4]),(uint16_t)(adcData[5])) ;
-
-	  	  i=0;
-		  while (buffer[i] != '\0')
-		  {i++;}
-		 HAL_UART_Transmit_DMA(&huart3, (uint8_t *)&buffer, i);
-		 HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-
-		 ui8_print_flag = 0;
-
-#endif
-		}
-
-		/* USER CODE END WHILE */
-
-		/* USER CODE BEGIN 3 */
-
 	}
-	/* USER CODE END 3 */
-
+  
+  /* USER CODE END */
 }
 
 /**
@@ -401,32 +334,6 @@ static void MX_USART3_UART_Init(void) {
 }
 
 /**
- * Enable DMA controller clock
- */
-static void MX_DMA_Init(void) {
-
-	/* DMA controller clock enable */
-	__HAL_RCC_DMA1_CLK_ENABLE();
-
-	/* DMA interrupt init */
-	/* DMA1_Channel1_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-	/* DMA1_Channel4_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-	/* DMA1_Channel5_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
-	/* DMA1_Channel4_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-	/* DMA1_Channel5_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-}
-
-/**
  * @brief GPIO Initialization Function
  * @param None
  * @retval None
@@ -488,7 +395,7 @@ static void MX_GPIO_Init(void) {
 // regular ADC callback
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	ui32_reg_adc_value_filter -= ui32_reg_adc_value_filter >> 4;
-	ui32_reg_adc_value_filter += adcData[ADC_THROTTLE]; //HAL_ADC_GetValue(hadc);
+	ui32_reg_adc_value_filter += adcData[ADC_THROTTLE];
 	ui16_reg_adc_value = ui32_reg_adc_value_filter >> 4;
 
 	ui8_adc_regular_flag = 1;
@@ -502,6 +409,42 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
 
+}
+
+/**
+ * Enable DMA controller clock
+ */
+static void DMA_Init(void) {
+
+	/* DMA controller clock enable */
+	__HAL_RCC_DMA1_CLK_ENABLE();
+
+	/* DMA interrupt init */
+
+	// DMA channel 1: used for ADC
+  /* DMA1_Channel1_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+  // DMA channel 2: used for USART3_TX
+	/* DMA1_Channel4_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+
+  // DMA channel 3: used for USART3_RX
+	/* DMA1_Channel5_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+
+  // DMA channel 4: used for USART1_TX
+	/* DMA1_Channel4_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+
+  // DMA channel 5: used for USART1_RX
+	/* DMA1_Channel5_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 }
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
@@ -520,21 +463,6 @@ int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 	// round down if mapping smaller ranges to bigger ranges
 	else
 		return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-int32_t speed_to_tics(uint8_t speed) {
-	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * speed * 10);
-}
-
-int8_t tics_to_speed(uint32_t tics) {
-	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * tics * 10);;
-}
-
-void calculate_tic_limits(void){
-	tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
-			/ (6 * GEAR_RATIO * MS.speed_limit * 10); //tics=wheelcirc*timerfrequency/(no. of hallevents per rev*gear-ratio*speedlimit)*3600/1000000
-	tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
-			/ (6 * GEAR_RATIO * (MS.speed_limit + 2) * 10);
 }
 
 /* USER CODE END 4 */

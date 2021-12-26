@@ -103,6 +103,29 @@ void Error_Handler(void);
 #define PUSHASSIST_CURRENT 30
 #define SIXSTEPTHRESHOLD 9000
 
+#define SPEEDLIMIT_ECO 20
+#define SPEEDLIMIT_NORMAL 25
+#define SPEEDLIMIT_SPORT 50
+#define PH_CURRENT_MAX_ECO 500
+#define PH_CURRENT_MAX_NORMAL 1000
+#define PH_CURRENT_MAX_SPORT 1500
+
+typedef struct {
+  q31_t Voltage;
+  int16_t phase_current_limit;
+	q31_t Battery_Current;
+	uint8_t hall_angle_detect_flag;
+	uint8_t char_dyn_adc_state;
+	uint8_t assist_level;
+	uint8_t regen_level;
+	int8_t Temperature;
+	int8_t mode;
+	bool light;
+	bool beep;
+	uint8_t shutdown;
+	int8_t speed_limit;
+} M365State_t;
+
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);
 
