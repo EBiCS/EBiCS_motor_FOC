@@ -37,6 +37,7 @@ BUILD_DIR = build
 # C sources
 C_SOURCES =  \
 Core/Src/main.c \
+Core/Src/motor.c \
 Core/Src/FOC.c \
 Core/Src/eeprom.c \
 Core/Src/button_processing.c \

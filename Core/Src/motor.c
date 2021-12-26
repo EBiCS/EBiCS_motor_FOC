@@ -1,9 +1,10 @@
-#include "motor.h"
-
 #include <stdlib.h>
 #include <arm_math.h>
 #include "FOC.h"
 #include "main.h"
+#include "motor.h"
+#include "print.h"
+#include "eeprom.h"
 
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
@@ -82,7 +83,7 @@ void motor_autodetect() {
 	uint8_t zerocrossing = 0;
 	q31_t diffangle = 0;
 	HAL_Delay(5);
-	for (i = 0; i < 1080; i++) {
+	for (uint32_t i = 0; i < 1080; i++) {
 		q31_rotorposition_absolute += 11930465; //drive motor in open loop with steps of 1�
 		HAL_Delay(5);
 		if (q31_rotorposition_absolute > -60
@@ -170,9 +171,11 @@ void motor_autodetect() {
     MS.u_q=0;
     q31_tics_filtered=1000000;
 
+  // store variables on flash memory
 	HAL_FLASH_Unlock();
-	EE_WriteVariable(EEPROM_POS_SPEC_ANGLE,
-			q31_rotorposition_motor_specific >> 16);
+
+	EE_WriteVariable(EEPROM_POS_SPEC_ANGLE, q31_rotorposition_motor_specific >> 16);
+
 	if (i8_recent_rotor_direction == 1) {
 		EE_WriteVariable(EEPROM_POS_HALL_ORDER, 1);
 		i16_hall_order = 1;
@@ -194,15 +197,28 @@ void motor_autodetect() {
 
 }
 
-void calculate_tic_limits(void){
+void calculate_tic_limits(int8_t speed_limit){
 	tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
-			/ (6 * GEAR_RATIO * M365State.speed_limit * 10); //tics=wheelcirc*timerfrequency/(no. of hallevents per rev*gear-ratio*speedlimit)*3600/1000000
+			/ (6 * GEAR_RATIO * speed_limit * 10); //tics=wheelcirc*timerfrequency/(no. of hallevents per rev*gear-ratio*speedlimit)*3600/1000000
 	tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
-			/ (6 * GEAR_RATIO * (M365State.speed_limit + 2) * 10);
+			/ (6 * GEAR_RATIO * (speed_limit + 2) * 10);
+}
+
+static void motor_disable_pwm(void) {
+  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+  MS.system_state = Stop;
+}
+
+static void motor_enable_pwm(void) {
+  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+}
+
+static bool motor_pwm_get_state(void) {
+  return READ_BIT(TIM1->BDTR, TIM_BDTR_MOE);
 }
 
 // call every 10ms
-static int motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
+static void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 
   // i_q current limits
   if (MS.i_q_setpoint_temp > MS.phase_current_limit) {
@@ -280,125 +296,6 @@ static int motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
       motor_disable_pwm();
     }
   }
-}
-
-int motor_init(MotorStatePublic_t &p_MotorStatePublic) {
-  calculate_tic_limits(p_MotorStatePublic->speed_limit);
-
-	/* Initialize all configured peripherals */
-	GPIO_Init();
-	DMA_Init();
-
-	// initialize MS struct.
-	MS.hall_angle_detect_flag = 1;
-	MS.Speed = 128000;
-	MS.assist_level = 1;
-	MS.regen_level = 7;
-	MS.i_q_setpoint = 0;
-	MS.i_d_setpoint = 0;
-
-	MS.phase_current_limit = PH_CURRENT_MAX_NORMAL;
-	MS.speed_limit = SPEEDLIMIT_NORMAL;
-
-	ADC1_Init();
-	/* Run the ADC calibration */
-	if (HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) {
-		/* Calibration Error */
-		Error_Handler();
-	}
-	ADC2_Init();
-	/* Run the ADC calibration */
-	if (HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK) {
-		/* Calibration Error */
-		Error_Handler();
-	}
-
-	SET_BIT(ADC1->CR2, ADC_CR2_JEXTTRIG); //external trigger enable
-	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
-	SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG); //external trigger enable
-	__HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC);
-
-  // Timers
-	TIM1_Init(); //Hier die Reihenfolge getauscht!
-	TIM2_Init();
-	TIM3_Init();
-
-	// Start Timer 1
-	if (HAL_TIM_Base_Start_IT(&htim1) != HAL_OK) {
-		/* Counter Enable Error */
-		Error_Handler();
-	}
-
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-
-	HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_4);
-
-	TIM1->CCR4 = TRIGGER_DEFAULT; //ADC sampling just before timer overflow (just before middle of PWM-Cycle)
-  //PWM Mode 1: Interrupt at counting down.
-
-	// Start Timer 2
-	if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) {
-		/* Counter Enable Error */
-		Error_Handler();
-	}
-
-	// Start Timer 3
-	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
-		/* Counter Enable Error */
-		Error_Handler();
-	}
-
-	TIM1->CCR1 = 1023; //set initial PWM values
-	TIM1->CCR2 = 1023;
-	TIM1->CCR3 = 1023;
-
-	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM
-
-	HAL_Delay(1000);
-
-  // average measured ADC phase currents, to store as the offset of each one
-	for (i = 0; i < 16; i++) {
-		
-    while (!ui8_adc_regular_flag) { } // wait here for the flag
-
-		ui16_ph1_offset += adcData[ADC_CHANA];
-		ui16_ph2_offset += adcData[ADC_CHANB];
-		ui16_ph3_offset += adcData[ADC_CHANC];
-		ui8_adc_regular_flag = 0;
-	}
-	ui16_ph1_offset = ui16_ph1_offset >> 4;
-	ui16_ph2_offset = ui16_ph2_offset >> 4;
-	ui16_ph3_offset = ui16_ph3_offset >> 4;
-
-	printf_("phase current offsets:  %d, %d, %d \n ", ui16_ph1_offset,
-			ui16_ph2_offset, ui16_ph3_offset);
-
-  ADC1->JSQR=JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
-  ADC1->JOFR1 = ui16_ph1_offset;
-
-  ui8_adc_offset_done_flag=1;
-
-  // TODO init EEPROM
-
-  EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
- 
-  // set motor specific angle to value from emulated EEPROM only if valid
-  if(MP.spec_angle!=0xFFFF) {
-    q31_rotorposition_motor_specific = MP.spec_angle<<16;
-    EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
-  } else {
-    autodetect();
-  }
-
-	HAL_Delay(5);
-	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM
-
-	get_standstill_position();
 }
 
 /**
@@ -690,25 +587,6 @@ static void TIM3_Init(void) {
 
 }
 
-/**
- * @brief USART1 Initialization Function
- * @param None
- * @retval None
- */
-static void MX_USART1_UART_Init(void) {
-	huart1.Instance = USART1;
-	huart1.Init.BaudRate = 115200;
-	huart1.Init.WordLength = UART_WORDLENGTH_8B;
-	huart1.Init.StopBits = UART_STOPBITS_1;
-	huart1.Init.Parity = UART_PARITY_NONE;
-	huart1.Init.Mode = UART_MODE_TX_RX;
-	huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-	huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-	if (HAL_HalfDuplex_Init(&huart1) != HAL_OK) {
-		Error_Handler();
-	}
-}
-
 static void GPIO_Init(void) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
@@ -750,122 +628,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			uint16_half_rotation_counter++;	//half rotation counter for motor standstill detectio
     }
   }
-}
-
-//injected ADC
-void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	//for oszi-check of used time in FOC procedere
-	//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
-	ui32_tim1_counter++;
-
-	if (!ui8_adc_offset_done_flag) {
-		i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1,
-				ADC_INJECTED_RANK_1);
-		i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2,
-				ADC_INJECTED_RANK_1);
-
-		ui8_adc_inj_flag = 1;
-	} else {
-
-#ifdef DISABLE_DYNAMIC_ADC
-  i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-  i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
-#else
-  switch (MS.char_dyn_adc_state) //read in according to state
-  {
-    case 1: //Phase C at high dutycycles, read from A+B directly
-      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-          ADC_INJECTED_RANK_1);
-      i16_ph1_current = raw_inj1;
-
-      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-          ADC_INJECTED_RANK_1);
-      i16_ph2_current = raw_inj2;
-      break;
-
-    case 2: //Phase A at high dutycycles, read from B+C (A = -B -C)
-      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-          ADC_INJECTED_RANK_1);
-      i16_ph2_current = raw_inj2;
-
-      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-          ADC_INJECTED_RANK_1);
-      i16_ph1_current = -i16_ph2_current - raw_inj1;
-      break;
-
-    case 3: //Phase B at high dutycycles, read from A+C (B=-A-C)
-      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-          ADC_INJECTED_RANK_1);
-      i16_ph1_current = raw_inj1;
-      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-          ADC_INJECTED_RANK_1);
-      i16_ph2_current = -i16_ph1_current - raw_inj2;
-      break;
-
-    case 0: //timeslot too small for ADC
-      //do nothing
-      break;
-  } // end case
-#endif
-
-  __disable_irq(); //ENTER CRITICAL SECTION!!!!!!!!!!!!!
-
-  //extrapolate recent rotor position
-  ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
-  if (MS.hall_angle_detect_flag) {
-    if (ui16_timertics<SIXSTEPTHRESHOLD && ui16_tim2_recent<200) ui8_6step_flag = 0;
-    if (ui16_timertics>(SIXSTEPTHRESHOLD*6)>>2) ui8_6step_flag = 1;
-
-#ifdef SPEED_PLL
-    q31_rotorposition_PLL += q31_angle_per_tic;
-#endif
-
-    if (ui16_tim2_recent < ui16_timertics+(ui16_timertics>>2) && !ui8_overflow_flag && !ui8_6step_flag) { //prevent angle running away at standstill
-#ifdef SPEED_PLL
-			q31_rotorposition_absolute = q31_rotorposition_PLL;
-			MS.system_state = PLL;
-#else
-      q31_rotorposition_absolute = q31_rotorposition_hall
-         + (q31_t) (i16_hall_order * i8_recent_rotor_direction
-        * ((10923 * ui16_tim2_recent) / ui16_timertics)
-        << 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
-      
-      MS.system_state = Interpolation;
-#endif
-			} else {
-				ui8_overflow_flag = 1;
-				q31_rotorposition_absolute = q31_rotorposition_hall;//-(((((REVERSE*DEG_plus60)>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
-				MS.system_state = SixStep;
-			}
-		} //end if hall angle detect
-
-  __enable_irq(); //EXIT CRITICAL SECTION!!!!!!!!!!!!!!
-
-#ifndef DISABLE_DYNAMIC_ADC
-		//get the Phase with highest duty cycle for dynamic phase current reading
-		dyn_adc_state(q31_rotorposition_absolute);
-
-		//set the according injected channels to read current at Low-Side active time
-		if (MS.char_dyn_adc_state != char_dyn_adc_state_old) {
-			set_inj_channel(MS.char_dyn_adc_state);
-			char_dyn_adc_state_old = MS.char_dyn_adc_state;
-		}
-#endif
-
-		// call FOC procedure if PWM is enabled
-		if (READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
-			FOC_calculation(i16_ph1_current, i16_ph2_current,
-					q31_rotorposition_absolute, &MS);
-		}
-
-		//set PWM
-		TIM1->CCR1 = (uint16_t) switchtime[0];
-		TIM1->CCR2 = (uint16_t) switchtime[1];
-		TIM1->CCR3 = (uint16_t) switchtime[2];
-
-		//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
-
-	} // end else
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -1145,19 +907,6 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
   return q31_d_dc;
 }
 
-static void motor_disable_pwm(void) {
-  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);
-  MS.system_state = Stop;
-}
-
-static void motor_enable_pwm(void) {
-  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
-}
-
-static bool motor_pwm_get_state(void) {
-  return READ_BIT(TIM1->BDTR, TIM_BDTR_MOE);
-}
-
 /**
  * @brief  This function is executed in case of error occurrence.
  * @retval None
@@ -1173,6 +922,241 @@ void _Error_Handler(char *file, int line) {
 	/* User can add his own implementation to report the HAL error return state */
 	while (1) {
 	}
+}
+
+int motor_init(MotorStatePublic_t* p_MotorStatePublic) {
+  calculate_tic_limits(p_MotorStatePublic->speed_limit);
+
+	/* Initialize all configured peripherals */
+	GPIO_Init();
+	DMA_Init();
+
+	// initialize MS struct.
+	MS.hall_angle_detect_flag = 1;
+	MS.Speed = 128000;
+	MS.assist_level = 1;
+	MS.regen_level = 7;
+	MS.i_q_setpoint = 0;
+	MS.i_d_setpoint = 0;
+
+	MS.phase_current_limit = PH_CURRENT_MAX_NORMAL;
+	MS.speed_limit = SPEEDLIMIT_NORMAL;
+
+	ADC1_Init();
+	/* Run the ADC calibration */
+	if (HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) {
+		/* Calibration Error */
+		Error_Handler();
+	}
+	ADC2_Init();
+	/* Run the ADC calibration */
+	if (HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK) {
+		/* Calibration Error */
+		Error_Handler();
+	}
+
+	SET_BIT(ADC1->CR2, ADC_CR2_JEXTTRIG); //external trigger enable
+	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
+	SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG); //external trigger enable
+	__HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC);
+
+  // Timers
+	TIM1_Init(); //Hier die Reihenfolge getauscht!
+	TIM2_Init();
+	TIM3_Init();
+
+	// Start Timer 1
+	if (HAL_TIM_Base_Start_IT(&htim1) != HAL_OK) {
+		/* Counter Enable Error */
+		Error_Handler();
+	}
+
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+
+	HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_4);
+
+	TIM1->CCR4 = TRIGGER_DEFAULT; //ADC sampling just before timer overflow (just before middle of PWM-Cycle)
+  //PWM Mode 1: Interrupt at counting down.
+
+	// Start Timer 2
+	if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) {
+		/* Counter Enable Error */
+		Error_Handler();
+	}
+
+	// Start Timer 3
+	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
+		/* Counter Enable Error */
+		Error_Handler();
+	}
+
+	TIM1->CCR1 = 1023; //set initial PWM values
+	TIM1->CCR2 = 1023;
+	TIM1->CCR3 = 1023;
+
+	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM
+
+	HAL_Delay(1000);
+
+  // average measured ADC phase currents, to store as the offset of each one
+	for (i = 0; i < 16; i++) {
+		
+    while (!ui8_adc_regular_flag) { } // wait here for the flag
+
+		ui16_ph1_offset += adcData[ADC_CHANA];
+		ui16_ph2_offset += adcData[ADC_CHANB];
+		ui16_ph3_offset += adcData[ADC_CHANC];
+		ui8_adc_regular_flag = 0;
+	}
+	ui16_ph1_offset = ui16_ph1_offset >> 4;
+	ui16_ph2_offset = ui16_ph2_offset >> 4;
+	ui16_ph3_offset = ui16_ph3_offset >> 4;
+
+	printf_("phase current offsets:  %d, %d, %d \n ", ui16_ph1_offset,
+			ui16_ph2_offset, ui16_ph3_offset);
+
+  ADC1->JSQR=JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+  ADC1->JOFR1 = ui16_ph1_offset;
+
+  ui8_adc_offset_done_flag=1;
+
+  // TODO init EEPROM
+
+  EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
+ 
+  // set motor specific angle to value from emulated EEPROM only if valid
+  if(MP.spec_angle!=0xFFFF) {
+    q31_rotorposition_motor_specific = MP.spec_angle<<16;
+    EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
+  } else {
+    autodetect();
+  }
+
+	HAL_Delay(5);
+	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM
+
+	get_standstill_position();
+}
+
+//injected ADC
+void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	//for oszi-check of used time in FOC procedere
+	//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
+	ui32_tim1_counter++;
+
+	if (!ui8_adc_offset_done_flag) {
+		i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1,
+				ADC_INJECTED_RANK_1);
+		i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2,
+				ADC_INJECTED_RANK_1);
+
+		ui8_adc_inj_flag = 1;
+	} else {
+
+#ifdef DISABLE_DYNAMIC_ADC
+  i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+  i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
+#else
+  switch (MS.char_dyn_adc_state) //read in according to state
+  {
+    case 1: //Phase C at high dutycycles, read from A+B directly
+      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
+          ADC_INJECTED_RANK_1);
+      i16_ph1_current = raw_inj1;
+
+      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
+          ADC_INJECTED_RANK_1);
+      i16_ph2_current = raw_inj2;
+      break;
+
+    case 2: //Phase A at high dutycycles, read from B+C (A = -B -C)
+      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
+          ADC_INJECTED_RANK_1);
+      i16_ph2_current = raw_inj2;
+
+      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
+          ADC_INJECTED_RANK_1);
+      i16_ph1_current = -i16_ph2_current - raw_inj1;
+      break;
+
+    case 3: //Phase B at high dutycycles, read from A+C (B=-A-C)
+      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
+          ADC_INJECTED_RANK_1);
+      i16_ph1_current = raw_inj1;
+      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
+          ADC_INJECTED_RANK_1);
+      i16_ph2_current = -i16_ph1_current - raw_inj2;
+      break;
+
+    case 0: //timeslot too small for ADC
+      //do nothing
+      break;
+  } // end case
+#endif
+
+  __disable_irq(); //ENTER CRITICAL SECTION!!!!!!!!!!!!!
+
+  //extrapolate recent rotor position
+  ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
+  if (MS.hall_angle_detect_flag) {
+    if (ui16_timertics<SIXSTEPTHRESHOLD && ui16_tim2_recent<200) ui8_6step_flag = 0;
+    if (ui16_timertics>(SIXSTEPTHRESHOLD*6)>>2) ui8_6step_flag = 1;
+
+#ifdef SPEED_PLL
+    q31_rotorposition_PLL += q31_angle_per_tic;
+#endif
+
+    if (ui16_tim2_recent < ui16_timertics+(ui16_timertics>>2) && !ui8_overflow_flag && !ui8_6step_flag) { //prevent angle running away at standstill
+#ifdef SPEED_PLL
+			q31_rotorposition_absolute = q31_rotorposition_PLL;
+			MS.system_state = PLL;
+#else
+      q31_rotorposition_absolute = q31_rotorposition_hall
+         + (q31_t) (i16_hall_order * i8_recent_rotor_direction
+        * ((10923 * ui16_tim2_recent) / ui16_timertics)
+        << 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
+      
+      MS.system_state = Interpolation;
+#endif
+			} else {
+				ui8_overflow_flag = 1;
+				q31_rotorposition_absolute = q31_rotorposition_hall;//-(((((REVERSE*DEG_plus60)>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
+				MS.system_state = SixStep;
+			}
+		} //end if hall angle detect
+
+  __enable_irq(); //EXIT CRITICAL SECTION!!!!!!!!!!!!!!
+
+#ifndef DISABLE_DYNAMIC_ADC
+		//get the Phase with highest duty cycle for dynamic phase current reading
+		dyn_adc_state(q31_rotorposition_absolute);
+
+		//set the according injected channels to read current at Low-Side active time
+		if (MS.char_dyn_adc_state != char_dyn_adc_state_old) {
+			set_inj_channel(MS.char_dyn_adc_state);
+			char_dyn_adc_state_old = MS.char_dyn_adc_state;
+		}
+#endif
+
+		// call FOC procedure if PWM is enabled
+		if (READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
+			FOC_calculation(i16_ph1_current, i16_ph2_current,
+					q31_rotorposition_absolute, &MS);
+		}
+
+		//set PWM
+		TIM1->CCR1 = (uint16_t) switchtime[0];
+		TIM1->CCR2 = (uint16_t) switchtime[1];
+		TIM1->CCR3 = (uint16_t) switchtime[2];
+
+		//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
+
+	} // end else
 }
 
 #ifdef  USE_FULL_ASSERT

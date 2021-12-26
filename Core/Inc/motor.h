@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdlib.h>
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -121,7 +124,7 @@ extern volatile uint16_t adcData[8];
 int motor_init(MotorStatePublic_t* p_MotorStatePublic);
 void autodetect();
 void runPIcontrol();
-static void motor_slow_loop(void);
+static void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic);
 static bool motor_pwm_get_state(void);
 static void motor_disable_pwm(void);
 static void motor_enable_pwm(void);

@@ -91,7 +91,7 @@ eButtonEvent getButtonEvent()
     return button_event ;
 }
 
-void checkButton(M365State *MS) {
+void checkButton(M365State_t *MS) {
 
   // check the shutdown counter
   if (M365State->shutdown > 16) power_control(DEV_PWR_OFF);

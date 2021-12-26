@@ -135,7 +135,7 @@ extern uint32_t uint32_PAS_counter;
 
 void UserSysTickHandler();
 
-void calculate_tic_limits(void);
+void calculate_tic_limits(int8_t speed_limit);
 
 void _Error_Handler(char*, int);
 

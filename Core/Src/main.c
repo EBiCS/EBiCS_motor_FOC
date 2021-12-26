@@ -77,7 +77,7 @@ int c_squared;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
+static void DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
@@ -197,7 +197,7 @@ int main(void) {
 
   // set speed limit to 0. Once the dashboard communicates, it will overwrite this 0 speed limit
   M365State.speed_limit = 0;
-  motor_init(&M365State);
+  motor_init(&MSPublic);
 
 	while (1) {
 
