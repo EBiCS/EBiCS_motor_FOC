@@ -76,7 +76,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	MT.ESC_version = 0x0222;
 	MT.internal_battery_version = 0x0289;
 	MT.total_riding_time[0]=0xFFFF;
-	strcpy(MT.scooter_serial, "EBiCS_0.1");
+	strcpy(MT.scooter_serial, "EBiCS_0.4");
 	MT.ESC_status_2= 0x0800;
 	char *IDp = (char *)proc_ID_address;
 	char *IDs = ((char *)sysinfoaddress)+436;
@@ -411,26 +411,17 @@ void process_DashboardMessage(MotorState_t *MS, MotorParams_t *MP, uint8_t *mess
 		case 0x08: {
 			//55 AA 42 20 08 00 FA 8B 7B 71 4F 4C 97 16 0B 71 34 89 96 24 DE C2 3B 3E FF 06 B7 3B 69 69 BB 8A 56 10 A0 A0 34 E0 15 65 D2 6E 04 62 4C EB BB 6B 49 C1 7F F6 EA B7 64 F7 AD 5D 4E 8C D1 2C DB 7E EC B6 F4 73 FC A3 2E DE
 			//55 AA 02 23 08 00 D2 FF
-			static uint8_t k=0;
+			static uint8_t packetsize;
+			static uint8_t olddataposition;
+			packetsize  = message[2]-2;
 			source = (char *)message;
 			target = (char *)&enc;
-			if(message[2]!=0x42){ //chunk 128
-			memcpy(target,source+6,128);
-			decr_and_flash(enc,flashstartaddress,ui16_update_size);
-			flashstartaddress+=128;
+			if(olddataposition!=message[5]){
+				memcpy(target,source+6,packetsize);
+				decr_and_flash(enc,flashstartaddress,ui16_update_size,packetsize);
+				flashstartaddress+=packetsize;
 			}
-			else {
-				if (!k){
-					memcpy(target,source+6,64);
-					k++;
-				}
-				else{
-					memcpy(target+64,source+6,64);
-					decr_and_flash(enc,flashstartaddress,ui16_update_size);
-					flashstartaddress+=128;
-					k=0;
-				}
-			}
+			olddataposition=message[5];
 
 
 			ui8_tx_buffer[msglength] = 2;
