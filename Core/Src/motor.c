@@ -14,6 +14,10 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
+#define JSQR_PHASE_A 0b00011000000000000000 //3
+#define JSQR_PHASE_B 0b00100000000000000000 //4
+#define JSQR_PHASE_C 0b00101000000000000000 //5
+
 MotorState_t MS;
 
 uint32_t ui32_tim1_counter = 0;
@@ -67,6 +71,56 @@ const q31_t DEG_plus120 = 1431655765;
 const q31_t DEG_plus180 = 2147483647;
 const q31_t DEG_minus60 = -715827883;
 const q31_t DEG_minus120 = -1431655765;
+
+q31_t speed_PLL(q31_t actual, q31_t target) {
+  static q31_t q31_d_i = 0;
+
+  temp6 = target - actual; // used on fast log only 
+
+  q31_t delta = target - actual;
+  q31_t q31_p = (delta >> P_FACTOR_PLL);   	//7 for Shengyi middrive, 10 for BionX IGH3
+  q31_d_i += (delta >> I_FACTOR_PLL);				//11 for Shengyi middrive, 10 for BionX IGH3
+
+  if (q31_d_i>((DEG_plus60>>19)*500/ui16_timertics)<<16) q31_d_i = ((DEG_plus60>>19)*500/ui16_timertics)<<16;
+  if (q31_d_i<-((DEG_plus60>>19)*500/ui16_timertics)<<16) q31_d_i =- ((DEG_plus60>>19)*500/ui16_timertics)<<16;
+
+  q31_t q31_d_dc = q31_p + q31_d_i;
+
+  // if PWM is disabled, reset q31_d_i
+  if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) q31_d_i = 0;
+
+  return q31_d_dc;
+}
+
+void get_standstill_position() {
+	HAL_Delay(100);
+	HAL_GPIO_EXTI_Callback(GPIO_PIN_4); //read in initial rotor position
+
+	switch (ui8_hall_state) {
+	//6 cases for forward direction
+	case 2:
+		q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;
+		break;
+	case 6:
+		q31_rotorposition_hall = DEG_plus60 + q31_rotorposition_motor_specific;
+		break;
+	case 4:
+		q31_rotorposition_hall = DEG_plus120 + q31_rotorposition_motor_specific;
+		break;
+	case 5:
+		q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;
+		break;
+	case 1:
+		q31_rotorposition_hall = DEG_minus120
+				+ q31_rotorposition_motor_specific;
+		break;
+	case 3:
+		q31_rotorposition_hall = DEG_minus60 + q31_rotorposition_motor_specific;
+		break;
+	}
+
+	q31_rotorposition_absolute = q31_rotorposition_hall;
+}
 
 int32_t speed_to_tics(uint8_t speed) {
 	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * speed * 10);
@@ -197,7 +251,7 @@ void motor_autodetect() {
 
 }
 
-void calculate_tic_limits(int8_t speed_limit){
+void calculate_tic_limits(int8_t speed_limit) {
 	tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
 			/ (6 * GEAR_RATIO * speed_limit * 10); //tics=wheelcirc*timerfrequency/(no. of hallevents per rev*gear-ratio*speedlimit)*3600/1000000
 	tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
@@ -218,7 +272,7 @@ static bool motor_pwm_get_state(void) {
 }
 
 // call every 10ms
-static void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
+void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 
   // i_q current limits
   if (MS.i_q_setpoint_temp > MS.phase_current_limit) {
@@ -616,10 +670,7 @@ static void GPIO_Init(void) {
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim == &htim3) {
-    if (uint32_SPEED_counter < 128000) {
-			uint32_SPEED_counter++;
-		}
-		
+
     if (uint16_full_rotation_counter < 8000) {
 			uint16_full_rotation_counter++;	//full rotation counter for motor standstill detection
     }
@@ -785,36 +836,6 @@ static void set_inj_channel(char state) {
 	}
 }
 
-void get_standstill_position() {
-	HAL_Delay(100);
-	HAL_GPIO_EXTI_Callback(GPIO_PIN_4); //read in initial rotor position
-
-	switch (ui8_hall_state) {
-	//6 cases for forward direction
-	case 2:
-		q31_rotorposition_hall = DEG_0 + q31_rotorposition_motor_specific;
-		break;
-	case 6:
-		q31_rotorposition_hall = DEG_plus60 + q31_rotorposition_motor_specific;
-		break;
-	case 4:
-		q31_rotorposition_hall = DEG_plus120 + q31_rotorposition_motor_specific;
-		break;
-	case 5:
-		q31_rotorposition_hall = DEG_plus180 + q31_rotorposition_motor_specific;
-		break;
-	case 1:
-		q31_rotorposition_hall = DEG_minus120
-				+ q31_rotorposition_motor_specific;
-		break;
-	case 3:
-		q31_rotorposition_hall = DEG_minus60 + q31_rotorposition_motor_specific;
-		break;
-	}
-
-	q31_rotorposition_absolute = q31_rotorposition_hall;
-}
-
 void runPIcontrol(){
 	//PI-control processing
   if (PI_flag) {
@@ -887,49 +908,11 @@ void runPIcontrol(){
   }
 }
 
-q31_t speed_PLL(q31_t actual, q31_t target) {
-  static q31_t q31_d_i = 0;
-
-  temp6 = target - actual; // used on fast log only 
-
-  q31_t delta = target - actual;
-  q31_t q31_p = (delta >> P_FACTOR_PLL);   	//7 for Shengyi middrive, 10 for BionX IGH3
-  q31_d_i += (delta >> I_FACTOR_PLL);				//11 for Shengyi middrive, 10 for BionX IGH3
-
-  if (q31_d_i>((DEG_plus60>>19)*500/ui16_timertics)<<16) q31_d_i = ((DEG_plus60>>19)*500/ui16_timertics)<<16;
-  if (q31_d_i<-((DEG_plus60>>19)*500/ui16_timertics)<<16) q31_d_i =- ((DEG_plus60>>19)*500/ui16_timertics)<<16;
-
-  q31_t q31_d_dc = q31_p + q31_d_i;
-
-  // if PWM is disabled, reset q31_d_i
-  if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) q31_d_i = 0;
-
-  return q31_d_dc;
-}
-
-/**
- * @brief  This function is executed in case of error occurrence.
- * @retval None
- */
-void Error_Handler(void) {
-	/* User can add his own implementation to report the HAL error return state */
-	__disable_irq();
-	while (1) {
-	}
-}
-
-void _Error_Handler(char *file, int line) {
-	/* User can add his own implementation to report the HAL error return state */
-	while (1) {
-	}
-}
-
-int motor_init(MotorStatePublic_t* p_MotorStatePublic) {
+void motor_init(MotorStatePublic_t* p_MotorStatePublic) {
   calculate_tic_limits(p_MotorStatePublic->speed_limit);
 
 	/* Initialize all configured peripherals */
 	GPIO_Init();
-	DMA_Init();
 
 	// initialize MS struct.
 	MS.hall_angle_detect_flag = 1;
@@ -1003,22 +986,9 @@ int motor_init(MotorStatePublic_t* p_MotorStatePublic) {
 
 	HAL_Delay(1000);
 
-  // average measured ADC phase currents, to store as the offset of each one
-	for (i = 0; i < 16; i++) {
-		
-    while (!ui8_adc_regular_flag) { } // wait here for the flag
-
-		ui16_ph1_offset += adcData[ADC_CHANA];
-		ui16_ph2_offset += adcData[ADC_CHANB];
-		ui16_ph3_offset += adcData[ADC_CHANC];
-		ui8_adc_regular_flag = 0;
-	}
-	ui16_ph1_offset = ui16_ph1_offset >> 4;
-	ui16_ph2_offset = ui16_ph2_offset >> 4;
-	ui16_ph3_offset = ui16_ph3_offset >> 4;
-
-	printf_("phase current offsets:  %d, %d, %d \n ", ui16_ph1_offset,
-			ui16_ph2_offset, ui16_ph3_offset);
+  ui16_ph1_offset = p_MotorStatePublic->ui16_ph1_offset;
+  ui16_ph2_offset = p_MotorStatePublic->ui16_ph2_offset;
+  ui16_ph3_offset = p_MotorStatePublic->ui16_ph3_offset;
 
   ADC1->JSQR=JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
   ADC1->JOFR1 = ui16_ph1_offset;
@@ -1027,15 +997,15 @@ int motor_init(MotorStatePublic_t* p_MotorStatePublic) {
 
   // TODO init EEPROM
 
-  EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
+  // EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
  
   // set motor specific angle to value from emulated EEPROM only if valid
-  if(MP.spec_angle!=0xFFFF) {
-    q31_rotorposition_motor_specific = MP.spec_angle<<16;
-    EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
-  } else {
-    autodetect();
-  }
+  // if(MP.spec_angle!=0xFFFF) {
+  //   q31_rotorposition_motor_specific = MP.spec_angle<<16;
+  //   EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
+  // } else {
+  //   autodetect();
+  // }
 
 	HAL_Delay(5);
 	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM

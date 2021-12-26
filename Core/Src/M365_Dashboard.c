@@ -69,7 +69,7 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 
 }
 
-void search_DashboardMessage(M365State_t *M365State, MotorParams_t *MP, UART_HandleTypeDef huart1){
+void search_DashboardMessage(M365State_t* p_M365State, UART_HandleTypeDef huart1){
 
 	if(ui32_timeoutcounter>3200){
 		if (HAL_UART_Receive_DMA(&huart1, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
@@ -105,7 +105,7 @@ void search_DashboardMessage(M365State_t *M365State, MotorParams_t *MP, UART_Han
 			case STATE_LENGTH_DETECTED: { //read whole message and call processing
 				if(ui8_oldpointerposition==ui8_messagestartpos+ui8_messagelength-1){
 					memcpy(ui8_dashboardmessage,ui8_rx_buffer+ui8_messagestartpos,ui8_messagelength);
-					process_DashboardMessage(M365State,  MP, (uint8_t*)&ui8_dashboardmessage,ui8_messagelength,huart1);
+					process_DashboardMessage(p_M365State, (uint8_t*)&ui8_dashboardmessage,ui8_messagelength,huart1);
 					ui8_state=STATE_LOST;
 				  	   CLEAR_BIT(DMA1_Channel5->CCR, DMA_CCR_EN);
 				  	   DMA1_Channel5->CNDTR=sizeof(ui8_rx_buffer);
@@ -123,7 +123,7 @@ void search_DashboardMessage(M365State_t *M365State, MotorParams_t *MP, UART_Han
 		ui32_timeoutcounter++;
 }
 
-void process_DashboardMessage(M365State_t *M365State, MotorParams_t *MP, uint8_t *message, uint8_t length, UART_HandleTypeDef huart1 ){
+void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_t length, UART_HandleTypeDef huart1) {
 	//while(HAL_UART_GetState(&huart1)!=HAL_UART_STATE_READY){}
 	//HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
 	if(!checkCRC(message, length)){
@@ -139,28 +139,28 @@ void process_DashboardMessage(M365State_t *M365State, MotorParams_t *MP, uint8_t
 			ui8_tx_buffer[msglength]=0x08;
 			ui8_tx_buffer[receiver]=0x21;
 			ui8_tx_buffer[command]=message[command];
-			ui8_tx_buffer[Speed]=M365State->Speed;
-			ui8_tx_buffer[Mode]=M365State->mode;
-			ui8_tx_buffer[SOC]=map(M365State->Voltage,33000,42000,0,96);
-			if(M365State->light)ui8_tx_buffer[Light]=64;
+			ui8_tx_buffer[Speed]=p_M365State->speed;
+			ui8_tx_buffer[Mode]=p_M365State->mode;
+			ui8_tx_buffer[SOC]=map(p_M365State->Voltage,33000,42000,0,96);
+			if(p_M365State->light)ui8_tx_buffer[Light]=64;
 			else ui8_tx_buffer[Light]=0;
-			ui8_tx_buffer[Beep]= M365State->beep;
+			ui8_tx_buffer[Beep]= p_M365State->beep;
 
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
-			if(M365State->beep&&ui8_tx_buffer[Beep])M365State->beep = 0;
+			if(p_M365State->beep&&ui8_tx_buffer[Beep])p_M365State->beep = 0;
 
 			}
 			break;
 
 		case 0x65: {
 			if(map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
-				if(M365State->Speed>2)	M365State->i_q_setpoint_temp =-map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
-				else M365State->i_q_setpoint_temp =0;
+				if(p_M365State->speed>2)	p_M365State->i_q_setpoint_temp =-map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
+				else p_M365State->i_q_setpoint_temp =0;
 				}
 			else{
-				M365State->i_q_setpoint_temp = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,M365State->phase_current_limit);
+				p_M365State->i_q_setpoint_temp = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,p_M365State->phase_current_limit);
 				}
 			}
 			break;
@@ -170,11 +170,11 @@ void process_DashboardMessage(M365State_t *M365State, MotorParams_t *MP, uint8_t
 			//55 AA 0E 23 01 DA 48 FF 73 06 78 78 54 51 53 32 10 67 A2 FA
 
 			if(map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
-				if(M365State->Speed>2)	MS->i_q_setpoint_temp =-map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
-				else M365State->i_q_setpoint_temp =0;
+				if(p_M365State->speed>2) p_M365State->i_q_setpoint_temp =-map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
+				else p_M365State->i_q_setpoint_temp =0;
 				}
 			else{
-				M365State->i_q_setpoint_temp = map(message[8],THROTTLEOFFSET,THROTTLEMAX,0,M365State->phase_current_limit);
+				p_M365State->i_q_setpoint_temp = map(message[8],THROTTLEOFFSET,THROTTLEMAX,0,p_M365State->phase_current_limit);
 				}
 
 
@@ -257,10 +257,7 @@ void process_DashboardMessage(M365State_t *M365State, MotorParams_t *MP, uint8_t
 			}
 			break;
 		}//end switch
-
-
 	}
-
 }
 
 void addCRC(uint8_t * message, uint8_t size){

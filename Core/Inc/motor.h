@@ -83,25 +83,10 @@ typedef struct {
 	uint8_t shutdown;
 	int8_t speed_limit;
 	int16_t phase_current_limit;
+  int16_t ui16_ph1_offset;
+  int16_t ui16_ph2_offset;
+  int16_t ui16_ph3_offset;
 } MotorStatePublic_t;
-
-typedef struct {
-	uint16_t wheel_cirumference;
-	uint16_t p_Iq;
-	uint16_t i_Iq;
-	uint16_t p_Id;
-	uint16_t i_Id;
-	uint16_t TS_coeff;
-	uint16_t PAS_timeout;
-	uint16_t ramp_end;
-	uint16_t throttle_offset;
-	uint16_t throttle_max;
-	uint16_t gear_ratio;
-	uint8_t speedLimit;
-	uint8_t pulses_per_revolution;
-	uint16_t phase_current_max;
-	int16_t spec_angle;
-} MotorParams_t;
 
 enum {
   Stop,
@@ -118,18 +103,10 @@ enum modes {
 
 enum errors {hall=1,lowbattery=2,overcurrent=4};
 
-extern q31_t q31_tics_filtered;
-extern volatile uint16_t adcData[8];
-
-int motor_init(MotorStatePublic_t* p_MotorStatePublic);
-void autodetect();
+void motor_init(MotorStatePublic_t* p_MotorStatePublic);
+void motor_autodetect();
 void runPIcontrol();
-static void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic);
-static bool motor_pwm_get_state(void);
-static void motor_disable_pwm(void);
-static void motor_enable_pwm(void);
-
-void _Error_Handler(char*, int);
+void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic);
 
 #ifdef __cplusplus
 }

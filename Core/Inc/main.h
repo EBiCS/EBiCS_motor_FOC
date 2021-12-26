@@ -124,6 +124,8 @@ typedef struct {
 	bool beep;
 	uint8_t shutdown;
 	int8_t speed_limit;
+  int8_t speed;
+  int32_t i_q_setpoint_temp;
 } M365State_t;
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,

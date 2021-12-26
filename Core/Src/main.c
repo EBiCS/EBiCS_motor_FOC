@@ -22,16 +22,15 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdlib.h>
+#include <arm_math.h>
 #include "print.h"
-#include "motor.h"
 #include "FOC.h"
 #include "config.h"
 #include "eeprom.h"
 #include "button_processing.h"
 #include "M365_Dashboard.h"
-#include <stdlib.h>
-#include <arm_math.h>
+#include "motor.h"
 /* USER CODE END Includes */
 
 /* USER CODE END Includes */
@@ -77,7 +76,6 @@ int c_squared;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void DMA_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
@@ -127,7 +125,6 @@ uint16_t VirtAddVarTab[NB_OF_VAR] = { 0x01, 0x02, 0x03 };
 
 M365State_t M365State;
 MotorStatePublic_t MSPublic;
-MotorParams_t MP;
 
 int16_t battery_percent_fromcapacity = 50; //Calculation of used watthours not implemented yet
 int16_t wheel_time = 1000;//duration of one wheel rotation for speed calculation
@@ -140,10 +137,6 @@ int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 int32_t speed_to_tics(uint8_t speed);
 int8_t tics_to_speed(uint32_t tics);
 q31_t speed_PLL (q31_t ist, q31_t soll);
-
-#define JSQR_PHASE_A 0b00011000000000000000 //3
-#define JSQR_PHASE_B 0b00100000000000000000 //4
-#define JSQR_PHASE_C 0b00101000000000000000 //5
 
 #define ADC_VOLTAGE 0
 #define ADC_THROTTLE 1
@@ -159,6 +152,42 @@ void UserSysTickHandler(void) {
   systick_cnt++;
 
   motor_slow_loop(&MSPublic);
+}
+
+/**
+ * Enable DMA controller clock
+ */
+static void DMA_Init(void) {
+
+	/* DMA controller clock enable */
+	__HAL_RCC_DMA1_CLK_ENABLE();
+
+	/* DMA interrupt init */
+
+	// DMA channel 1: used for ADC
+  /* DMA1_Channel1_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
+  // DMA channel 2: used for USART3_TX
+	/* DMA1_Channel4_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+
+  // DMA channel 3: used for USART3_RX
+	/* DMA1_Channel5_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+
+  // DMA channel 4: used for USART1_TX
+	/* DMA1_Channel4_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+
+  // DMA channel 5: used for USART1_RX
+	/* DMA1_Channel5_IRQn interrupt configuration */
+	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 2, 0);
+	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 }
 
 int main(void) {
@@ -191,18 +220,33 @@ int main(void) {
 	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adcData, 6);
 	HAL_ADC_Start_IT(&hadc2);
 
-
+  // init dashboard
 	M365Dashboard_init(huart1);
 	PWR_init();
 
+  // average measured ADC phase currents, to store as the offset of each one
+  int16_t ui16_ph1_offset = 0;
+  int16_t ui16_ph2_offset = 0;
+  int16_t ui16_ph3_offset = 0;
+	for (uint32_t i = 0; i < 16; i++) {		
+    while (!ui8_adc_regular_flag) { } // wait here for the flag
+		ui16_ph1_offset += adcData[ADC_CHANA];
+		ui16_ph2_offset += adcData[ADC_CHANB];
+		ui16_ph3_offset += adcData[ADC_CHANC];
+		ui8_adc_regular_flag = 0;
+	}
+	MSPublic.ui16_ph1_offset = ui16_ph1_offset >> 4;
+	MSPublic.ui16_ph2_offset = ui16_ph2_offset >> 4;
+	MSPublic.ui16_ph3_offset = ui16_ph3_offset >> 4;
+
   // set speed limit to 0. Once the dashboard communicates, it will overwrite this 0 speed limit
-  M365State.speed_limit = 0;
+  MSPublic.speed_limit = 0;
   motor_init(&MSPublic);
 
 	while (1) {
 
 		// display message processing
-		search_DashboardMessage(&M365State, &MP, huart1);
+		search_DashboardMessage(&M365State, huart1);
 		checkButton(&M365State);
 
 		//slow loop process, every 20ms
@@ -409,42 +453,6 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
 
-}
-
-/**
- * Enable DMA controller clock
- */
-static void DMA_Init(void) {
-
-	/* DMA controller clock enable */
-	__HAL_RCC_DMA1_CLK_ENABLE();
-
-	/* DMA interrupt init */
-
-	// DMA channel 1: used for ADC
-  /* DMA1_Channel1_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-
-  // DMA channel 2: used for USART3_TX
-	/* DMA1_Channel4_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-
-  // DMA channel 3: used for USART3_RX
-	/* DMA1_Channel5_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
-
-  // DMA channel 4: used for USART1_TX
-	/* DMA1_Channel4_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-
-  // DMA channel 5: used for USART1_RX
-	/* DMA1_Channel5_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 }
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,

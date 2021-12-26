@@ -24,7 +24,7 @@
 #include "button_processing.h"
 #include "main.h"
 #include "config.h"
-
+#include "motor.h"
 
 volatile uint32_t main_loop_counter;
 static uint8_t power_button_state = 0;
@@ -91,7 +91,7 @@ eButtonEvent getButtonEvent()
     return button_event ;
 }
 
-void checkButton(M365State_t *MS) {
+void checkButton(M365State_t *M365State) {
 
   // check the shutdown counter
   if (M365State->shutdown > 16) power_control(DEV_PWR_OFF);
@@ -106,7 +106,7 @@ void checkButton(M365State_t *MS) {
           break;
         
         case VERY_LONG_PRESS:
-          autodetect();
+          motor_autodetect();
           break;
         
         case LONG_PRESS:
@@ -121,7 +121,7 @@ void checkButton(M365State_t *MS) {
           M365State->mode=M365State->mode+2;
           
           if(M365State->mode>4)M365State->mode=0;
-            set_mode(MS);
+            set_mode(M365State);
         
           break;
       }
@@ -184,7 +184,7 @@ void set_mode(M365State_t *M365State){
 			M365State->speed_limit=SPEEDLIMIT_SPORT;
       break;
 	}
-	calculate_tic_limits();
+	calculate_tic_limits(M365State->speed_limit);
 }
 
 
