@@ -556,7 +556,7 @@ int main(void) {
 				tics_lower_limit, 0, MS.i_q_setpoint_temp); //ramp down current at speed limit
 
 		if(MS.u_abs>(_U_MAX-10)&&MS.mode==sport){//do flux weakaning
-			MS.i_d_setpoint_temp=map(MS.Speed,(KV*MS.Voltage/10000)-3,(KV*MS.Voltage/10000)+15,0,FW_CURRENT_MAX);
+			MS.i_d_setpoint_temp=map(MS.Speed,(KV*MS.Voltage/10000)-5,(KV*MS.Voltage/10000)+15,0,FW_CURRENT_MAX);
 		}
 		else MS.i_d_setpoint_temp=0;
 
@@ -622,7 +622,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = q31_Battery_Voltage;
-			//printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_setpoint_abs, MS.i_q_setpoint, MS.i_q, MS.i_d_setpoint, MS.i_d, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
+			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_setpoint_abs, (KV*MS.Voltage/10000)-5, MS.i_q, MS.i_d_setpoint, MS.i_d, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
