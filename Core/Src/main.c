@@ -622,7 +622,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = q31_Battery_Voltage;
-			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_setpoint_abs, (KV*MS.Voltage/10000)-5, MS.i_q, MS.i_d_setpoint, MS.i_d, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
+			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.Voltage, ui8_hall_case, ui8_hall_state_old, ui8_hall_state, MS.system_state, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
@@ -1300,13 +1300,8 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 #endif
 			} else {
 				ui8_overflow_flag = 1;
-				//q31_rotorposition_absolute = q31_rotorposition_hall-(DEG_plus60>>1);
-
-			//	if(ui16_timertics>SIXSTEPTHRESHOLD<<1)q31_rotorposition_absolute = q31_rotorposition_hall+REVERSE*(DEG_plus60>>1);
-			//	else {
-				//	temp4=((((DEG_plus60>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
-					q31_rotorposition_absolute = q31_rotorposition_hall;//-(((((REVERSE*DEG_plus60)>>22)*(ui16_timertics-SIXSTEPTHRESHOLD))/SIXSTEPTHRESHOLD)<<22);
-					MS.system_state=SixStep;
+				q31_rotorposition_absolute = q31_rotorposition_hall;//-i8_direction*DEG_plus60; //need to substract 60° in interpolation mode, don't understand why recently
+				MS.system_state=SixStep;
 					//	}
 
 			}
