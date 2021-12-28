@@ -24,4 +24,4 @@ long press: switch off
 very long press: run autodetect  
 
 
-[<img src="https://github.com/Koxx3/SmartESC_STM32_v3/blob/master/Documentation/PCB%20Layout%20M365.PNG">](PCB Layout M365)
+![PCB Layout M365](https://github.com/Koxx3/SmartESC_STM32_v3/blob/master/Documentation/PCB%20Layout%20M365.PNG)
