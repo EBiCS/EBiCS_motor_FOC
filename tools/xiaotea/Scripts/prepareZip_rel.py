@@ -8,8 +8,17 @@ import time
 import shutil
 import os
 
+def changeDir(newPath):
+  try:
+    os.chdir(newPath)
+    print("Directory moved:  newPath")
+  except OSError:
+    print("Directory ", newPath, "does not exist.")
 
+changeDir('../tools')
+    
 cry = XiaoTea()
+
 source='..\debug\SmartESC_v3.bin'
 destination='FIRM.bin'
 shutil.copyfile(source, destination)
