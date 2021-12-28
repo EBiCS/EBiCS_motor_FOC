@@ -8,7 +8,7 @@ Install the [STM Cube IDE](https://www.st.com/en/development-tools/stm32cubeide.
 Start the IDE and install egit from the eclipse marketplace (Help --> Eclipse Marketplace...)  
 Import this repo from github (File --> Import --> git --> Projects from git)  
 
-Edit the file config.h (in the folder Core/Inc) according to your wishes. The default settings should work out of the box, so only change if needed.  
+Edit the file config.h (in the folder Core/Inc) according to your wishes. Working settings for the original M365 are in the comments, so use them to have a proven start setting.  
 
 Click on "Build" (The icon with the hammer)  
 
