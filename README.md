@@ -4,7 +4,7 @@ Use JST PA series 2mm pitch for the connectors. (need to be confirmed)
 This branch works with the original M365 dashboard  
 
 How to use:  
-Install the STM Cube IDE  
+Install the [STM Cube IDE](https://www.st.com/en/development-tools/stm32cubeide.html#overview&secondary=st-get-software)  
 Start the IDE and install egit from the eclipse marketplace (Help --> Eclipse Marketplace...)  
 Import this repo from github (File --> Import --> git --> Projects from git)  
 
