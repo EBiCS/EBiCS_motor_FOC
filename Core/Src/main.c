@@ -74,11 +74,6 @@ int c_squared;
 
 /* USER CODE END PV */
 
-/* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_USART1_UART_Init(void);
-static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -148,11 +143,17 @@ q31_t speed_PLL (q31_t ist, q31_t soll);
 
 volatile uint32_t systick_cnt = 0;
 
+// every 1ms
 void UserSysTickHandler(void) {
+  static uint32_t c;  
   
   systick_cnt++;
 
-  motor_slow_loop(&MSPublic);
+  // every 10ms
+  if ((c % 10) == 0) {
+    motor_slow_loop(&MSPublic);
+  }
+  c++;
 }
 
 /**
@@ -189,86 +190,6 @@ static void DMA_Init(void) {
 	/* DMA1_Channel5_IRQn interrupt configuration */
 	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 2, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-}
-
-int main(void) {
-	/* USER CODE BEGIN */
-
-	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
-
-	/* Configure the system clock */
-	SystemClock_Config();
-
-  // init GPIOS
-	MX_GPIO_Init();
-
-  // init DMA for ADC, USART_1 and USART_3
-	DMA_Init();
-
-  // init USART_1 and USART_3
-	MX_USART1_UART_Init();
-	MX_USART3_UART_Init();
-
-	// Virtual EEPROM init
-	HAL_FLASH_Unlock();
-	EE_Init();
-	HAL_FLASH_Lock();
-
-  // init ADCs
-	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adcData, 6);
-	HAL_ADC_Start_IT(&hadc2);
-
-  // init dashboard
-	M365Dashboard_init(huart1);
-	PWR_init();
-
-  // average measured ADC phase currents, to store as the offset of each one
-  int16_t ui16_ph1_offset = 0;
-  int16_t ui16_ph2_offset = 0;
-  int16_t ui16_ph3_offset = 0;
-	for (uint32_t i = 0; i < 16; i++) {		
-    while (!ui8_adc_regular_flag) { } // wait here for the flag
-		ui16_ph1_offset += adcData[ADC_CHANA];
-		ui16_ph2_offset += adcData[ADC_CHANB];
-		ui16_ph3_offset += adcData[ADC_CHANC];
-		ui8_adc_regular_flag = 0;
-	}
-	MSPublic.ui16_ph1_offset = ui16_ph1_offset >> 4;
-	MSPublic.ui16_ph2_offset = ui16_ph2_offset >> 4;
-	MSPublic.ui16_ph3_offset = ui16_ph3_offset >> 4;
-
-  // set speed limit to 0. Once the dashboard communicates, it will overwrite this 0 speed limit
-  MSPublic.speed_limit = 0;
-  motor_init(&MSPublic);
-
-	while (1) {
-
-		// display message processing
-		search_DashboardMessage(&M365State, huart1);
-		checkButton(&M365State);
-
-		//slow loop process, every 20ms
-		if ((systick_cnt % 2) == 0) {
-
-      // low pass filter measured battery voltage 
-      static q31_t q31_batt_voltage_acc = 0;
-      q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 7);
-      q31_batt_voltage_acc += adcData[ADC_VOLTAGE];
-      q31_Battery_Voltage = (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
-
-      // increase shutdown counter
-			if (M365State.shutdown) M365State.shutdown++;
-
-      // temperature
-			M365State.Temperature = (adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
-
-      // battery voltage
-			M365State.Voltage = q31_Battery_Voltage;
-		}
-	}
-  
-  /* USER CODE END */
 }
 
 /**
@@ -328,7 +249,7 @@ void SystemClock_Config(void) {
  * @param None
  * @retval None
  */
-static void MX_USART1_UART_Init(void) {
+static void USART1_UART_Init(void) {
 
 	/* USER CODE BEGIN USART1_Init 0 */
 
@@ -359,7 +280,7 @@ static void MX_USART1_UART_Init(void) {
  * @param None
  * @retval None
  */
-static void MX_USART3_UART_Init(void) {
+static void USART3_UART_Init(void) {
 
 	huart3.Instance = USART3;
 
@@ -381,7 +302,7 @@ static void MX_USART3_UART_Init(void) {
  * @param None
  * @retval None
  */
-static void MX_GPIO_Init(void) {
+static void GPIO_Init(void) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
 	/* GPIO Ports Clock Enable */
@@ -512,4 +433,82 @@ void assert_failed(uint8_t *file, uint32_t line)
 }
 #endif /* USE_FULL_ASSERT */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+int main(void) {
+	/* USER CODE BEGIN */
+
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
+
+	/* Configure the system clock */
+	SystemClock_Config();
+
+  // init GPIOS
+	GPIO_Init();
+
+  // init DMA for ADC, USART_1 and USART_3
+	DMA_Init();
+
+  // init USART_1 and USART_3
+	USART1_UART_Init();
+	USART3_UART_Init();
+
+	// Virtual EEPROM init
+	HAL_FLASH_Unlock();
+	EE_Init();
+	HAL_FLASH_Lock();
+
+  // average measured ADC phase currents, to store as the offset of each one
+  int16_t ui16_ph1_offset = 0;
+  int16_t ui16_ph2_offset = 0;
+  int16_t ui16_ph3_offset = 0;
+	for (uint32_t i = 0; i < 16; i++) {		
+    while (!ui8_adc_regular_flag) { } // wait here for the flag
+		ui16_ph1_offset += adcData[ADC_CHANA];
+		ui16_ph2_offset += adcData[ADC_CHANB];
+		ui16_ph3_offset += adcData[ADC_CHANC];
+		ui8_adc_regular_flag = 0;
+	}
+	MSPublic.ui16_ph1_offset = ui16_ph1_offset >> 4;
+	MSPublic.ui16_ph2_offset = ui16_ph2_offset >> 4;
+	MSPublic.ui16_ph3_offset = ui16_ph3_offset >> 4;
+
+  // set speed limit to 0. Once the dashboard communicates, it will overwrite this 0 speed limit
+  MSPublic.speed_limit = 0;
+  motor_init(&MSPublic);
+
+  // init ADCs
+	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adcData, 6);
+	HAL_ADC_Start_IT(&hadc2);
+
+  // init dashboard
+	M365Dashboard_init(huart1);
+	PWR_init();
+
+	while (1) {
+
+		// display message processing
+		search_DashboardMessage(&M365State, huart1);
+		checkButton(&M365State);
+
+		//slow loop process, every 20ms
+		if ((systick_cnt % 20) == 0) {
+
+      // low pass filter measured battery voltage 
+      static q31_t q31_batt_voltage_acc = 0;
+      q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 7);
+      q31_batt_voltage_acc += adcData[ADC_VOLTAGE];
+      q31_Battery_Voltage = (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
+
+      // increase shutdown counter
+			if (M365State.shutdown) M365State.shutdown++;
+
+      // temperature
+			M365State.Temperature = (adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
+
+      // battery voltage
+			M365State.Voltage = q31_Battery_Voltage;
+		}
+	}
+  
+  /* USER CODE END */
+}
