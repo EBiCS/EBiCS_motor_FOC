@@ -31,6 +31,7 @@
 #include "button_processing.h"
 #include "M365_Dashboard.h"
 #include "motor.h"
+
 /* USER CODE END Includes */
 
 /* USER CODE END Includes */
@@ -195,8 +196,6 @@ int main(void) {
 
 	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
 	HAL_Init();
-
-  HAL_SetTickFreq(HAL_TICK_FREQ_100HZ); // set systick at 10ms
 
 	/* Configure the system clock */
 	SystemClock_Config();
