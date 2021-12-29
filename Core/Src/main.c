@@ -51,15 +51,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
-DMA_HandleTypeDef hdma_adc1;
-
-TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
-TIM_HandleTypeDef htim3;
-TIM_HandleTypeDef htim4;
-
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
 
@@ -85,10 +76,6 @@ int16_t i16_ph3_current = 0;
 uint16_t i = 0;
 uint16_t j = 0;
 uint16_t k = 0;
-volatile uint16_t adcData[8];
-volatile uint8_t ui8_adc_regular_flag = 0;
-volatile uint16_t ui16_reg_adc_value;
-volatile uint32_t ui32_reg_adc_value_filter;
 volatile uint8_t ui8_print_flag = 0;
 volatile uint8_t ui8_UART_flag = 0;
 volatile uint8_t ui8_Push_Assist_flag = 0;
@@ -120,7 +107,7 @@ uint16_t VirtAddVarTab[NB_OF_VAR] = { 0x01, 0x02, 0x03 };
 #define iabs(x) (((x) >= 0)?(x):-(x))
 
 M365State_t M365State;
-MotorStatePublic_t MSPublic;
+volatile MotorStatePublic_t MSPublic;
 
 int16_t battery_percent_fromcapacity = 50; //Calculation of used watthours not implemented yet
 int16_t wheel_time = 1000;//duration of one wheel rotation for speed calculation
@@ -133,13 +120,6 @@ int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 int32_t speed_to_tics(uint8_t speed);
 int8_t tics_to_speed(uint32_t tics);
 q31_t speed_PLL (q31_t ist, q31_t soll);
-
-#define ADC_VOLTAGE 0
-#define ADC_THROTTLE 1
-#define ADC_TEMP 2
-#define ADC_CHANA 3
-#define ADC_CHANB 4
-#define ADC_CHANC 5
 
 volatile uint32_t systick_cnt = 0;
 
@@ -163,13 +143,6 @@ static void DMA_Init(void) {
 
 	/* DMA controller clock enable */
 	__HAL_RCC_DMA1_CLK_ENABLE();
-
-	/* DMA interrupt init */
-
-	// DMA channel 1: used for ADC
-  /* DMA1_Channel1_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 2, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
   // DMA channel 2: used for USART3_TX
 	/* DMA1_Channel4_IRQn interrupt configuration */
@@ -356,15 +329,6 @@ static void GPIO_Init(void) {
 
 /* USER CODE BEGIN 4 */
 
-// regular ADC callback
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	ui32_reg_adc_value_filter -= ui32_reg_adc_value_filter >> 4;
-	ui32_reg_adc_value_filter += adcData[ADC_THROTTLE];
-	ui16_reg_adc_value = ui32_reg_adc_value_filter >> 4;
-
-	ui8_adc_regular_flag = 1;
-}
-
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
 	ui8_UART_TxCplt_flag = 1;
 
@@ -457,28 +421,9 @@ int main(void) {
 	EE_Init();
 	HAL_FLASH_Lock();
 
-  // average measured ADC phase currents, to store as the offset of each one
-  int16_t ui16_ph1_offset = 0;
-  int16_t ui16_ph2_offset = 0;
-  int16_t ui16_ph3_offset = 0;
-	for (uint32_t i = 0; i < 16; i++) {		
-    while (!ui8_adc_regular_flag) { } // wait here for the flag
-		ui16_ph1_offset += adcData[ADC_CHANA];
-		ui16_ph2_offset += adcData[ADC_CHANB];
-		ui16_ph3_offset += adcData[ADC_CHANC];
-		ui8_adc_regular_flag = 0;
-	}
-	MSPublic.ui16_ph1_offset = ui16_ph1_offset >> 4;
-	MSPublic.ui16_ph2_offset = ui16_ph2_offset >> 4;
-	MSPublic.ui16_ph3_offset = ui16_ph3_offset >> 4;
-
   // set speed limit to 0. Once the dashboard communicates, it will overwrite this 0 speed limit
   MSPublic.speed_limit = 0;
   motor_init(&MSPublic);
-
-  // init ADCs
-	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adcData, 6);
-	HAL_ADC_Start_IT(&hadc2);
 
   // init dashboard
 	M365Dashboard_init(huart1);
@@ -496,14 +441,14 @@ int main(void) {
       // low pass filter measured battery voltage 
       static q31_t q31_batt_voltage_acc = 0;
       q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 7);
-      q31_batt_voltage_acc += adcData[ADC_VOLTAGE];
+      q31_batt_voltage_acc += MSPublic.adcData[ADC_VOLTAGE];
       q31_Battery_Voltage = (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
 
       // increase shutdown counter
 			if (M365State.shutdown) M365State.shutdown++;
 
       // temperature
-			M365State.Temperature = (adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
+			M365State.Temperature = (MSPublic.adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 
       // battery voltage
 			M365State.Voltage = q31_Battery_Voltage;

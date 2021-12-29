@@ -7,6 +7,13 @@
 extern "C" {
 #endif
 
+#define ADC_VOLTAGE 0
+#define ADC_THROTTLE 1
+#define ADC_TEMP 2
+#define ADC_CHANA 3
+#define ADC_CHANB 4
+#define ADC_CHANC 5
+
 // motor hall sensor pins
 #define HALL_3_Pin GPIO_PIN_0
 #define HALL_3_GPIO_Port GPIOB
@@ -83,9 +90,7 @@ typedef struct {
 	uint8_t shutdown;
 	int8_t speed_limit;
 	int16_t phase_current_limit;
-  int16_t ui16_ph1_offset;
-  int16_t ui16_ph2_offset;
-  int16_t ui16_ph3_offset;
+  uint16_t adcData[8]; // point to buffer for ADC1 inputs
 } MotorStatePublic_t;
 
 enum {
@@ -103,10 +108,10 @@ enum modes {
 
 enum errors {hall=1,lowbattery=2,overcurrent=4};
 
-void motor_init(MotorStatePublic_t* p_MotorStatePublic);
+void motor_init(volatile MotorStatePublic_t* p_MotorStatePublic);
 void motor_autodetect();
 void runPIcontrol();
-void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic);
+void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic);
 
 #ifdef __cplusplus
 }
