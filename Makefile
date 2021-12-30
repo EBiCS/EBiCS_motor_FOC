@@ -11,7 +11,7 @@
 # ------------------------------------------------
 
 # uncomment next line to build the code for development and not using the M365 bootloader
-DO_NOT_USE_M365_BOOTLOADER = 1
+DO_NOT_USE_M365_BOOTLOADER = 0
 
 ######################################
 # target
