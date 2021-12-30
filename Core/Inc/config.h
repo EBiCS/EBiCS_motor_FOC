@@ -30,13 +30,14 @@
 #define THROTTLEMAX 175
 #define BRAKEOFFSET 40
 #define BRAKEMAX 190
-#define WHEEL_CIRCUMFERENCE 550
-#define GEAR_RATIO 22
+#define WHEEL_CIRCUMFERENCE 550 //690 for original M365 motor
+#define GEAR_RATIO 11 //15 for original M365 motor
+
 
 #define FW_CURRENT_MAX 0 //max id
 #define KV 10 //kph*10 per volt
 
-#define BATTERYCURRENT_MAX 14000
+#define BATTERYCURRENT_MAX 9000
 #define SPEC_ANGLE -167026406L //BionX IGH3 -143165476
 
 #define REVERSE -1
@@ -47,8 +48,8 @@
 
 #define REGEN_CURRENT_MAX 10000
 
-//#define SPEED_PLL
-#define P_FACTOR_PLL 7
-#define I_FACTOR_PLL 7
+#define SPEED_PLL
+#define P_FACTOR_PLL 9 //7 for original M365 motor
+#define I_FACTOR_PLL 10 //7 for original M365 motor
 
 #endif /* CONFIG_H_ */

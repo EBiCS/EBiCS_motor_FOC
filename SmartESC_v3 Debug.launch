@@ -78,6 +78,6 @@
     <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
         <listEntry value="4"/>
     </listAttribute>
-    <stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;/&gt;"/>
+    <stringAttribute key="org.eclipse.dsf.launch.MEMORY_BLOCKS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;memoryBlockExpressionList context=&quot;reserved-for-future-use&quot;&gt;&lt;gdbmemoryBlockExpression address=&quot;536871316&quot; label=&quot;&amp;amp;(EraseInitStruct)&quot;/&gt;&lt;gdbmemoryBlockExpression address=&quot;134282240&quot; label=&quot;0x0800FC00&quot;/&gt;&lt;gdbmemoryBlockExpression address=&quot;134281216&quot; label=&quot;0x0800F800&quot;/&gt;&lt;gdbmemoryBlockExpression address=&quot;134221824&quot; label=&quot;0x08001000&quot;/&gt;&lt;gdbmemoryBlockExpression address=&quot;134251520&quot; label=&quot;0x08008400&quot;/&gt;&lt;/memoryBlockExpressionList&gt;"/>
     <stringAttribute key="process_factory_id" value="org.eclipse.cdt.dsf.gdb.GdbProcessFactory"/>
 </launchConfiguration>

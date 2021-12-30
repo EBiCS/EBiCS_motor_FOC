@@ -10,11 +10,13 @@
 #   2015-07-22 - first version
 # ------------------------------------------------
 
+# uncomment next line to build the code for development and not using the M365 bootloader
+DO_NOT_USE_M365_BOOTLOADER = 1
+
 ######################################
 # target
 ######################################
 TARGET = EBiCS_Firmware2
-
 
 ######################################
 # building variables
@@ -40,6 +42,7 @@ Core/Src/main.c \
 Core/Src/motor.c \
 Core/Src/FOC.c \
 Core/Src/eeprom.c \
+Core/Src/decr_and_flash.c \
 Core/Src/button_processing.c \
 Core/Src/M365_Dashboard.c \
 Core/Src/stm32f1xx_it.c \
@@ -136,6 +139,9 @@ ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2
 endif
 
+ifeq ($(DO_NOT_USE_M365_BOOTLOADER), 1)
+CFLAGS += -DO_NOT_USE_M365_BOOTLOADER
+endif
 
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"

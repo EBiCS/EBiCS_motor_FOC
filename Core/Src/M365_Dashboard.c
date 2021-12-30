@@ -12,11 +12,15 @@
 #include "print.h"
 #include "M365_Dashboard.h"
 #include "M365_memory_table.h"
+#include "decr_and_flash.h"
+#include "stm32f1xx_hal_flash.h"
 enum { STATE_LOST, STATE_START_DETECTED, STATE_LENGTH_DETECTED };
 
 UART_HandleTypeDef huart3;
-static uint8_t ui8_rx_buffer[140];
-static uint8_t ui8_dashboardmessage[140];
+static uint8_t ui8_rx_buffer[132];
+static uint8_t ui8_dashboardmessage[132];
+static uint8_t enc[128];
+static char buffer[64];
 static uint8_t	ui8_tx_buffer[96];// = {0x55, 0xAA, 0x08, 0x21, 0x64, 0x00, 0x01, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static uint8_t ui8_oldpointerposition=64;
 static uint8_t ui8_recentpointerposition=0;
@@ -24,11 +28,20 @@ static uint8_t ui8_messagestartpos=255;
 static uint8_t ui8_messagelength=0;
 static uint8_t ui8_state= STATE_LOST;
 static uint32_t ui32_timeoutcounter=0;
+static uint16_t ui16_update_size=0;
+static uint32_t flashstartaddress = 0x08008400;
+static uint32_t updateflagaddress = 0x0800FC00;
+static uint32_t sysinfoaddress = 0x0800F800;
+static uint32_t proc_ID_address = 0x1FFFF7E8;
+char sys_info[512] = {
+		0x5C,0x51,0xEE,0x7,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x8,0x0,0x8,0x0,0x8,0x31,0x33,0x36,0x37,0x38,0x2F,0x30,0x30,0x31,0x31,0x30,0x30,0x32,0x39,0x30,0x30,0x30,0x30,0x30,0x30,0x34,0x1,0x0,0x0,0x0,0x0,0x0,0x8,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x20,0x4E,0x10,0x27,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x1,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x8,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x50,0xFF,0x70,0x6,0x83,0x67,0x51,0x56,0x30,0x44,0x9,0x67,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0
+};
 
 char *target;
 char *source;
 static uint8_t ui8_target_offset;
 static uint8_t ui8_source_offset;
+
 
 M365_menory_table_t MT;
 
@@ -61,23 +74,85 @@ void M365Dashboard_init(UART_HandleTypeDef huart1) {
 	}
 	ui8_tx_buffer[0] = 0x55;
 	ui8_tx_buffer[1] = 0xAA;
-	MT.ESC_version = 0x0189;
+	MT.ESC_version = 0x0222;
 	MT.internal_battery_version = 0x0289;
 	MT.total_riding_time[0]=0xFFFF;
-	strcpy(MT.scooter_serial, "Stancecoke_1");
+	strcpy(MT.scooter_serial, "EBiCS_0.4");
 	MT.ESC_status_2= 0x0800;
+	char *IDp = (char *)proc_ID_address;
+	char *IDs = ((char *)sysinfoaddress)+436;
+	if(*IDp!=*IDs){
+		HAL_FLASH_Unlock();
+
+					uint32_t PAGEError = 0;
+					/*Variable used for Erase procedure*/
+					static FLASH_EraseInitTypeDef EraseInitStruct;
+					 /* Erase the user Flash area
+					    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
+					  //write sysinfo
+					  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+					  EraseInitStruct.PageAddress = sysinfoaddress;
+					  EraseInitStruct.NbPages     = 1;
+
+					  if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+					  {
+					    /*
+					      Error occurred while page erase.
+					      User can add here some code to deal with this error.
+					      PAGEError will contain the faulty page and then to know the code error on this page,
+					      user can call function 'HAL_FLASH_GetError()'
+					    */
+					    /* Infinite loop */
+					    while (1)
+					    {
+					      /* Make LED2 blink (100ms on, 2s off) to indicate error in Erase operation */
+
+					    }
+					  }
+					    uint32_t data;
+					    //write processor ID
+					    char *source = (char *)proc_ID_address;
+					    char *target = (char *)&sys_info;
+					    memcpy(target+436,source,12); //https://electro.club/post/48886
+					    //write Scooter serial number
+					    source = (char *)&MT.scooter_serial;
+					    memcpy(target+32,source,14);
+
+						source = (char *)&sys_info;
+					    target = (char *)&data;
+
+					    for(int i =0 ; i<512; i+=4){
+							memcpy(target,source+i,4);
+							if(sysinfoaddress+i<sysinfoaddress+512){
+					    	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, sysinfoaddress+i, data);
+							}
+					    }
+						HAL_FLASH_Lock();
+	}
+
+
 
 }
 
 void search_DashboardMessage(M365State_t* p_M365State, UART_HandleTypeDef huart1){
 
-	if(ui32_timeoutcounter>3200){
+	if(ui32_timeoutcounter>3200&&MT.ESC_status_2 != 0x0802){
+
+
+		ui32_timeoutcounter=0;
+		//printf_("DMA Receive timeout! \n");
+		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+		ui8_state=STATE_LOST;
+	  	CLEAR_BIT(DMA1_Channel5->CCR, DMA_CCR_EN);
+	  	DMA1_Channel5->CNDTR=sizeof(ui8_rx_buffer);
+	  	SET_BIT(DMA1_Channel5->CCR, DMA_CCR_EN);
+
 		if (HAL_UART_Receive_DMA(&huart1, (uint8_t*) ui8_rx_buffer, sizeof(ui8_rx_buffer)) != HAL_OK) {
 			Error_Handler();
 		}
-		ui32_timeoutcounter=0;
-		printf_("DMA Receive timeout! \n");
+
 	}
+
 
 	ui8_recentpointerposition = sizeof(ui8_rx_buffer) - (DMA1_Channel5->CNDTR); //Pointer of UART1RX DMA Channel
 		if (ui8_recentpointerposition<ui8_oldpointerposition){
@@ -90,7 +165,9 @@ void search_DashboardMessage(M365State_t* p_M365State, UART_HandleTypeDef huart1
 			case STATE_LOST: { //if no message start is detected yet, search for start pattern 0x55 0xAA
 				if(ui8_rx_buffer[ui8_oldpointerposition]==0xAA&&ui8_rx_buffer[ui8_oldpointerposition-1]==0x55){
 					ui8_messagestartpos=ui8_oldpointerposition-1;
+					if(ui8_messagestartpos<sizeof(ui8_rx_buffer)-24){
 					ui8_state=STATE_START_DETECTED;
+					}
 				}
 			}
 				break;
@@ -127,7 +204,7 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 	//while(HAL_UART_GetState(&huart1)!=HAL_UART_STATE_READY){}
 	//HAL_Delay(2); // bad style, but wait for characters coming in, if message is longer than expected
 	if(!checkCRC(message, length)){
-	//	55 AA 06 21 64 00 00 00 00 00 74 FF
+	//55 AA 06 21 64 00 00 00 00 00 74 FF
 	//55	AA	8	21	64	0	20	0	0	1	0	12	3F	FF
 
 		switch (message[command]) {
@@ -197,17 +274,122 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 		case 0x03: {
 			//55	AA	4	20	3	70	1	0	67	FF
 
-			source = (char *)&message;
+			source = (char *)message;
 			target = (char *)&MT;
 			ui8_target_offset = message[startAddress];
 
 			memcpy(target+ui8_target_offset,source+6,1);
-			if (message[payloadLength]==1)MT.ESC_status_2= 0x0802;
+			if (message[payloadLength]==1){
+				MT.ESC_status_2= 0x0802;
+				HAL_FLASH_Unlock();
+				uint32_t PAGEError = 0;
+				/*Variable used for Erase procedure*/
+				static FLASH_EraseInitTypeDef EraseInitStruct;
+				 /* Erase the user Flash area
+				    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
+
+				  /* Fill EraseInit structure*/
+				  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+				  EraseInitStruct.PageAddress = flashstartaddress;
+				  EraseInitStruct.NbPages     = 26;
+
+				  if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+				  {
+				    /*
+				      Error occurred while page erase.
+				      User can add here some code to deal with this error.
+				      PAGEError will contain the faulty page and then to know the code error on this page,
+				      user can call function 'HAL_FLASH_GetError()'
+				    */
+				    /* Infinite loop */
+				    while (1)
+				    {
+				      /* Make LED2 blink (100ms on, 2s off) to indicate error in Erase operation */
+
+				    }
+				  }
+				  HAL_FLASH_Lock();
+			}
 
 			}
 			break;
 
 		case 0x0A: {
+			HAL_FLASH_Unlock();
+
+							uint32_t PAGEError = 0;
+							/*Variable used for Erase procedure*/
+							static FLASH_EraseInitTypeDef EraseInitStruct;
+							 /* Erase the user Flash area
+							    (area defined by FLASH_USER_START_ADDR and FLASH_USER_END_ADDR) ***********/
+							  //write sysinfo
+//							  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+//							  EraseInitStruct.PageAddress = sysinfoaddress;
+//							  EraseInitStruct.NbPages     = 1;
+//
+//							  if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+//							  {
+//							    /*
+//							      Error occurred while page erase.
+//							      User can add here some code to deal with this error.
+//							      PAGEError will contain the faulty page and then to know the code error on this page,
+//							      user can call function 'HAL_FLASH_GetError()'
+//							    */
+//							    /* Infinite loop */
+//							    while (1)
+//							    {
+//							      /* Make LED2 blink (100ms on, 2s off) to indicate error in Erase operation */
+//
+//							    }
+//							  }
+//							    uint32_t data;
+//							    //write processor ID
+//							    char *source = (char *)proc_ID_address;
+//							    char *target = (char *)&sys_info;
+//							    memcpy(target+436,source,12); //https://electro.club/post/48886
+//							    //write Scooter serial number
+//							    source = (char *)&MT.scooter_serial;
+//							    memcpy(target+32,source,14);
+//
+//								source = (char *)&sys_info;
+//							    target = (char *)&data;
+//
+//							    for(int i =0 ; i<512; i+=4){
+//									memcpy(target,source+i,4);
+//									if(sysinfoaddress+i<sysinfoaddress+512){
+//							    	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, sysinfoaddress+i, data);
+//									}
+//							    }
+							//write updateinfo
+							  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
+							  EraseInitStruct.PageAddress = updateflagaddress;
+							  EraseInitStruct.NbPages     = 1;
+
+							  if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+							  {
+							    /*
+							      Error occurred while page erase.
+							      User can add here some code to deal with this error.
+							      PAGEError will contain the faulty page and then to know the code error on this page,
+							      user can call function 'HAL_FLASH_GetError()'
+							    */
+							    /* Infinite loop */
+							    while (1)
+							    {
+							      /* Make LED2 blink (100ms on, 2s off) to indicate error in Erase operation */
+
+							    }
+							  }
+							  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, updateflagaddress, 0x505A);
+
+							  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, updateflagaddress+4, 0x01);
+
+							  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, updateflagaddress+8, ui16_update_size);
+
+
+
+			HAL_FLASH_Lock();
+
 			NVIC_SystemReset();
 
 			}
@@ -216,6 +398,7 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 		case 0x07: {
 			//55 AA 06 20 07 00 08 61 00 00 69 FF
 			//55 AA 02 23 07 00 D3 FF
+			ui16_update_size = message[7]<<8|message[6];
 			ui8_tx_buffer[msglength] = 2;
 			ui8_tx_buffer[receiver]=message[receiver]+3;
 			ui8_tx_buffer[command]=0x07;
@@ -229,6 +412,23 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 		case 0x08: {
 			//55 AA 42 20 08 00 FA 8B 7B 71 4F 4C 97 16 0B 71 34 89 96 24 DE C2 3B 3E FF 06 B7 3B 69 69 BB 8A 56 10 A0 A0 34 E0 15 65 D2 6E 04 62 4C EB BB 6B 49 C1 7F F6 EA B7 64 F7 AD 5D 4E 8C D1 2C DB 7E EC B6 F4 73 FC A3 2E DE
 			//55 AA 02 23 08 00 D2 FF
+			static uint8_t packetsize;
+			static uint8_t olddataposition=255;
+			packetsize  = message[2]-2;
+			source = (char *)message;
+			target = (char *)&enc;
+			if(olddataposition!=message[5]){
+				memcpy(target,source+6,packetsize);
+				decr_and_flash(enc,flashstartaddress,ui16_update_size,packetsize);
+				flashstartaddress+=packetsize;
+
+		  		sprintf_(buffer, "%d, %d, %d\r\n", flashstartaddress,packetsize, olddataposition);
+		  		HAL_UART_Transmit_DMA(&huart3, (uint8_t *)&buffer, strlen(buffer));
+
+			}
+			olddataposition=message[5];
+
+
 			ui8_tx_buffer[msglength] = 2;
 			ui8_tx_buffer[receiver]=message[receiver]+3;
 			ui8_tx_buffer[command]=0x08;
