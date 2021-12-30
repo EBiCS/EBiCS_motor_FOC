@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include "main.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,8 +36,6 @@ extern "C" {
 #define SIXSTEPTHRESHOLD 9000
 
 typedef struct {
-	q31_t Voltage;
-	uint32_t Speed;
 	q31_t i_d;
 	q31_t i_q;
 	q31_t i_q_setpoint;
@@ -54,31 +53,23 @@ typedef struct {
 	uint8_t regen_level;
 	int8_t Temperature;
 	int8_t system_state;
-	int8_t mode;
 	int8_t error_state;
-	bool light;
-	bool beep;
 	uint8_t shutdown;
 	int8_t speed_limit;
 	int16_t phase_current_limit;
+  int16_t spec_angle;
 } MotorState_t;
 
 typedef struct {
-	q31_t Voltage;
-	uint32_t speed;
 	q31_t i_d;
 	q31_t i_q;
 	q31_t i_q_setpoint;
 	q31_t i_d_setpoint;
-	q31_t i_setpoint_abs;
-	int32_t i_q_setpoint_temp;
-	int32_t i_d_setpoint_temp;
 	q31_t u_d;
 	q31_t u_q;
 	q31_t u_abs;
 	q31_t Battery_Current;
 	uint8_t hall_angle_detect_flag;
-	uint8_t char_dyn_adc_state;
 	uint8_t assist_level;
 	uint8_t regen_level;
 	int8_t Temperature;
@@ -88,9 +79,9 @@ typedef struct {
 	bool light;
 	bool beep;
 	uint8_t shutdown;
-	int8_t speed_limit;
 	int16_t phase_current_limit;
   uint16_t adcData[8]; // point to buffer for ADC1 inputs
+  int8_t speed_limit;
 } MotorStatePublic_t;
 
 enum {
@@ -101,9 +92,9 @@ enum {
 };
 
 enum modes {
-  eco=2,
-  normal=0,
-  sport=4
+  eco = 2,
+  normal = 0,
+  sport = 4
 };
 
 enum errors {hall=1,lowbattery=2,overcurrent=4};
@@ -111,7 +102,7 @@ enum errors {hall=1,lowbattery=2,overcurrent=4};
 void motor_init(volatile MotorStatePublic_t* p_MotorStatePublic);
 void motor_autodetect();
 void runPIcontrol();
-void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic);
+void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_t* p_M365State);
 
 #ifdef __cplusplus
 }

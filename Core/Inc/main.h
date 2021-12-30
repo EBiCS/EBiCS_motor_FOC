@@ -123,16 +123,16 @@ typedef struct {
 	bool light;
 	bool beep;
 	uint8_t shutdown;
-	int8_t speed_limit;
-  int8_t speed;
-  int32_t i_q_setpoint_temp;
+  q31_t i_q_setpoint;
+  int32_t i_q_setpoint_target;
+  uint32_t speed;
+  int8_t speed_limit;
 } M365State_t;
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);
 
 extern q31_t switchtime[3];
-extern uint32_t ui32_tim1_counter;
 extern uint32_t uint32_PAS_counter;
 
 void UserSysTickHandler();

@@ -115,12 +115,6 @@ int16_t current_display;				//pepared battery current for display
 
 int16_t power;
 
-int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
-		int32_t out_max);
-int32_t speed_to_tics(uint8_t speed);
-int8_t tics_to_speed(uint32_t tics);
-q31_t speed_PLL (q31_t ist, q31_t soll);
-
 volatile uint32_t systick_cnt = 0;
 
 // every 1ms
@@ -131,7 +125,7 @@ void UserSysTickHandler(void) {
 
   // every 10ms
   if ((c % 10) == 0) {
-    motor_slow_loop(&MSPublic);
+    motor_slow_loop(&MSPublic, &M365State);
   }
   c++;
 }
@@ -292,11 +286,11 @@ static void GPIO_Init(void) {
   HAL_GPIO_Init(PWR_BTN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : TPS_ENA_Pin */
-  GPIO_InitStruct.Pin = TPS_ENA_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(TPS_ENA_GPIO_Port, &GPIO_InitStruct);
+  // GPIO_InitStruct.Pin = TPS_ENA_Pin;
+  // GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  // GPIO_InitStruct.Pull = GPIO_NOPULL;
+  // GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  // HAL_GPIO_Init(TPS_ENA_GPIO_Port, &GPIO_InitStruct);
 
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
@@ -416,13 +410,16 @@ int main(void) {
 	USART1_UART_Init();
 	USART3_UART_Init();
 
-	// Virtual EEPROM init
+	// Virtual EEPROM init, needed by the motor controller
 	HAL_FLASH_Unlock();
 	EE_Init();
 	HAL_FLASH_Lock();
 
-  // set speed limit to 0. Once the dashboard communicates, it will overwrite this 0 speed limit
-  MSPublic.speed_limit = 0;
+  M365State.speed = 128000;
+	M365State.speed_limit = SPEEDLIMIT_NORMAL;
+  M365State.phase_current_limit = PH_CURRENT_MAX_NORMAL;
+
+  MSPublic.speed_limit = M365State.speed_limit;
   motor_init(&MSPublic);
 
   // init dashboard
@@ -431,12 +428,29 @@ int main(void) {
 
 	while (1) {
 
-		// display message processing
+		// search and process display message
 		search_DashboardMessage(&M365State, huart1);
-		checkButton(&M365State);
 
 		//slow loop process, every 20ms
-		if ((systick_cnt % 20) == 0) {
+    static uint32_t systick_cnt_old = 0;
+		if ((systick_cnt_old != systick_cnt) && // only at a change
+        (systick_cnt % 20) == 0) { // every 20ms
+      systick_cnt_old = systick_cnt;
+
+      #ifdef ADCTHROTTLE
+      // low pass filter torque signal
+      static uint32_t ui32_throttle_acc = 0;
+      uint16_t ui16_throttle;
+      ui32_throttle_acc -= ui32_throttle_acc >> 4;
+	    ui32_throttle_acc += MSPublic.adcData[ADC_THROTTLE];
+	    ui16_throttle = ui32_throttle_acc >> 4;
+
+      // map throttle to motor current
+      M365State.i_q_setpoint = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, M365State.phase_current_limit);
+      #endif
+
+      // process buttons
+		  // checkButton(&M365State);
 
       // low pass filter measured battery voltage 
       static q31_t q31_batt_voltage_acc = 0;

@@ -156,11 +156,11 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 
 		case 0x65: {
 			if(map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
-				if(p_M365State->speed>2)	p_M365State->i_q_setpoint_temp =-map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
-				else p_M365State->i_q_setpoint_temp =0;
+				if(p_M365State->speed > 2)	p_M365State->i_q_setpoint_target = -map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
+				else p_M365State->i_q_setpoint_target = 0;
 				}
 			else{
-				p_M365State->i_q_setpoint_temp = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,p_M365State->phase_current_limit);
+				p_M365State->i_q_setpoint_target = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,p_M365State->phase_current_limit);
 				}
 			}
 			break;
@@ -170,11 +170,11 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 			//55 AA 0E 23 01 DA 48 FF 73 06 78 78 54 51 53 32 10 67 A2 FA
 
 			if(map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
-				if(p_M365State->speed>2) p_M365State->i_q_setpoint_temp =-map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
-				else p_M365State->i_q_setpoint_temp =0;
+				if(p_M365State->speed > 2) p_M365State->i_q_setpoint_target = -map(message[9],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
+				else p_M365State->i_q_setpoint_target = 0;
 				}
 			else{
-				p_M365State->i_q_setpoint_temp = map(message[8],THROTTLEOFFSET,THROTTLEMAX,0,p_M365State->phase_current_limit);
+				p_M365State->i_q_setpoint_target = map(message[8],THROTTLEOFFSET,THROTTLEMAX,0,p_M365State->phase_current_limit);
 				}
 
 

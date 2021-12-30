@@ -15,13 +15,14 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
+uint16_t adcData1[6 * sizeof(uint32_t)]; // point to buffer for ADC1 inputs
+
 #define JSQR_PHASE_A 0b00011000000000000000 //3
 #define JSQR_PHASE_B 0b00100000000000000000 //4
 #define JSQR_PHASE_C 0b00101000000000000000 //5
 
 MotorState_t MS;
 
-uint32_t ui32_tim1_counter = 0;
 volatile int16_t i16_ph1_current = 0;
 volatile int16_t i16_ph2_current = 0;
 volatile int16_t i16_ph2_current_filter = 0;
@@ -77,6 +78,25 @@ uint16_t ui16_ph2_offset = 0;
 uint16_t ui16_ph3_offset = 0;
 
 volatile MotorStatePublic_t* p_MotorStatePublic;
+
+// regular ADC callback
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+	ui8_adc_regular_flag = 1;
+}
+
+
+static void motor_disable_pwm(void) {
+  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+  MS.system_state = Stop;
+}
+
+static void motor_enable_pwm(void) {
+  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+}
+
+static bool motor_pwm_is_enabled(void) {
+  return READ_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+}
 
 q31_t speed_PLL(q31_t actual, q31_t target) {
   static q31_t q31_d_i = 0;
@@ -137,7 +157,7 @@ int8_t tics_to_speed(uint32_t tics) {
 }
 
 void motor_autodetect() {
-	SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+	motor_enable_pwm();
 	MS.hall_angle_detect_flag = 0; //set uq to contstant value in FOC.c for open loop control
 	q31_rotorposition_absolute = 1 << 31;
 	uint8_t zerocrossing = 0;
@@ -220,16 +240,16 @@ void motor_autodetect() {
 		}
 	}
 
-   	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM if motor is not turning
-    TIM1->CCR1 = 1023; //set initial PWM values
-    TIM1->CCR2 = 1023;
-    TIM1->CCR3 = 1023;
-    MS.hall_angle_detect_flag=1;
-    MS.i_d = 0;
-    MS.i_q = 0;
-    MS.u_d=0;
-    MS.u_q=0;
-    q31_tics_filtered=1000000;
+  motor_disable_pwm();
+  TIM1->CCR1 = 1023; //set initial PWM values
+  TIM1->CCR2 = 1023;
+  TIM1->CCR3 = 1023;
+  MS.hall_angle_detect_flag=1;
+  MS.i_d = 0;
+  MS.i_q = 0;
+  MS.u_d=0;
+  MS.u_q=0;
+  q31_tics_filtered=1000000;
 
   // store variables on flash memory
 	HAL_FLASH_Unlock();
@@ -254,38 +274,23 @@ void motor_autodetect() {
 #endif
 	HAL_Delay(5);
 	//NVIC_SystemReset();
-
 }
 
 void calculate_tic_limits(int8_t speed_limit) {
-	tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
-			/ (6 * GEAR_RATIO * speed_limit * 10); //tics=wheelcirc*timerfrequency/(no. of hallevents per rev*gear-ratio*speedlimit)*3600/1000000
-	tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600
-			/ (6 * GEAR_RATIO * (speed_limit + 2) * 10);
-}
-
-static void motor_disable_pwm(void) {
-  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);
-  MS.system_state = Stop;
-}
-
-static void motor_enable_pwm(void) {
-  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
-}
-
-static bool motor_pwm_get_state(void) {
-  return READ_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+  // tics = wheelcirc * timerfrequency / (no. of hallevents per rev * gear-ratio * speedlimit) * 3600 / 1000000
+	tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * speed_limit * 10);
+	tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * (speed_limit + 2) * 10);
 }
 
 // call every 10ms
-void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic) {
+void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_t* p_M365State) {
 
   // i_q current limits
-  if (MS.i_q_setpoint_temp > MS.phase_current_limit) {
-    MS.i_q_setpoint_temp = MS.phase_current_limit;
+  if (p_M365State->i_q_setpoint_target > p_M365State->phase_current_limit) {
+    MS.i_q_setpoint_temp = p_M365State->phase_current_limit;
   }
-  if (MS.i_q_setpoint_temp < -MS.phase_current_limit) {
-    MS.i_q_setpoint_temp = -MS.phase_current_limit;
+  if (p_M365State->i_q_setpoint_target < -p_M365State->phase_current_limit) {
+    MS.i_q_setpoint_temp = -p_M365State->phase_current_limit;
   }
 
   // ramp down current at speed limit
@@ -293,11 +298,11 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic) {
       tics_lower_limit, 0, MS.i_q_setpoint_temp);
 
   // see if we should do flux weakening: i_d current
-  if (MS.u_abs > (_U_MAX-10) && MS.mode == sport) {
-    MS.i_d_setpoint_temp = map(MS.Speed, (KV*MS.Voltage/10000)-3, (KV*MS.Voltage/10000)+15, 0, FW_CURRENT_MAX);
+  if (MS.u_abs > (_U_MAX-10) && p_M365State->mode == sport) {
+    MS.i_d_setpoint_temp = map(p_M365State->speed, (KV*p_M365State->Voltage/10000)-3, (KV*p_M365State->Voltage/10000)+15, 0, FW_CURRENT_MAX);
   }
   else {
-    MS.i_d_setpoint_temp=0;
+    MS.i_d_setpoint_temp = 0;
   }
 
   // check and limit absolute value of current vector
@@ -306,17 +311,17 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic) {
   MS.i_setpoint_abs = (i_setpoint_abs >> 16) + 1;
 
   // set final current set points
-  if (MS.i_setpoint_abs > MS.phase_current_limit) {
-    MS.i_q_setpoint = (MS.i_q_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; //division!
-    MS.i_d_setpoint = (MS.i_d_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; //division!
-    MS.i_setpoint_abs = MS.phase_current_limit;
+  if (MS.i_setpoint_abs > p_M365State->phase_current_limit) {
+    MS.i_q_setpoint = (MS.i_q_setpoint_temp * p_M365State->phase_current_limit) / MS.i_setpoint_abs; //division!
+    MS.i_d_setpoint = (MS.i_d_setpoint_temp * p_M365State->phase_current_limit) / MS.i_setpoint_abs; //division!
+    MS.i_setpoint_abs = p_M365State->phase_current_limit;
   } else {
-    MS.i_q_setpoint=MS.i_q_setpoint_temp;
-    MS.i_d_setpoint=MS.i_d_setpoint_temp;
+    MS.i_q_setpoint = MS.i_q_setpoint_temp;
+    MS.i_d_setpoint = MS.i_d_setpoint_temp;
   }
 
   // if we should startup the motor
-  if (MS.i_q_setpoint && motor_pwm_get_state() == 0) {
+  if (MS.i_q_setpoint && motor_pwm_is_enabled() == 0) {
     // set initial PWM values
     TIM1->CCR1 = 1023; 
     TIM1->CCR2 = 1023;
@@ -344,15 +349,15 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic) {
 
     // calculate wheel speed
     if (MS.system_state == Stop || MS.system_state == SixStep) {
-      p_MotorStatePublic->speed = 0;
+      p_M365State->speed = 0;
     }	else {
-      p_MotorStatePublic->speed = tics_to_speed(q31_tics_filtered >> 3);
+      p_M365State->speed = tics_to_speed(q31_tics_filtered >> 3);
     }
 
     // see if PWM should be disable
     if (MS.i_q_setpoint == 0 &&
         (uint16_full_rotation_counter > 7999 || uint16_half_rotation_counter > 7999) &&
-        motor_pwm_get_state()) {
+        motor_pwm_is_enabled()) {
       motor_disable_pwm();
     }
   }
@@ -382,8 +387,9 @@ static void ADC1_Init(void) {
 	 */
 	hadc1.Instance = ADC1;
 	hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
-	hadc1.Init.ContinuousConvMode = ENABLE;
+	hadc1.Init.ContinuousConvMode = DISABLE;
 	hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
 	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	hadc1.Init.NbrOfConversion = 6;
 	hadc1.Init.NbrOfDiscConversion = 0;
@@ -480,7 +486,7 @@ static void ADC2_Init(void) {
 	 */
 	hadc2.Instance = ADC2;
 	hadc2.Init.ScanConvMode = ADC_SCAN_ENABLE; //hier auch Scan enable?!
-	hadc2.Init.ContinuousConvMode = ENABLE;
+	hadc2.Init.ContinuousConvMode = DISABLE;
 	hadc2.Init.DiscontinuousConvMode = DISABLE;
 	hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
@@ -924,6 +930,37 @@ void runPIcontrol(){
   }
 }
 
+/* TIM3 init function 8kHz interrupt frequency for regular adc triggering */
+static void TIM3_Init(void) {
+
+	TIM_ClockConfigTypeDef sClockSourceConfig;
+	TIM_MasterConfigTypeDef sMasterConfig;
+
+	htim3.Instance = TIM3;
+	htim3.Init.Prescaler = 0;
+	htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim3.Init.Period = 7813;
+	htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	if (HAL_TIM_Base_Init(&htim3) != HAL_OK) {
+		_Error_Handler(__FILE__, __LINE__);
+	}
+
+	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+	if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK) {
+		_Error_Handler(__FILE__, __LINE__);
+	}
+
+	sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC1;
+	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig)
+			!= HAL_OK) {
+		_Error_Handler(__FILE__, __LINE__);
+	}
+
+	HAL_TIM_MspPostInit(&htim3);
+}
+
 void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
   p_MotorStatePublic = motorStatePublic; // local pointer of MotorStatePublic
 
@@ -937,7 +974,6 @@ void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
 
 	// initialize MS struct.
 	MS.hall_angle_detect_flag = 1;
-	MS.Speed = 128000;
 	MS.assist_level = 1;
 	MS.regen_level = 7;
 	MS.i_q_setpoint = 0;
@@ -962,16 +998,17 @@ void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
 	SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG);
 	__HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC);
 
-	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, 6);
+	// HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, 6);
+  HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adcData1, 6);
+  HAL_ADC_Start_IT(&hadc2);
 
   // Timers
 	TIM1_Init(); //Hier die Reihenfolge getauscht!
 	TIM2_Init();
-	// TIM3_Init();
+  TIM3_Init();
 
 	// Start Timer 1
 	if (HAL_TIM_Base_Start_IT(&htim1) != HAL_OK) {
-		/* Counter Enable Error */
 		Error_Handler();
 	}
 
@@ -985,25 +1022,21 @@ void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
 	HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_4);
 
 	TIM1->CCR4 = TRIGGER_DEFAULT; //ADC sampling just before timer overflow (just before middle of PWM-Cycle)
-  //PWM Mode 1: Interrupt at counting down.
 
 	// Start Timer 2
 	if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) {
-		/* Counter Enable Error */
 		Error_Handler();
 	}
 
-	// // Start Timer 3
-	// if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
-	// 	/* Counter Enable Error */
-	// 	Error_Handler();
-	// }
+  // Start Timer 3
+	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
+		Error_Handler();
+	}
 
+	motor_disable_pwm();
 	TIM1->CCR1 = 1023; //set initial PWM values
 	TIM1->CCR2 = 1023;
 	TIM1->CCR3 = 1023;
-
-	CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE); //Disable PWM
 
 	HAL_Delay(1000);
 
@@ -1023,21 +1056,18 @@ void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
 
   ui8_adc_offset_done_flag = 1;
 
-  // TODO init EEPROM
+  // read or get and set motor specific values
+  EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MS.spec_angle);
 
-  // EE_ReadVariable(EEPROM_POS_SPEC_ANGLE, &MP.spec_angle);
- 
   // set motor specific angle to value from emulated EEPROM only if valid
-  // if(MP.spec_angle!=0xFFFF) {
-  //   q31_rotorposition_motor_specific = MP.spec_angle<<16;
-  //   EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
-  // } else {
-  //   autodetect();
-  // }
+  if (MS.spec_angle != 0xFFFF) {
+    q31_rotorposition_motor_specific = MS.spec_angle << 16;
+    EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
+  } else {
+    motor_autodetect();
+  }
 
 	HAL_Delay(5);
-  motor_disable_pwm();
-
 	get_standstill_position();
 }
 
@@ -1045,8 +1075,6 @@ void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	//for oszi-check of used time in FOC procedere
 	//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
-
-	ui32_tim1_counter++;
 
 	if (!ui8_adc_offset_done_flag) {
 		i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1,
@@ -1143,15 +1171,15 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 #endif
 
 		// call FOC procedure if PWM is enabled
-		if (READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)) {
+		if (motor_pwm_is_enabled()) {
 			FOC_calculation(i16_ph1_current, i16_ph2_current,
 					q31_rotorposition_absolute, &MS);
 		}
 
 		//set PWM
-		TIM1->CCR1 = (uint16_t) switchtime[0];
-		TIM1->CCR2 = (uint16_t) switchtime[1];
-		TIM1->CCR3 = (uint16_t) switchtime[2];
+		// TIM1->CCR1 = (uint16_t) switchtime[0];
+		// TIM1->CCR2 = (uint16_t) switchtime[1];
+		// TIM1->CCR3 = (uint16_t) switchtime[2];
 
 		//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
 

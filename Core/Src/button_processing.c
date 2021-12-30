@@ -26,7 +26,6 @@
 #include "config.h"
 #include "motor.h"
 
-volatile uint32_t main_loop_counter;
 static uint8_t power_button_state = 0;
 
 uint8_t buttonState() {
@@ -91,18 +90,20 @@ eButtonEvent getButtonEvent()
     return button_event ;
 }
 
-void checkButton(M365State_t *M365State) {
+void checkButton(M365State_t *p_M365State) {
+  static uint32_t counter;
 
   // check the shutdown counter
-  if (M365State->shutdown > 16) power_control(DEV_PWR_OFF);
+  if (p_M365State->shutdown > 16) power_control(DEV_PWR_OFF);
   
-  if (main_loop_counter > 25) {
+  counter++;
+  if ((counter % 2) == 0) { // every 20ms
     switch (getButtonEvent()) {
         case NO_PRESS:
           break;
 
         case SINGLE_PRESS:
-          M365State->light = !M365State->light;
+          p_M365State->light = !p_M365State->light;
           break;
         
         case VERY_LONG_PRESS:
@@ -110,47 +111,45 @@ void checkButton(M365State_t *M365State) {
           break;
         
         case LONG_PRESS:
-          M365State->beep = 1;
+          p_M365State->beep = 1;
           
-          if (M365State->shutdown == 0)
-            M365State->shutdown = 1;
+          if (p_M365State->shutdown == 0)
+            p_M365State->shutdown = 1;
           
           break;
 
         case DOUBLE_PRESS:
-          M365State->mode=M365State->mode+2;
+          p_M365State->mode = p_M365State->mode + 2;
           
-          if(M365State->mode>4)M365State->mode=0;
-            set_mode(M365State);
-        
+          if (p_M365State->mode > 4)
+            p_M365State->mode = 0;
+          
+          set_mode(p_M365State);
           break;
       }
   }
-  main_loop_counter++;
 }
 
 void PWR_init() {
 	/* Check button pressed state at startup */
 	power_button_state = buttonState();
 
-    /* Power ON board temporarily, ultimate decision to keep hardware ON or OFF is made later */
+  /* Power ON board temporarily, ultimate decision to keep hardware ON or OFF is made later */
 	power_control(DEV_PWR_ON);
-
-	}
+}
 
 void power_control(uint8_t pwr)
 {
-	if(pwr == DEV_PWR_ON) {
+	if (pwr == DEV_PWR_ON) {
 		/* Turn the PowerON line high to keep the board powered on even when
 		 * the power button is released
 		 */
 		HAL_GPIO_WritePin(TPS_ENA_GPIO_Port, TPS_ENA_Pin, GPIO_PIN_SET);
-	} else if(pwr == DEV_PWR_OFF) {
+	} else if (pwr == DEV_PWR_OFF) {
 
 		//motors_free(0, NULL);
 		//sleep_x_ticks(2000);
 		//stop_motors();
-
 
 		while(HAL_GPIO_ReadPin(PWR_BTN_GPIO_Port, PWR_BTN_Pin));
 		HAL_GPIO_WritePin(TPS_ENA_GPIO_Port, TPS_ENA_Pin, GPIO_PIN_RESET);
@@ -166,25 +165,26 @@ void power_control(uint8_t pwr)
 	}
 }
 
-void set_mode(M365State_t *M365State){
+void set_mode(M365State_t *p_M365State) {
 
-	switch(M365State->mode){
+	switch (p_M365State->mode) {
 		case eco:
-			M365State->phase_current_limit=PH_CURRENT_MAX_ECO;
-			M365State->speed_limit=SPEEDLIMIT_ECO;
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_ECO;
+			p_M365State->speed_limit = SPEEDLIMIT_ECO;
 			break;
 
 		case normal:
-			M365State->phase_current_limit=PH_CURRENT_MAX_NORMAL;
-			M365State->speed_limit=SPEEDLIMIT_NORMAL;
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_NORMAL;
+			p_M365State->speed_limit = SPEEDLIMIT_NORMAL;
       break;
 
 		case sport:
-			M365State->phase_current_limit=PH_CURRENT_MAX_SPORT;
-			M365State->speed_limit=SPEEDLIMIT_SPORT;
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_SPORT;
+			p_M365State->speed_limit = SPEEDLIMIT_SPORT;
       break;
 	}
-	calculate_tic_limits(M365State->speed_limit);
+
+	calculate_tic_limits(p_M365State->speed_limit);
 }
 
 
