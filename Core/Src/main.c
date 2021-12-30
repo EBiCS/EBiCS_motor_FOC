@@ -450,7 +450,7 @@ int main(void) {
       #endif
 
       // process buttons
-		  // checkButton(&M365State);
+		  checkButton(&M365State);
 
       // low pass filter measured battery voltage 
       static q31_t q31_batt_voltage_acc = 0;

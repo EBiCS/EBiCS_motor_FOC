@@ -80,7 +80,7 @@ typedef struct {
 	bool beep;
 	uint8_t shutdown;
 	int16_t phase_current_limit;
-  uint16_t adcData[8]; // point to buffer for ADC1 inputs
+  uint16_t adcData[6]; // buffer for ADC1 inputs
   int8_t speed_limit;
 } MotorStatePublic_t;
 

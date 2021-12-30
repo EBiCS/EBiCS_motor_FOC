@@ -84,7 +84,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	ui8_adc_regular_flag = 1;
 }
 
-
 static void motor_disable_pwm(void) {
   CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);
   MS.system_state = Stop;
@@ -119,7 +118,7 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
 }
 
 void get_standstill_position() {
-	HAL_Delay(100);
+	// HAL_Delay(100); // WARNING!! calling this will block as HAL_Delay uses Systick interrupt and this code is also called from inside Systick interrupt!!
 	HAL_GPIO_EXTI_Callback(GPIO_PIN_4); //read in initial rotor position
 
 	switch (ui8_hall_state) {
@@ -295,7 +294,7 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_
 
   // ramp down current at speed limit
   MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit,
-      tics_lower_limit, 0, MS.i_q_setpoint_temp);
+      tics_lower_limit, 0, p_M365State->i_q_setpoint_target);
 
   // see if we should do flux weakening: i_d current
   if (MS.u_abs > (_U_MAX-10) && p_M365State->mode == sport) {
@@ -630,38 +629,6 @@ static void TIM2_Init(void) {
 	}
 
 }
-
-// /* TIM3 init function 8kHz interrupt frequency for regular adc triggering */
-// static void TIM3_Init(void) {
-
-// 	TIM_ClockConfigTypeDef sClockSourceConfig;
-// 	TIM_MasterConfigTypeDef sMasterConfig;
-
-// 	htim3.Instance = TIM3;
-// 	htim3.Init.Prescaler = 0;
-// 	htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-// 	htim3.Init.Period = 7813;
-// 	htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-// 	htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-// 	if (HAL_TIM_Base_Init(&htim3) != HAL_OK) {
-// 		_Error_Handler(__FILE__, __LINE__);
-// 	}
-
-// 	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-// 	if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK) {
-// 		_Error_Handler(__FILE__, __LINE__);
-// 	}
-
-// 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC1;
-// 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-// 	if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig)
-// 			!= HAL_OK) {
-// 		_Error_Handler(__FILE__, __LINE__);
-// 	}
-
-// 	HAL_TIM_MspPostInit(&htim3);
-
-// }
 
 static void GPIO_Init(void) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
@@ -998,8 +965,7 @@ void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
 	SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG);
 	__HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC);
 
-	// HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, 6);
-  HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) adcData1, 6);
+	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, 6);
   HAL_ADC_Start_IT(&hadc2);
 
   // Timers
@@ -1177,9 +1143,9 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 		}
 
 		//set PWM
-		// TIM1->CCR1 = (uint16_t) switchtime[0];
-		// TIM1->CCR2 = (uint16_t) switchtime[1];
-		// TIM1->CCR3 = (uint16_t) switchtime[2];
+		TIM1->CCR1 = (uint16_t) switchtime[0];
+		TIM1->CCR2 = (uint16_t) switchtime[1];
+		TIM1->CCR3 = (uint16_t) switchtime[2];
 
 		//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
 
