@@ -555,8 +555,8 @@ int main(void) {
 		MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit,
 				tics_lower_limit, 0, MS.i_q_setpoint_temp); //ramp down current at speed limit
 
-		if(MS.u_abs>(_U_MAX-10)&&MS.mode==sport){//do flux weakaning
-			MS.i_d_setpoint_temp=map(MS.Speed,(KV*MS.Voltage/10000)-5,(KV*MS.Voltage/10000)+15,0,FW_CURRENT_MAX);
+		if(MS.mode==sport){//do flux weakaning MS.u_abs>(_U_MAX-10)&&
+			MS.i_d_setpoint_temp=map(MS.Speed,5,20,0,FW_CURRENT_MAX);//(KV*MS.Voltage/10000)-5
 		}
 		else MS.i_d_setpoint_temp=0;
 
@@ -576,15 +576,19 @@ int main(void) {
 		}
 
 		  //calculate battery current
-		  arm_sqrt_q31((MS.i_q*MS.i_q+MS.i_d*MS.i_d)<<1, &MS.i_abs);//+MS.i_d*MS.i_d
-		  MS.i_abs = (MS.i_abs >> 16) + 1;
 
+			q31_t ibatq;
+			q31_t ibatd;
+			ibatq=((MS.i_q * MS.u_q) >> 11)*CAL_I;
+			ibatd=((MS.i_d * MS.u_d) >> 11)*CAL_I;
+		 // arm_sqrt_q31((ibatq*ibatq+ibatd*ibatd)<<1, &MS.i_abs);//+MS.i_d*MS.i_d
+		 // MS.i_abs = (MS.i_abs >> 16) + 1;
+			MS.i_abs=ibatq+ibatd;
 		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated >> 8;
-		  q31_t_Battery_Current_accumulated += ((MS.i_abs * MS.u_abs) >> 11) *
-		     (uint16_t) (CAL_I);
+		  q31_t_Battery_Current_accumulated += MS.i_abs;
 
 		  MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
-		      * i8_direction * i8_reverse_flag*i8_recent_rotor_direction; //Battery current in mA
+		      * i8_direction * i8_reverse_flag; //Battery current in mA
 
 
 
@@ -633,7 +637,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = q31_Battery_Voltage;
-			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.Voltage, MS.i_abs, MS.i_q, MS.i_d, MS.Battery_Current, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
+			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_d_setpoint, MS.i_abs, MS.i_q, MS.i_d, MS.Battery_Current, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 

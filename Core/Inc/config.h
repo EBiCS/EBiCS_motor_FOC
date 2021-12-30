@@ -16,7 +16,7 @@
 #define _T 2028
 #define CAL_BAT_V 14
 #define CAL_V 25
-#define CAL_I 19
+#define CAL_I 38
 #define INDUCTANCE 6LL
 #define RESISTANCE 40LL
 #define FLUX_LINKAGE 1200LL
@@ -28,7 +28,7 @@
 #define BATTERY_LEVEL_5 380000
 #define P_FACTOR_I_Q 100
 #define I_FACTOR_I_Q 2
-#define P_FACTOR_I_D 1
+#define P_FACTOR_I_D 2
 #define I_FACTOR_I_D 1
 #define MAX_D_FACTOR 1
 //#define ADCTHROTTLE
@@ -37,7 +37,7 @@
 #define BRAKEOFFSET 40
 #define BRAKEMAX 190
 #define WHEEL_CIRCUMFERENCE 550 //690 for original M365 motor
-#define GEAR_RATIO 11 //15 for original M365 motor
+#define GEAR_RATIO 24 //15 for original M365 motor
 
 #define SPEEDLIMIT_ECO 20
 #define SPEEDLIMIT_NORMAL 100
@@ -46,7 +46,7 @@
 #define PH_CURRENT_MAX_NORMAL 1000
 #define PH_CURRENT_MAX_SPORT 1500
 
-#define FW_CURRENT_MAX 400 //max id
+#define FW_CURRENT_MAX 200 //max id
 #define KV 8 //kph*10 per volt, 7 for original M365 motor
 
 #define BATTERYCURRENT_MAX 9000
@@ -62,7 +62,7 @@
 
 #define REGEN_CURRENT_MAX 10000
 
-#define SPEED_PLL
+//#define SPEED_PLL
 #define P_FACTOR_PLL 9 //7 for original M365 motor
 #define I_FACTOR_PLL 10 //7 for original M365 motor
 

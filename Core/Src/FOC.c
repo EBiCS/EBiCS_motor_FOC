@@ -171,10 +171,10 @@ q31_t PI_control_i_d(q31_t ist, q31_t soll, q31_t clamp) {
 	q31_p = ((soll - ist) * P_FACTOR_I_D) >> 5;
 	q31_d_i += ((soll - ist) * I_FACTOR_I_D) >> 5;
 
-	if (q31_d_i < -clamp + abs(q31_p))
-		q31_d_i = -clamp + abs(q31_p);
-	if (q31_d_i > clamp - abs(q31_p))
-		q31_d_i = clamp - abs(q31_p);
+//	if (q31_d_i < -clamp + abs(q31_p))
+//		q31_d_i = -clamp + abs(q31_p);
+//	if (q31_d_i > clamp - abs(q31_p))
+//		q31_d_i = clamp - abs(q31_p);
 
 
 	if (!READ_BIT(TIM1->BDTR, TIM_BDTR_MOE)){
