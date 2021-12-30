@@ -120,6 +120,7 @@ typedef struct {
 	uint32_t Speed;
 	q31_t i_d;
 	q31_t i_q;
+	q31_t i_abs;
 	q31_t i_q_setpoint;
 	q31_t i_d_setpoint;
 	q31_t i_setpoint_abs;

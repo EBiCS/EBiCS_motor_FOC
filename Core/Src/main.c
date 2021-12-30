@@ -575,6 +575,17 @@ int main(void) {
 			MS.i_d_setpoint=MS.i_d_setpoint_temp;
 		}
 
+		  //calculate battery current
+		  arm_sqrt_q31((MS.i_q*MS.i_q+MS.i_d*MS.i_d)<<1, &MS.i_abs);//+MS.i_d*MS.i_d
+		  MS.i_abs = (MS.i_abs >> 16) + 1;
+
+		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated >> 8;
+		  q31_t_Battery_Current_accumulated += ((MS.i_abs * MS.u_abs) >> 11) *
+		     (uint16_t) (CAL_I);
+
+		  MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
+		      * i8_direction * i8_reverse_flag*i8_recent_rotor_direction; //Battery current in mA
+
 
 
 
@@ -622,7 +633,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = q31_Battery_Voltage;
-			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.Voltage, ui8_hall_case, ui8_hall_state_old, ui8_hall_state, MS.system_state, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
+			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.Voltage, MS.i_abs, MS.i_q, MS.i_d, MS.Battery_Current, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
@@ -1300,7 +1311,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 #endif
 			} else {
 				ui8_overflow_flag = 1;
-				q31_rotorposition_absolute = q31_rotorposition_hall;//-i8_direction*DEG_plus60; //need to substract 60° in interpolation mode, don't understand why recently
+				q31_rotorposition_absolute = q31_rotorposition_hall-i8_direction*DEG_plus60; //need to substract 60° in interpolation mode, don't understand why recently
 				MS.system_state=SixStep;
 					//	}
 
@@ -1580,13 +1591,13 @@ void runPIcontrol(){
 	//PI-control processing
 			if (PI_flag) {
 				//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
-				q31_t_Battery_Current_accumulated -=
-						q31_t_Battery_Current_accumulated >> 8;
-				q31_t_Battery_Current_accumulated += ((MS.i_q * MS.u_abs) >> 11) //to be updated for Flux weakening!
-						* (uint16_t) (CAL_I >> 8);
-
-				MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
-						* i8_direction * i8_reverse_flag; //Battery current in mA
+//				q31_t_Battery_Current_accumulated -=
+//						q31_t_Battery_Current_accumulated >> 8;
+//				q31_t_Battery_Current_accumulated += ((MS.i_q * MS.u_abs) >> 11) //to be updated for Flux weakening!
+//						* (uint16_t) (CAL_I >> 8);
+//
+//				MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
+//						* i8_direction * i8_reverse_flag; //Battery current in mA
 
 				//Check battery current limit
 				if (MS.Battery_Current > BATTERYCURRENT_MAX)
@@ -1596,12 +1607,12 @@ void runPIcontrol(){
 				//reset battery current flag with small hysteresis
 				if (MS.i_q * i8_direction * i8_reverse_flag > 100) { //motor mode
 					if (((MS.i_q_setpoint * MS.u_abs) >> 11)
-							* (uint16_t) (CAL_I >> 8)
+							* (uint16_t) (CAL_I)
 							< (BATTERYCURRENT_MAX * 7) >> 3)
 						ui8_BC_limit_flag = 0;
 				} else { //generator mode
 					if (((MS.i_q_setpoint * MS.u_abs) >> 11)
-							* (uint16_t) (CAL_I >> 8)
+							* (uint16_t) (CAL_I)
 							> (-REGEN_CURRENT_MAX * 7) >> 3)
 						ui8_BC_limit_flag = 0;
 				}
