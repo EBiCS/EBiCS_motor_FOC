@@ -579,11 +579,11 @@ int main(void) {
 
 			q31_t ibatq;
 			q31_t ibatd;
-			ibatq=((MS.i_q * MS.u_q) >> 11)*CAL_I;
-			ibatd=((MS.i_d * MS.u_d) >> 11)*CAL_I;
-		 // arm_sqrt_q31((ibatq*ibatq+ibatd*ibatd)<<1, &MS.i_abs);//+MS.i_d*MS.i_d
-		 // MS.i_abs = (MS.i_abs >> 16) + 1;
-			MS.i_abs=ibatq+ibatd;
+			ibatq=((MS.i_q * MS.u_q*CAL_I) >> 11);
+			ibatd=((MS.i_d * MS.u_d*CAL_I) >> 11);
+			arm_sqrt_q31((ibatq*ibatq+ibatd*ibatd)<<1, &MS.i_abs);//+MS.i_d*MS.i_d
+			MS.i_abs = (MS.i_abs >> 16) + 1;
+
 		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated >> 8;
 		  q31_t_Battery_Current_accumulated += MS.i_abs;
 
@@ -637,7 +637,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = q31_Battery_Voltage;
-			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_d_setpoint, MS.i_abs, MS.i_q, MS.i_d, MS.Battery_Current, MS.u_abs, MS.u_q,MS.u_d,MS.Speed);
+			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_d_setpoint, MS.i_abs, MS.i_q, MS.i_d, MS.Battery_Current, MS.u_q,MS.u_d,ibatq,ibatd);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
