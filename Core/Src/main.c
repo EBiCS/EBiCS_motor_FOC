@@ -231,8 +231,8 @@ void autodetect() {
 	for (i = 0; i < 1080; i++) {
 		q31_rotorposition_absolute += 11930465; //drive motor in open loop with steps of 1�
 		HAL_Delay(5);
-		if (q31_rotorposition_absolute > -60
-				&& q31_rotorposition_absolute < 60) {
+		if (q31_rotorposition_absolute > -300
+				&& q31_rotorposition_absolute < 300) {
 			switch (ui8_hall_case) //12 cases for each transition from one stage to the next. 6x forward, 6x reverse
 			{
 			//6 cases for forward direction
