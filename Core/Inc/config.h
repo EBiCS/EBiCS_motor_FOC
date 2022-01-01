@@ -46,14 +46,14 @@
 #define PH_CURRENT_MAX_NORMAL 1000
 #define PH_CURRENT_MAX_SPORT 1500
 
-#define FW_CURRENT_MAX 200 //max id
+#define FW_CURRENT_MAX 400 //max id
 #define KV 8 //kph*10 per volt, 7 for original M365 motor
 
 #define BATTERYCURRENT_MAX 9000
 #define SPEC_ANGLE -167026406L //BionX IGH3 -143165476
 
 #define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
-#define REVERSE -1 //-1 for original M365 motor
+#define REVERSE 1 //-1 for original M365 motor
 
 #define VOLTAGE_MIN 300
 #define REGEN_CURRENT 1000

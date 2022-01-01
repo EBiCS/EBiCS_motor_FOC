@@ -576,21 +576,38 @@ int main(void) {
 		}
 
 		  //calculate battery current
+			static q31_t iq_cum=0;
+			static q31_t id_cum=0;
+			static q31_t uq_cum=0;
+			static q31_t ud_cum=0;
+			iq_cum-=iq_cum>>8;
+			iq_cum+=MS.i_q;
+
+			id_cum-=id_cum>>8;
+			id_cum+=MS.i_d;
+
+			uq_cum-=uq_cum>>8;
+			uq_cum+=MS.u_q;
+
+			ud_cum-=ud_cum>>8;
+			ud_cum+=MS.u_d;
 
 			q31_t ibatq;
 			q31_t ibatd;
-			ibatq=((MS.i_q * MS.u_q*CAL_I) >> 11);
-			ibatd=((MS.i_d * MS.u_d*CAL_I) >> 11);
-			arm_sqrt_q31((ibatq*ibatq+ibatd*ibatd)<<1, &MS.i_abs);//+MS.i_d*MS.i_d
-			MS.i_abs = (MS.i_abs >> 16) + 1;
+			ibatq=(((iq_cum>>8) * (uq_cum>>8)*CAL_I) >> 11);
+			ibatd=(((id_cum>>8) * (ud_cum>>8)*CAL_I) >> 11);
 
-		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated >> 8;
-		  q31_t_Battery_Current_accumulated += MS.i_abs;
+//			arm_sqrt_q31((ibatq*ibatq+ibatd*ibatd)<<1, &MS.i_abs);//+MS.i_d*MS.i_d
+//			MS.i_abs = (MS.i_abs >> 16) + 1;
+//
+//		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated >> 8;
+//		  q31_t_Battery_Current_accumulated += MS.i_abs;
+//
+//		  MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
+//		      * i8_direction * i8_reverse_flag; //Battery current in mA
 
-		  MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
-		      * i8_direction * i8_reverse_flag; //Battery current in mA
-
-
+			if(abs(ibatq)<abs(ibatd))MS.Battery_Current=abs(ibatd)-abs(ibatq);
+			else MS.Battery_Current=abs(ibatd)+abs(ibatq);
 
 
 
@@ -637,7 +654,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = q31_Battery_Voltage;
-			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_d_setpoint, MS.i_abs, MS.i_q, MS.i_d, MS.Battery_Current, MS.u_q,MS.u_d,ibatq,ibatd);
+			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_d_setpoint, q31_tics_filtered >> 3, iq_cum>>8, id_cum>>8, MS.Battery_Current,uq_cum>>8,ud_cum>>8,ibatq,ibatd);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
