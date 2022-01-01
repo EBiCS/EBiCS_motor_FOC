@@ -88,6 +88,7 @@ static void MX_ADC2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART3_UART_Init(void);
+q31_t get_battery_current(q31_t iq,q31_t id,q31_t uq,q31_t ud);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -132,6 +133,12 @@ volatile uint8_t ui8_UART_TxCplt_flag = 1;
 volatile uint8_t ui8_PAS_flag = 0;
 volatile uint8_t ui8_SPEED_flag = 0;
 volatile uint8_t ui8_6step_flag = 0;
+
+static q31_t iq_cum=0;
+static q31_t id_cum=0;
+static q31_t uq_cum=0;
+static q31_t ud_cum=0;
+
 
 uint32_t uint32_PAS_HIGH_counter = 0;
 uint32_t uint32_PAS_HIGH_accumulated = 32000;
@@ -555,7 +562,7 @@ int main(void) {
 		MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit,
 				tics_lower_limit, 0, MS.i_q_setpoint_temp); //ramp down current at speed limit
 
-		if(MS.u_abs>(_U_MAX-10)&&MS.mode==sport){//do flux weakaning
+		if(MS.mode==sport){//do flux weakaning
 					MS.i_d_setpoint_temp=map(MS.Speed,(KV*MS.Voltage/10000)-5,(KV*MS.Voltage/10000)+30,0,FW_CURRENT_MAX);
 				}
 		else MS.i_d_setpoint_temp=0;
@@ -576,10 +583,7 @@ int main(void) {
 		}
 
 		  //calculate battery current
-			static q31_t iq_cum=0;
-			static q31_t id_cum=0;
-			static q31_t uq_cum=0;
-			static q31_t ud_cum=0;
+
 			iq_cum-=iq_cum>>8;
 			iq_cum+=MS.i_q;
 
@@ -592,22 +596,10 @@ int main(void) {
 			ud_cum-=ud_cum>>8;
 			ud_cum+=MS.u_d;
 
-			q31_t ibatq;
-			q31_t ibatd;
-			ibatq=(((iq_cum>>8) * (uq_cum>>8)*CAL_I) >> 11);
-			ibatd=(((id_cum>>8) * (ud_cum>>8)*CAL_I) >> 11);
 
-//			arm_sqrt_q31((ibatq*ibatq+ibatd*ibatd)<<1, &MS.i_abs);//+MS.i_d*MS.i_d
-//			MS.i_abs = (MS.i_abs >> 16) + 1;
-//
-//		  q31_t_Battery_Current_accumulated -= q31_t_Battery_Current_accumulated >> 8;
-//		  q31_t_Battery_Current_accumulated += MS.i_abs;
-//
-//		  MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
-//		      * i8_direction * i8_reverse_flag; //Battery current in mA
 
-			if(abs(ibatq)<abs(ibatd))MS.Battery_Current=abs(ibatd)-abs(ibatq);
-			else MS.Battery_Current=abs(ibatd)+abs(ibatq);
+
+			 MS.Battery_Current=get_battery_current(iq_cum>>8,id_cum>>8,uq_cum>>8,ud_cum>>8);
 
 
 
@@ -654,7 +646,7 @@ int main(void) {
 
 			MS.Temperature = adcData[ADC_TEMP] * 41 >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 			MS.Voltage = q31_Battery_Voltage;
-			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_d_setpoint, MS.Speed*100, iq_cum>>8, id_cum>>8, MS.Battery_Current,uq_cum>>8,ud_cum>>8,ibatq,ibatd);
+			printf_("%d, %d, %d, %d, %d, %d, %d, %d, %d\n", MS.i_d_setpoint, MS.Speed*100, iq_cum>>8, id_cum>>8, MS.Battery_Current,uq_cum>>8,ud_cum>>8,temp5,temp6);
 			if(MS.system_state==Stop||MS.system_state==SixStep) MS.Speed=0;
 			else MS.Speed=tics_to_speed(q31_tics_filtered>>3);
 
@@ -1611,15 +1603,6 @@ void get_standstill_position() {
 void runPIcontrol(){
 	//PI-control processing
 			if (PI_flag) {
-				//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
-//				q31_t_Battery_Current_accumulated -=
-//						q31_t_Battery_Current_accumulated >> 8;
-//				q31_t_Battery_Current_accumulated += ((MS.i_q * MS.u_abs) >> 11) //to be updated for Flux weakening!
-//						* (uint16_t) (CAL_I >> 8);
-//
-//				MS.Battery_Current = (q31_t_Battery_Current_accumulated >> 8)
-//						* i8_direction * i8_reverse_flag; //Battery current in mA
-
 				//Check battery current limit
 				if (MS.Battery_Current > BATTERYCURRENT_MAX)
 					ui8_BC_limit_flag = 1;
@@ -1627,14 +1610,12 @@ void runPIcontrol(){
 					ui8_BC_limit_flag = 1;
 				//reset battery current flag with small hysteresis
 				if (MS.i_q * i8_direction * i8_reverse_flag > 100) { //motor mode
-					if (((MS.i_q_setpoint * MS.u_abs) >> 11)
-							* (uint16_t) (CAL_I)
-							< (BATTERYCURRENT_MAX * 7) >> 3)
+					if (get_battery_current(MS.i_q_setpoint,MS.i_d_setpoint,uq_cum>>8,ud_cum>>8)
+							<  (BATTERYCURRENT_MAX * 7) >> 3)
 						ui8_BC_limit_flag = 0;
 				} else { //generator mode
-					if (((MS.i_q_setpoint * MS.u_abs) >> 11)
-							* (uint16_t) (CAL_I)
-							> (-REGEN_CURRENT_MAX * 7) >> 3)
+					if (get_battery_current(MS.i_q_setpoint,MS.i_d_setpoint,uq_cum>>8,ud_cum>>8)
+							> (-REGEN_CURRENT_MAX * 7) >> 3) // Battery current not negative yet!!!!
 						ui8_BC_limit_flag = 0;
 				}
 
@@ -1716,6 +1697,17 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
 
   return q31_d_dc;
 }
+q31_t get_battery_current(q31_t iq,q31_t id,q31_t uq,q31_t ud){
+	q31_t ibatq;
+	q31_t ibatd;
+	ibatq=(iq * uq *CAL_I) >> 11;
+	ibatd=(id * ud *CAL_I) >> 11;
+	temp5=ibatq;
+	temp6=ibatd;
+	return abs(ibatd)+abs(ibatq);
+}
+
+
 /* USER CODE END 4 */
 
 /**
