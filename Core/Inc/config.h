@@ -53,7 +53,7 @@
 #define SPEC_ANGLE -167026406L //BionX IGH3 -143165476
 
 #define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
-#define REVERSE 1 //-1 for original M365 motor
+#define REVERSE -1 //-1 for original M365 motor
 
 #define VOLTAGE_MIN 300
 #define REGEN_CURRENT 1000
