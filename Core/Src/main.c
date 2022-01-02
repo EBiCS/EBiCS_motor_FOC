@@ -197,6 +197,7 @@ q31_t q31_tics_filtered = 128000;
 //variables for display communication
 
 #define iabs(x) (((x) >= 0)?(x):-(x))
+#define sign(x) (((x) >= 0)?(1):(-1))
 
 MotorState_t MS;
 MotorParams_t MP;
@@ -599,7 +600,7 @@ int main(void) {
 
 
 
-			 MS.Battery_Current=get_battery_current(iq_cum>>8,id_cum>>8,uq_cum>>8,ud_cum>>8)*-i16_hall_order*i8_recent_rotor_direction * i8_direction * i8_reverse_flag;
+			 MS.Battery_Current=get_battery_current(iq_cum>>8,id_cum>>8,uq_cum>>8,ud_cum>>8)*sign(iq_cum) * i8_direction * i8_reverse_flag;
 
 
 
