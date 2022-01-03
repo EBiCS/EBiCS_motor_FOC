@@ -10,11 +10,13 @@
 #   2015-07-22 - first version
 # ------------------------------------------------
 
+# uncomment next line to build the code for development and not using the M365 bootloader
+#USE_M365_BOOTLOADER = 1
+
 ######################################
 # target
 ######################################
 TARGET = EBiCS_Firmware2
-
 
 ######################################
 # building variables
@@ -39,6 +41,7 @@ C_SOURCES =  \
 Core/Src/main.c \
 Core/Src/FOC.c \
 Core/Src/eeprom.c \
+Core/Src/decr_and_flash.c \
 Core/Src/button_processing.c \
 Core/Src/M365_Dashboard.c \
 Core/Src/stm32f1xx_it.c \
@@ -60,7 +63,7 @@ Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c \
-Src/system_stm32f1xx.c  
+Src/system_stm32f1xx.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -135,6 +138,9 @@ ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2
 endif
 
+ifeq ($(DO_NOT_USE_M365_BOOTLOADER), 1)
+CFLAGS += -DO_NOT_USE_M365_BOOTLOADER
+endif
 
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
@@ -144,7 +150,7 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = STM32F103C8Tx_FLASH.ld
+LDSCRIPT = STM32F103C8Tx_FLASH-development.ld
 
 # libraries
 LIBS = -lc -lm -lnosys -larm_cortexM3l_math
