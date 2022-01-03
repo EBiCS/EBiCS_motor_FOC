@@ -62,7 +62,7 @@
 
 #define REGEN_CURRENT_MAX 10000
 
-//#define SPEED_PLL
+#define SPEED_PLL
 #define P_FACTOR_PLL 9 //7 for original M365 motor
 #define I_FACTOR_PLL 10 //7 for original M365 motor
 
