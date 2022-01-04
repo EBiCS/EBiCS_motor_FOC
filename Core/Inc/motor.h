@@ -15,25 +15,16 @@ extern "C" {
 #define ADC_CHANB 4
 #define ADC_CHANC 5
 
-// motor hall sensor pins
-#define HALL_3_Pin GPIO_PIN_0
-#define HALL_3_GPIO_Port GPIOB
-#define HALL_1_Pin GPIO_PIN_4
-#define HALL_1_GPIO_Port GPIOB
-#define HALL_2_Pin GPIO_PIN_5
-#define HALL_2_GPIO_Port GPIOB
-
-//#define FAST_LOOP_LOG
 //#define DISABLE_DYNAMIC_ADC
 
 #define P_FACTOR_I_Q 100
 #define I_FACTOR_I_Q 2
-#define P_FACTOR_I_D 1
-#define I_FACTOR_I_D 1
+#define P_FACTOR_I_D 100
+#define I_FACTOR_I_D 10
 #define MAX_D_FACTOR 1
 
-#define PUSHASSIST_CURRENT 30
-#define SIXSTEPTHRESHOLD 9000
+#define iabs(x) (((x) >= 0)?(x):-(x))
+#define sign(x) (((x) >= 0)?(1):(-1))
 
 typedef struct {
 	q31_t i_d;
@@ -58,6 +49,7 @@ typedef struct {
 	int8_t speed_limit;
 	int16_t phase_current_limit;
   int16_t spec_angle;
+  bool brake_active;
 } MotorState_t;
 
 typedef struct {
@@ -84,6 +76,20 @@ typedef struct {
   int8_t speed_limit;
 } MotorStatePublic_t;
 
+typedef struct
+{
+	int16_t gain_p;
+	int16_t gain_i;
+	int16_t limit_i;
+	int16_t limit_output;
+	int16_t recent_value;
+	int32_t setpoint;
+	int32_t integral_part;
+	int16_t max_step;
+	int32_t out;
+	int8_t shift;
+} PI_control_t;
+
 enum {
   Stop,
   SixStep,
@@ -99,7 +105,7 @@ enum errors {
 
 void motor_init(volatile MotorStatePublic_t* p_MotorStatePublic);
 void motor_autodetect();
-void runPIcontrol();
+void motor_runPIcontrol();
 void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_t* p_M365State);
 
 #ifdef __cplusplus

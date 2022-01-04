@@ -87,18 +87,19 @@ void Error_Handler(void);
 #define Phase_Voltage_2_GPIO_Port GPIOA
 #define Phase_Voltage_3_Pin GPIO_PIN_1
 #define Phase_Voltage_3_GPIO_Port GPIOB
-#define HALL_3_Pin GPIO_PIN_0
-#define HALL_3_GPIO_Port GPIOB
-#define HALL_1_Pin GPIO_PIN_4
-#define HALL_1_GPIO_Port GPIOB
-#define HALL_2_Pin GPIO_PIN_5
-#define HALL_2_GPIO_Port GPIOB
 
 #define PWR_BTN_Pin GPIO_PIN_14
 #define PWR_BTN_GPIO_Port GPIOC
 #define TPS_ENA_Pin GPIO_PIN_15
 #define TPS_ENA_GPIO_Port GPIOC
-/* USER CODE BEGIN Private defines */
+
+// motor hall sensor pins
+#define HALL_1_Pin GPIO_PIN_4
+#define HALL_1_GPIO_Port GPIOB
+#define HALL_2_Pin GPIO_PIN_5
+#define HALL_2_GPIO_Port GPIOB
+#define HALL_3_Pin GPIO_PIN_0
+#define HALL_3_GPIO_Port GPIOB
 
 #define PUSHASSIST_CURRENT 30
 #define SIXSTEPTHRESHOLD 9000
@@ -129,6 +130,7 @@ typedef struct {
   int32_t i_q_setpoint_target;
   uint32_t speed;
   int8_t speed_limit;
+	bool brake_active;
 } M365State_t;
 
 enum modes {

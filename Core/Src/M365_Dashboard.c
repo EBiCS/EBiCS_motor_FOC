@@ -231,16 +231,20 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 			}
 			break;
 
-		case 0x65: {
-			if(map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT)>0){
-				if(p_M365State->speed > 2)	p_M365State->i_q_setpoint_target = -map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT);
-				else p_M365State->i_q_setpoint_target = 0;
+		case 0x65:
+			if (map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT) > 0) {
+				if(p_M365State->speed > 2) {
+          p_M365State->i_q_setpoint_target =- map(message[Brake], BRAKEOFFSET, BRAKEMAX, 0, REGEN_CURRENT);
+					p_M365State->brake_active = true;
+        } else {
+          p_M365State->i_q_setpoint_target = 0;
+          p_M365State->brake_active = false;
 				}
-			else{
+      } else {
 				p_M365State->i_q_setpoint_target = map(message[Throttle],THROTTLEOFFSET,THROTTLEMAX,0,p_M365State->phase_current_limit);
-				}
-			}
-			break;
+        p_M365State->brake_active = false;
+      }
+    break;
 
 		case 0x61: {
 			//55 AA 06 20 61 DA 0C 02 27 00 69 FE

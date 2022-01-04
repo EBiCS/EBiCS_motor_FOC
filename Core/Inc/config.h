@@ -45,6 +45,8 @@
 #define KV 6 //kph*10 per volt, 7 for original M365 motor
 
 #define BATTERYCURRENT_MAX 8000
+#define SPEEDFILTER 3
+
 #define SPEC_ANGLE -167026406L //BionX IGH3 -143165476
 
 #define DISPLAY_TYPE DISPLAY_TYPE_M365DASHBOARD
