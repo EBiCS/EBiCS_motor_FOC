@@ -288,12 +288,6 @@ int8_t tics_to_speed(uint32_t tics) {
 	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * tics * 10);;
 }
 
-static void systick_delay(uint32_t ms) {
-  for (uint32_t i = 0; i < (ms * 72000); i++) {
-    ;
-  }
-}
-
 void motor_autodetect() {
 	motor_enable_pwm();
 	hall_angle_detect_flag = true;
@@ -1171,11 +1165,8 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
 
 	if (!ui8_adc_offset_done_flag) {
-		i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1,
-				ADC_INJECTED_RANK_1);
-		i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2,
-				ADC_INJECTED_RANK_1);
-
+		i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
+		i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
 		ui8_adc_inj_flag = 1;
 	} else {
 
@@ -1186,31 +1177,25 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
   switch (MS.char_dyn_adc_state) //read in according to state
   {
     case 1: //Phase C at high dutycycles, read from A+B directly
-      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-          ADC_INJECTED_RANK_1);
+      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
       i16_ph1_current = raw_inj1;
 
-      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-          ADC_INJECTED_RANK_1);
+      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
       i16_ph2_current = raw_inj2;
       break;
 
     case 2: //Phase A at high dutycycles, read from B+C (A = -B -C)
-      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-          ADC_INJECTED_RANK_1);
+      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
       i16_ph2_current = raw_inj2;
 
-      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-          ADC_INJECTED_RANK_1);
+      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
       i16_ph1_current = -i16_ph2_current - raw_inj1;
       break;
 
     case 3: //Phase B at high dutycycles, read from A+C (B=-A-C)
-      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1,
-          ADC_INJECTED_RANK_1);
+      raw_inj1 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
       i16_ph1_current = raw_inj1;
-      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2,
-          ADC_INJECTED_RANK_1);
+      raw_inj2 = (q31_t) HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
       i16_ph2_current = -i16_ph1_current - raw_inj2;
       break;
 
