@@ -46,7 +46,7 @@ void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta) {
 	}
 }
 
-void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, MotorState_t *MS_FOC) {
+void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, volatile MotorState_t *MS_FOC) {
 
   q31_t q31_i_alpha = 0;
 	q31_t q31_i_beta = 0;

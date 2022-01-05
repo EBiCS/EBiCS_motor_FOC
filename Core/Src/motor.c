@@ -36,34 +36,35 @@ volatile int16_t i16_ph2_current_filter = 0;
 volatile uint8_t ui8_adc_inj_flag = 0;
 q31_t raw_inj1;
 q31_t raw_inj2;
-uint8_t ui8_hall_state = 0;
-uint8_t ui8_hall_state_old = 0;
-uint8_t ui8_hall_case = 0;
+volatile uint8_t ui8_hall_state = 0;
+volatile uint8_t ui8_hall_state_old = 0;
+volatile uint8_t ui8_hall_case = 0;
+volatile bool hall_angle_detect_flag = false;
 uint8_t ui8_BC_limit_flag = 0;
 uint16_t ui16_tim2_recent = 0;
-uint16_t ui16_timertics = 5000; //timertics between two hall events for 60° interpolation
+volatile uint16_t ui16_timertics = 5000; //timertics between two hall events for 60° interpolation
 volatile uint8_t ui8_6step_flag = 0;
-q31_t q31_rotorposition_absolute;
-q31_t q31_rotorposition_hall;
+volatile q31_t q31_rotorposition_absolute;
+volatile q31_t q31_rotorposition_hall;
 q31_t q31_rotorposition_motor_specific = SPEC_ANGLE;
-q31_t q31_rotorposition_PLL = 0;
-q31_t q31_angle_per_tic = 0;
-int8_t i8_recent_rotor_direction = 1;
-int16_t i16_hall_order = 1;
+volatile q31_t q31_rotorposition_PLL = 0;
+volatile q31_t q31_angle_per_tic = 0;
+volatile int8_t i8_recent_rotor_direction = 1;
+volatile int16_t i16_hall_order = 1;
 
 // rotor angle scaled from degree to q31 for arm_math. -180°-->-2^31, 0°-->0, +180°-->+2^31 read in from EEPROM
-q31_t Hall_13 = 0;
-q31_t Hall_32 = 0;
-q31_t Hall_26 = 0;
-q31_t Hall_64 = 0;
-q31_t Hall_51 = 0;
-q31_t Hall_45 = 0;
+volatile q31_t Hall_13 = 0;
+volatile q31_t Hall_32 = 0;
+volatile q31_t Hall_26 = 0;
+volatile q31_t Hall_64 = 0;
+volatile q31_t Hall_51 = 0;
+volatile q31_t Hall_45 = 0;
 
 q31_t switchtime[3];
 volatile uint8_t ui8_overflow_flag = 0;
 char char_dyn_adc_state = 1;
 char char_dyn_adc_state_old = 1;
-q31_t q31_tics_filtered = 128000;
+volatile q31_t q31_tics_filtered = 128000;
 q31_t q31_t_Battery_Current_accumulated = 0;
 int8_t i8_direction = REVERSE;
 volatile int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
@@ -93,7 +94,7 @@ uint16_t ui16_ph1_offset = 0;
 uint16_t ui16_ph2_offset = 0;
 uint16_t ui16_ph3_offset = 0;
 
-uint8_t ui8_KV_detect_flag = 0;
+volatile uint8_t ui8_KV_detect_flag = 0;
 uint16_t ui16_KV_detect_counter = 0; // for getting timing of the KV detect
 static int16_t ui32_KV = 0;
 
@@ -154,7 +155,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 			return;
 
 		ui8_hall_case = ui8_hall_state_old * 10 + ui8_hall_state; // old state + current state
-		if (MS.hall_angle_detect_flag) { // only process, if autodetect process is finished
+
+    // only process, if autodetect process is finished
+		if (hall_angle_detect_flag == false) {
 			ui8_hall_state_old = ui8_hall_state;
 		}
 
@@ -173,67 +176,65 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
       // 6 cases for forward direction
       case 64:
         q31_rotorposition_hall = Hall_64;
-
         i8_recent_rotor_direction = -i16_hall_order;
         uint16_full_rotation_counter = 0;
         break;
+
       case 45:
         q31_rotorposition_hall = Hall_45;
-
         i8_recent_rotor_direction = -i16_hall_order;
         break;
+
       case 51:
         q31_rotorposition_hall = Hall_51;
-
         i8_recent_rotor_direction = -i16_hall_order;
         break;
+
       case 13:
         q31_rotorposition_hall = Hall_13;
-
         i8_recent_rotor_direction = -i16_hall_order;
         uint16_half_rotation_counter = 0;
         break;
+
       case 32:
         q31_rotorposition_hall = Hall_32;
-
         i8_recent_rotor_direction = -i16_hall_order;
         break;
+
       case 26:
         q31_rotorposition_hall = Hall_26;
-
         i8_recent_rotor_direction = -i16_hall_order;
         break;
 
       // 6 cases for reverse direction
       case 46:
         q31_rotorposition_hall = Hall_64;
-
         i8_recent_rotor_direction = i16_hall_order;
         break;
+
       case 62:
         q31_rotorposition_hall = Hall_26;
-
         i8_recent_rotor_direction = i16_hall_order;
         break;
+
       case 23:
         q31_rotorposition_hall = Hall_32;
-
         i8_recent_rotor_direction = i16_hall_order;
         uint16_half_rotation_counter = 0;
         break;
+
       case 31:
         q31_rotorposition_hall = Hall_13;
-
         i8_recent_rotor_direction = i16_hall_order;
         break;
+
       case 15:
         q31_rotorposition_hall = Hall_51;
-
         i8_recent_rotor_direction = i16_hall_order;
         break;
+
       case 54:
         q31_rotorposition_hall = Hall_45;
-
         i8_recent_rotor_direction = i16_hall_order;
         uint16_full_rotation_counter = 0;
         break;
@@ -287,9 +288,15 @@ int8_t tics_to_speed(uint32_t tics) {
 	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * tics * 10);;
 }
 
+static void systick_delay(uint32_t ms) {
+  for (uint32_t i = 0; i < (ms * 72000); i++) {
+    ;
+  }
+}
+
 void motor_autodetect() {
 	motor_enable_pwm();
-	MS.hall_angle_detect_flag = 0; //set uq to contstant value in FOC.c for open loop control
+	hall_angle_detect_flag = true;
 	q31_rotorposition_absolute = 1 << 31;
   i16_hall_order = 1; // reset hall order
   MS.i_d_setpoint = 200; // set MS.id to appr. 2000mA
@@ -364,7 +371,7 @@ void motor_autodetect() {
   TIM1->CCR1 = 1023; // set initial PWM values
   TIM1->CCR2 = 1023;
   TIM1->CCR3 = 1023;
-  MS.hall_angle_detect_flag = 1;
+  hall_angle_detect_flag = false;
   MS.i_d = 0;
   MS.i_q = 0;
   MS.u_d = 0;
@@ -390,16 +397,8 @@ void motor_autodetect() {
 
 	HAL_FLASH_Lock();
 
-	MS.hall_angle_detect_flag = 1;
-#if (DISPLAY_TYPE == DISPLAY_TYPE_DEBUG)
-	printf_("Motor specific angle:  %d, direction %d \n ",
-			(int16_t) (((q31_rotorposition_motor_specific >> 23) * 180) >> 8),
-			i16_hall_order);
-#endif
-
-	ui8_KV_detect_flag = 20;
-
-	HAL_Delay(5);
+	hall_angle_detect_flag = false;
+	// ui8_KV_detect_flag = 20;
 }
 
 int16_t internal_tics_to_speedx100 (uint32_t tics) {
@@ -450,7 +449,7 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_
   arm_sqrt_q31((MS.i_q_setpoint_temp * MS.i_q_setpoint_temp + MS.i_d_setpoint_temp * MS.i_d_setpoint_temp) << 1, &MS.i_setpoint_abs);
   MS.i_setpoint_abs = (MS.i_setpoint_abs >> 16) + 1;
 
-  if (MS.hall_angle_detect_flag ){ // run only, if autodetect is not active
+  if (hall_angle_detect_flag == false) {
     if (MS.i_setpoint_abs > MS.phase_current_limit) {
       MS.i_q_setpoint = (MS.i_q_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; // division!
       MS.i_d_setpoint = (MS.i_d_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; // division!
@@ -566,7 +565,7 @@ static void DMA_Init(void) {
 
 	// DMA channel 1: used for ADC
   /* DMA1_Channel1_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 2, 0);
+	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
@@ -841,13 +840,13 @@ static void GPIO_Init(void) {
 	__HAL_AFIO_REMAP_PD01_ENABLE();
 
 	/* EXTI interrupt init*/
-	HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
-	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
-	HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
@@ -1039,7 +1038,7 @@ void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
   DMA_Init();
 
 	// initialize MS struct.
-	MS.hall_angle_detect_flag = 1;
+	hall_angle_detect_flag = false;
 	MS.assist_level = 1;
 	MS.regen_level = 7;
 	MS.i_q_setpoint = 0;
@@ -1221,11 +1220,12 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
   } // end case
 #endif
 
-  __disable_irq(); //ENTER CRITICAL SECTION!!!!!!!!!!!!!
+  __disable_irq(); // ENTER CRITICAL SECTION!!!!!!!!!!!!!
 
-  //extrapolate recent rotor position
+  // extrapolate recent rotor position
   ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
-  if (MS.hall_angle_detect_flag) {
+
+  if (hall_angle_detect_flag == false) {
 
     if (ui16_timertics < SIXSTEPTHRESHOLD && ui16_tim2_recent < 200) {
       ui8_6step_flag = 0; 
@@ -1234,7 +1234,6 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
     if (ui16_timertics > (SIXSTEPTHRESHOLD * 6) >> 2) { 
       ui8_6step_flag = 1;
     }
-
 
 #ifdef SPEED_PLL
     q31_rotorposition_PLL += q31_angle_per_tic;
@@ -1252,40 +1251,36 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
       
       MS.system_state = Interpolation;
 #endif
-			} else {
-				ui8_overflow_flag = 1;
-				q31_rotorposition_absolute = q31_rotorposition_hall - i8_direction * 357913941; // offset of 30 degree to get the middle of the sector
-				MS.system_state = SixStep;
-			}
-		}
+    } else {
+      ui8_overflow_flag = 1;
+      q31_rotorposition_absolute = q31_rotorposition_hall - i8_direction * 357913941; // offset of 30 degree to get the middle of the sector
+      MS.system_state = SixStep;
+    }
+  }
 
   __enable_irq(); //EXIT CRITICAL SECTION!!!!!!!!!!!!!!
 
 #ifndef DISABLE_DYNAMIC_ADC
-		//get the Phase with highest duty cycle for dynamic phase current reading
-		dyn_adc_state(q31_rotorposition_absolute);
+  //get the Phase with highest duty cycle for dynamic phase current reading
+  dyn_adc_state(q31_rotorposition_absolute);
 
-		//set the according injected channels to read current at Low-Side active time
-		if (MS.char_dyn_adc_state != char_dyn_adc_state_old) {
-			set_inj_channel(MS.char_dyn_adc_state);
-			char_dyn_adc_state_old = MS.char_dyn_adc_state;
-		}
+  //set the according injected channels to read current at Low-Side active time
+  if (MS.char_dyn_adc_state != char_dyn_adc_state_old) {
+    set_inj_channel(MS.char_dyn_adc_state);
+    char_dyn_adc_state_old = MS.char_dyn_adc_state;
+  }
 #endif
 
-		// call FOC procedure if PWM is enabled
-		if (motor_pwm_is_enabled()) {
-			FOC_calculation(i16_ph1_current, i16_ph2_current,
-					q31_rotorposition_absolute, &MS);
-		}
+  // call FOC procedure if PWM is enabled
+  if (motor_pwm_is_enabled()) {
+    FOC_calculation(i16_ph1_current, i16_ph2_current, q31_rotorposition_absolute, &MS);
+  }
 
-		//set PWM
-		TIM1->CCR1 = (uint16_t) switchtime[0];
-		TIM1->CCR2 = (uint16_t) switchtime[1];
-		TIM1->CCR3 = (uint16_t) switchtime[2];
-
-		//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
-
-	} // end else
+  //set PWM
+  TIM1->CCR1 = (uint16_t) switchtime[0];
+  TIM1->CCR2 = (uint16_t) switchtime[1];
+  TIM1->CCR3 = (uint16_t) switchtime[2];
+	}
 }
 
 #ifdef  USE_FULL_ASSERT

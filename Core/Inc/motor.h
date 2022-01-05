@@ -27,18 +27,17 @@ extern "C" {
 #define sign(x) (((x) >= 0)?(1):(-1))
 
 typedef struct {
-	q31_t i_d;
-	q31_t i_q;
-	q31_t i_q_setpoint;
-	q31_t i_d_setpoint;
+	volatile q31_t i_d;
+	volatile q31_t i_q;
+	volatile q31_t i_q_setpoint;
+	volatile q31_t i_d_setpoint;
 	q31_t i_setpoint_abs;
 	int32_t i_q_setpoint_temp;
 	int32_t i_d_setpoint_temp;
-	q31_t u_d;
-	q31_t u_q;
+	volatile q31_t u_d;
+	volatile q31_t u_q;
 	q31_t u_abs;
 	q31_t Battery_Current;
-	uint8_t hall_angle_detect_flag;
 	uint8_t char_dyn_adc_state;
 	uint8_t assist_level;
 	uint8_t regen_level;
@@ -61,7 +60,6 @@ typedef struct {
 	q31_t u_q;
 	q31_t u_abs;
 	q31_t Battery_Current;
-	uint8_t hall_angle_detect_flag;
 	uint8_t assist_level;
 	uint8_t regen_level;
 	int8_t Temperature;

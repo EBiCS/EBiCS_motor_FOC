@@ -47,17 +47,17 @@ static void DMA_Init(void) {
 
   // DMA channel 3: used for USART3_RX
 	/* DMA1_Channel5_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 2, 0);
+	HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 3, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 
   // DMA channel 4: used for USART1_TX
 	/* DMA1_Channel4_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 2, 0);
+	HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 3, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
 
   // DMA channel 5: used for USART1_RX
 	/* DMA1_Channel5_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 2, 0);
+	HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 3, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 }
 

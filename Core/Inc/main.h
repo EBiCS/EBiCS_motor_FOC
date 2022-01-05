@@ -117,7 +117,6 @@ typedef struct {
   q31_t Voltage;
   int16_t phase_current_limit;
 	q31_t Battery_Current;
-	uint8_t hall_angle_detect_flag;
 	uint8_t char_dyn_adc_state;
 	uint8_t assist_level;
 	uint8_t regen_level;
