@@ -30,51 +30,51 @@ uint16_t adcData1[6 * sizeof(uint32_t)]; // point to buffer for ADC1 inputs
 
 MotorState_t MS;
 
-volatile int16_t i16_ph1_current = 0;
-volatile int16_t i16_ph2_current = 0;
-volatile int16_t i16_ph2_current_filter = 0;
-volatile uint8_t ui8_adc_inj_flag = 0;
+int16_t i16_ph1_current = 0;
+int16_t i16_ph2_current = 0;
+int16_t i16_ph2_current_filter = 0;
+uint8_t ui8_adc_inj_flag = 0;
 q31_t raw_inj1;
 q31_t raw_inj2;
-volatile uint8_t ui8_hall_state = 0;
-volatile uint8_t ui8_hall_state_old = 0;
-volatile uint8_t ui8_hall_case = 0;
-volatile bool hall_angle_detect_flag = false;
-uint8_t ui8_BC_limit_flag = 0;
+uint8_t ui8_hall_state = 0;
+uint8_t ui8_hall_state_old = 0;
+uint8_t ui8_hall_case = 0;
+bool hall_angle_detect_flag = false;
+bool ui8_BC_limit_flag = false;
 uint16_t ui16_tim2_recent = 0;
-volatile uint16_t ui16_timertics = 5000; //timertics between two hall events for 60° interpolation
-volatile uint8_t ui8_6step_flag = 0;
-volatile q31_t q31_rotorposition_absolute;
-volatile q31_t q31_rotorposition_hall;
+uint16_t ui16_timertics = 5000; //timertics between two hall events for 60° interpolation
+uint8_t ui8_6step_flag = 0;
+q31_t q31_rotorposition_absolute;
+q31_t q31_rotorposition_hall;
 q31_t q31_rotorposition_motor_specific = SPEC_ANGLE;
-volatile q31_t q31_rotorposition_PLL = 0;
-volatile q31_t q31_angle_per_tic = 0;
-volatile int8_t i8_recent_rotor_direction = 1;
-volatile int16_t i16_hall_order = 1;
+q31_t q31_rotorposition_PLL = 0;
+q31_t q31_angle_per_tic = 0;
+int8_t i8_recent_rotor_direction = 1;
+int16_t i16_hall_order = 1;
 
 // rotor angle scaled from degree to q31 for arm_math. -180°-->-2^31, 0°-->0, +180°-->+2^31 read in from EEPROM
-volatile q31_t Hall_13 = 0;
-volatile q31_t Hall_32 = 0;
-volatile q31_t Hall_26 = 0;
-volatile q31_t Hall_64 = 0;
-volatile q31_t Hall_51 = 0;
-volatile q31_t Hall_45 = 0;
+q31_t Hall_13 = 0;
+q31_t Hall_32 = 0;
+q31_t Hall_26 = 0;
+q31_t Hall_64 = 0;
+q31_t Hall_51 = 0;
+q31_t Hall_45 = 0;
 
 q31_t switchtime[3];
-volatile uint8_t ui8_overflow_flag = 0;
+uint8_t ui8_overflow_flag = 0;
 char char_dyn_adc_state = 1;
 char char_dyn_adc_state_old = 1;
-volatile q31_t q31_tics_filtered = 128000;
+q31_t q31_tics_filtered = 128000;
 q31_t q31_t_Battery_Current_accumulated = 0;
 int8_t i8_direction = REVERSE;
-volatile int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
+int8_t i8_reverse_flag = 1; //for temporaribly reverse direction
 q31_t q31_u_d_temp = 0;
 q31_t q31_u_q_temp = 0;
 int16_t i16_sinus = 0;
 int16_t i16_cosinus = 0;
 uint16_t uint16_half_rotation_counter = 0;
 uint16_t uint16_full_rotation_counter = 0;
-volatile uint8_t ui8_adc_offset_done_flag = 0;
+uint8_t ui8_adc_offset_done_flag = 0;
 
 static q31_t tics_lower_limit;
 static q31_t tics_higher_limit;
@@ -87,29 +87,29 @@ const q31_t DEG_plus180 = 2147483647;
 const q31_t DEG_minus60 = -715827883;
 const q31_t DEG_minus120 = -1431655765;
 
-volatile uint16_t ui16_reg_adc_value;
-volatile uint32_t ui32_reg_adc_value_filter;
-volatile uint8_t ui8_adc_regular_flag = 0;
+uint16_t ui16_reg_adc_value;
+uint32_t ui32_reg_adc_value_filter;
+uint8_t ui8_adc_regular_flag = 0;
 uint16_t ui16_ph1_offset = 0;
 uint16_t ui16_ph2_offset = 0;
 uint16_t ui16_ph3_offset = 0;
 
-volatile uint8_t ui8_KV_detect_flag = 0;
+uint8_t ui8_KV_detect_flag = 0;
 uint16_t ui16_KV_detect_counter = 0; // for getting timing of the KV detect
 static int16_t ui32_KV = 0;
 
 uint32_t uint32_SPEEDx100_cumulated = 0;
 
-static q31_t iq_cum = 0;
-static q31_t id_cum = 0;
-static q31_t uq_cum = 0;
-static q31_t ud_cum = 0;
-
 // structs for PI_control
 PI_control_t PI_iq;
 PI_control_t PI_id;
 
-volatile MotorStatePublic_t* p_MotorStatePublic;
+q31_t iq_filtered;
+q31_t id_filtered;
+q31_t uq_filtered;
+q31_t ud_filtered;
+
+MotorStatePublic_t* p_MotorStatePublic;
 
 // regular ADC callback
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
@@ -294,7 +294,7 @@ void motor_autodetect() {
 	q31_rotorposition_absolute = 1 << 31;
   i16_hall_order = 1; // reset hall order
   MS.i_d_setpoint = 200; // set MS.id to appr. 2000mA
-	MS.i_q_setpoint = 0;
+	MS.i_q_setpoint = 1;
 
 	HAL_Delay(5);
 	for (uint32_t i = 0; i < 1080; i++) { // 1080 = 360 * 3, 3 turns, just to make sure at least a full turn happens
@@ -392,7 +392,7 @@ void motor_autodetect() {
 	HAL_FLASH_Lock();
 
 	hall_angle_detect_flag = false;
-	// ui8_KV_detect_flag = 20;
+	ui8_KV_detect_flag = 20;
 }
 
 int16_t internal_tics_to_speedx100 (uint32_t tics) {
@@ -405,36 +405,44 @@ void calculate_tic_limits(int8_t speed_limit) {
 	tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * (speed_limit + 2) * 10);
 }
 
-q31_t get_battery_current(q31_t iq,q31_t id,q31_t uq,q31_t ud) {
+q31_t get_battery_current(q31_t iq, q31_t id, q31_t uq, q31_t ud) {
 	q31_t ibatq;
 	q31_t ibatd;
-	ibatq = (iq * uq *CAL_I) >> 11;
-	ibatd = (id * ud *CAL_I) >> 11;
+	ibatq = (iq * uq * CAL_I) >> 11;
+	ibatd = (id * ud * CAL_I) >> 11;
 
 	return abs(ibatd) + abs(ibatq);
 }
 
 // call every 10ms
-void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_t* p_M365State) {
+void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 
-  MS.brake_active = p_M365State->brake_active;
+  MotorStatePublic_t* MSP = p_MotorStatePublic;
+
+  MS.brake_active = MSP->brake_active;
 
   // i_q current limits
-  if (p_M365State->i_q_setpoint_target > p_M365State->phase_current_limit) {
-    MS.i_q_setpoint_temp = p_M365State->phase_current_limit;
+  if (MSP->i_q_setpoint_target > MSP->phase_current_limit) {
+    MS.i_q_setpoint_temp = MSP->phase_current_limit;
   }
-  if (p_M365State->i_q_setpoint_target < -p_M365State->phase_current_limit) {
-    MS.i_q_setpoint_temp = -p_M365State->phase_current_limit;
+  if (MSP->i_q_setpoint_target < -MSP->phase_current_limit) {
+    MS.i_q_setpoint_temp = -MSP->phase_current_limit;
   }
 
-	calculate_tic_limits(p_M365State->speed_limit);
+	calculate_tic_limits(MSP->speed_limit);
 
   // ramp down current at speed limit
-  MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit, tics_lower_limit, 0, p_M365State->i_q_setpoint_target);
+  MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
 
-  // see if we should do flux weakening: i_d current
-  if (p_M365State->mode == sport) {
-    MS.i_d_setpoint_temp = -map(p_M365State->speed,(ui32_KV * p_M365State->Voltage/100000) - 8, (ui32_KV*p_M365State->Voltage / 100000) + 30, 0, FW_CURRENT_MAX);
+  if (MSP->field_weakening_enable) {
+    
+    MS.i_d_setpoint_temp =
+      -map(MSP->speed,
+          (ui32_KV * MSP->battery_voltage / 100000) - 8,
+          (ui32_KV * MSP->battery_voltage / 100000) + 30,
+          0,
+          FW_CURRENT_MAX);
+
   } else {
     MS.i_d_setpoint_temp = 0;
   }
@@ -444,13 +452,13 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_
   MS.i_setpoint_abs = (MS.i_setpoint_abs >> 16) + 1;
 
   if (hall_angle_detect_flag == false) {
-    if (MS.i_setpoint_abs > MS.phase_current_limit) {
-      MS.i_q_setpoint = (MS.i_q_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; // division!
-      MS.i_d_setpoint = (MS.i_d_setpoint_temp * MS.phase_current_limit) / MS.i_setpoint_abs; // division!
-      MS.i_setpoint_abs = MS.phase_current_limit;
+    if (MS.i_setpoint_abs > MSP->phase_current_limit) {
+      MS.i_q_setpoint = (MS.i_q_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
+      MS.i_d_setpoint = (MS.i_d_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
+      MS.i_setpoint_abs = MSP->phase_current_limit;
     } else {
-      MS.i_q_setpoint=MS.i_q_setpoint_temp;
-      MS.i_d_setpoint=MS.i_d_setpoint_temp;
+      MS.i_q_setpoint = MS.i_q_setpoint_temp;
+      MS.i_d_setpoint = MS.i_d_setpoint_temp;
     }
   }
 
@@ -461,7 +469,7 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_
     
     if (MS.u_q > 0) {
       ui32_KV -= ui32_KV >> 4;
-      ui32_KV += (uint32_SPEEDx100_cumulated) / ((p_M365State->Voltage * MS.u_q) >> (21 - SPEEDFILTER)); //unit: kph*100/V
+      ui32_KV += (uint32_SPEEDx100_cumulated) / ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); //unit: kph*100/V
     }
     
     if (HAL_GetTick() - ui16_KV_detect_counter > 1000) {
@@ -484,19 +492,27 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_
   uint32_SPEEDx100_cumulated += internal_tics_to_speedx100(q31_tics_filtered >> 3);
 
   // low pass filter next signals
+  static q31_t iq_cum = 0;
   iq_cum -= iq_cum >> 8;
   iq_cum += MS.i_q;
+  iq_filtered = iq_cum >> 8;
 
+  static q31_t id_cum = 0;
   id_cum -= id_cum >> 8;
   id_cum += MS.i_d;
+  id_filtered = id_cum >> 8;
 
+  static q31_t uq_cum = 0;
   uq_cum -= uq_cum >> 8;
   uq_cum += MS.u_q;
+  uq_filtered = uq_cum >> 8;
 
+  static q31_t ud_cum = 0;
   ud_cum -= ud_cum >> 8;
   ud_cum += MS.u_d;
+  ud_filtered = ud_cum >> 8;
 
-  MS.Battery_Current = get_battery_current(iq_cum >> 8, id_cum >> 8, uq_cum >> 8, ud_cum >> 8) * sign(iq_cum) * i8_direction * i8_reverse_flag;
+  MS.Battery_Current = get_battery_current(iq_filtered, id_filtered, uq_filtered, ud_filtered) * sign(iq_filtered) * i8_direction * i8_reverse_flag;
 
   // if we should startup the motor
   if (MS.i_q_setpoint && motor_pwm_is_enabled() == 0) {
@@ -515,7 +531,7 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_
     if (MS.system_state == Stop) {
       speed_PLL(0,0); //reset integral part
     } else {
-      PI_iq.integral_part = ((p_M365State->speed << 11) * 100000 / (ui32_KV * p_M365State->Voltage)) << PI_iq.shift;
+      PI_iq.integral_part = ((MSP->speed << 11) * 100000 / (ui32_KV * MSP->battery_voltage)) << PI_iq.shift;
       PI_iq.out = PI_iq.integral_part;
     }
 
@@ -533,9 +549,9 @@ void motor_slow_loop(volatile MotorStatePublic_t* p_MotorStatePublic, M365State_
 
     // calculate wheel speed
     if (MS.system_state == Stop || MS.system_state == SixStep) {
-      p_M365State->speed = 0;
+      MSP->speed = 0;
     }	else {
-      p_M365State->speed = tics_to_speed(q31_tics_filtered >> 3);
+      MSP->speed = tics_to_speed(q31_tics_filtered >> 3);
     }
 
     // see if PWM should be disable
@@ -937,34 +953,33 @@ void motor_runPIcontrol() {
 
   //Check battery current limit
   if (MS.Battery_Current > BATTERYCURRENT_MAX)
-    ui8_BC_limit_flag = 1;
+    ui8_BC_limit_flag = true;
   if (MS.Battery_Current < -REGEN_CURRENT_MAX)
-    ui8_BC_limit_flag = 1;
+    ui8_BC_limit_flag = true;
 
   //reset battery current flag with small hysteresis
+  q31_t battery_current = get_battery_current(MS.i_q_setpoint,MS.i_d_setpoint, uq_filtered, ud_filtered);
   if (MS.i_q * i8_direction * i8_reverse_flag > 100) { // motor mode
-    if (get_battery_current(MS.i_q_setpoint,MS.i_d_setpoint,uq_cum>>8,ud_cum>>8)
-        < (BATTERYCURRENT_MAX * 7) >> 3)
-      ui8_BC_limit_flag = 0;
+    if (battery_current < ((BATTERYCURRENT_MAX * 7) >> 3)) {
+      ui8_BC_limit_flag = false;
+    }
   } else { //generator mode
-    if (get_battery_current(MS.i_q_setpoint,MS.i_d_setpoint,uq_cum>>8,ud_cum>>8)
-        > (-REGEN_CURRENT_MAX * 7) >> 3) // Battery current not negative yet!!!!
-      ui8_BC_limit_flag = 0;
+    if (battery_current > ((-REGEN_CURRENT_MAX * 7) >> 3)) { // Battery current not negative yet!!!!
+      ui8_BC_limit_flag = false;
+    }
   }
 
-  if (!ui8_BC_limit_flag) {
+  if (ui8_BC_limit_flag == false) {
     PI_iq.recent_value = MS.i_q;
     PI_iq.setpoint = MS.i_q_setpoint;
   } else {
-    if(!MS.brake_active){
-    // if(HAL_GPIO_ReadPin(Brake_GPIO_Port, Brake_Pin)){
-      PI_iq.recent_value=  (MS.Battery_Current>>6)*i8_direction*i8_reverse_flag;
-      PI_iq.setpoint = (BATTERYCURRENT_MAX>>6)*i8_direction*i8_reverse_flag;
-      }
-    else{
-      PI_iq.recent_value=  (MS.Battery_Current>>6)*i8_direction*i8_reverse_flag;
-      PI_iq.setpoint = (-REGEN_CURRENT_MAX>>6)*i8_direction*i8_reverse_flag;
-      }
+    if (MS.brake_active == false) {
+      PI_iq.recent_value = (MS.Battery_Current >> 6) * i8_direction * i8_reverse_flag;
+      PI_iq.setpoint = (BATTERYCURRENT_MAX >> 6) * i8_direction * i8_reverse_flag;
+    } else {
+      PI_iq.recent_value = (MS.Battery_Current >> 6) * i8_direction * i8_reverse_flag;
+      PI_iq.setpoint = (-REGEN_CURRENT_MAX >> 6) * i8_direction * i8_reverse_flag;
+    }
   }
   q31_u_q_temp = PI_control(&PI_iq);
 
@@ -1017,7 +1032,7 @@ static void TIM3_Init(void) {
 	HAL_TIM_MspPostInit(&htim3);
 }
 
-void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
+void motor_init(MotorStatePublic_t* motorStatePublic) {
   p_MotorStatePublic = motorStatePublic; // local pointer of MotorStatePublic
 
 	// Virtual EEPROM init
@@ -1039,7 +1054,7 @@ void motor_init(volatile MotorStatePublic_t* motorStatePublic) {
 	MS.i_d_setpoint = 0;
 
 	MS.phase_current_limit = PH_CURRENT_MAX_NORMAL;
-	MS.speed_limit = SPEEDLIMIT_NORMAL;
+	// MS.speed_limit = SPEEDLIMIT_NORMAL;
 
   // init PI structs
   PI_id.gain_i = I_FACTOR_I_D;

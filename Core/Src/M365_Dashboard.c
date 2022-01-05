@@ -218,7 +218,7 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 			ui8_tx_buffer[command]=message[command];
 			ui8_tx_buffer[Speed]=p_M365State->speed;
 			ui8_tx_buffer[Mode]=p_M365State->mode;
-			ui8_tx_buffer[SOC]=map(p_M365State->Voltage,33000,42000,0,96);
+			ui8_tx_buffer[SOC]=map(p_M365State->battery_voltage,33000,42000,0,96);
 			if(p_M365State->light)ui8_tx_buffer[Light]=64;
 			else ui8_tx_buffer[Light]=0;
 			ui8_tx_buffer[Beep]= p_M365State->beep;
@@ -233,8 +233,8 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 
 		case 0x65:
 			if (map(message[Brake],BRAKEOFFSET,BRAKEMAX,0,REGEN_CURRENT) > 0) {
-				if(p_M365State->speed > 2) {
-          p_M365State->i_q_setpoint_target =- map(message[Brake], BRAKEOFFSET, BRAKEMAX, 0, REGEN_CURRENT);
+				if (p_M365State->speed > 2) {
+          p_M365State->i_q_setpoint_target = -map(message[Brake], BRAKEOFFSET, BRAKEMAX, 0, REGEN_CURRENT);
 					p_M365State->brake_active = true;
         } else {
           p_M365State->i_q_setpoint_target = 0;

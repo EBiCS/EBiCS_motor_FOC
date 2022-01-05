@@ -12,7 +12,7 @@
 #include "motor.h"
 #include "config.h"
 //exportetd functions
-void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta,  volatile MotorState_t* MS_FOC);
+void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, MotorState_t* MS_FOC);
 
 #ifdef DISABLE_DYNAMIC_ADC
 #define _U_MAX	2000L  //little lower than period of timer1 for proper phase current reading. Could be improved by dynamic timing of AD-conversion

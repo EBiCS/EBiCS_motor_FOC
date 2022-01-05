@@ -114,22 +114,17 @@ extern uint32_t uint32_PAS_counter;
 extern void UserSysTickHandler(void);
 
 typedef struct {
-  q31_t Voltage;
+  q31_t battery_voltage;
   int16_t phase_current_limit;
-	q31_t Battery_Current;
-	uint8_t char_dyn_adc_state;
-	uint8_t assist_level;
-	uint8_t regen_level;
-	int8_t Temperature;
+	int8_t temperature;
 	int8_t mode;
 	bool light;
 	bool beep;
-	uint8_t shutdown;
-  q31_t i_q_setpoint;
   int32_t i_q_setpoint_target;
   uint32_t speed;
-  int8_t speed_limit;
 	bool brake_active;
+  uint32_t shutdown;
+  int8_t speed_limit;
 } M365State_t;
 
 enum modes {

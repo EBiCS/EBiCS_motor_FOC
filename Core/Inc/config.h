@@ -14,9 +14,8 @@
 #define TRIGGER_OFFSET_ADC 50
 #define TRIGGER_DEFAULT 2020
 #define _T 2028
-#define CAL_BAT_V 14
-#define CAL_V 25
-#define CAL_I 38
+#define CAL_BAT_V 14 // factor for ADC steps to mV
+#define CAL_I 38 // factor for ADC steps to mA
 #define INDUCTANCE 6LL
 #define RESISTANCE 40LL
 #define FLUX_LINKAGE 1200LL

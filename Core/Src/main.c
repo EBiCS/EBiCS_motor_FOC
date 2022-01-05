@@ -1,11 +1,9 @@
 #include "main.h"
 #include "print.h"
-#include "FOC.h"
 #include "config.h"
-#include "eeprom.h"
+#include "motor.h"
 #include "button_processing.h"
 #include "M365_Dashboard.h"
-#include "motor.h"
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
@@ -15,12 +13,8 @@ DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart3_tx;
 DMA_HandleTypeDef hdma_usart3_rx;
 
-volatile uint8_t ui8_UART_TxCplt_flag = 1;
-
-q31_t q31_Battery_Voltage = 0;
-
 M365State_t M365State;
-volatile MotorStatePublic_t MSPublic;
+MotorStatePublic_t MSPublic;
 
 volatile uint32_t systick_cnt = 0;
 
@@ -32,7 +26,7 @@ void UserSysTickHandler(void) {
 
   // every 10ms
   if ((c % 10) == 0) {
-    motor_slow_loop(&MSPublic, &M365State);
+    motor_slow_loop(&MSPublic);
   }
   c++;
 }
@@ -215,9 +209,10 @@ static void GPIO_Init(void) {
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
-	ui8_UART_TxCplt_flag = 1;
 
-	if(UartHandle==&huart1)	HAL_HalfDuplex_EnableReceiver(&huart1);
+	if (UartHandle==&huart1) {
+    HAL_HalfDuplex_EnableReceiver(&huart1);
+  }
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
@@ -293,12 +288,15 @@ int main(void) {
 	USART1_UART_Init();
 	USART3_UART_Init();
 
-  M365State.speed = 128000;
-	M365State.speed_limit = SPEEDLIMIT_NORMAL;
-  M365State.phase_current_limit = PH_CURRENT_MAX_NORMAL;
-
-  MSPublic.speed_limit = M365State.speed_limit;
+  MSPublic.brake_active = true; // force motor stop until receive real value from brake
+  MSPublic.i_q_setpoint_target = 0; // start at 0 until throttle value is readed
+  MSPublic.speed = 128000;
+	MSPublic.speed_limit = SPEEDLIMIT_NORMAL;
+  MSPublic.phase_current_limit = PH_CURRENT_MAX_NORMAL;
   motor_init(&MSPublic);
+
+  M365State.phase_current_limit = PH_CURRENT_MAX_NORMAL;
+  M365State.speed_limit = SPEEDLIMIT_NORMAL;
 
   // init dashboard
 	M365Dashboard_init(huart1);
@@ -306,8 +304,14 @@ int main(void) {
 
 	while (1) {
 
+    // update M365State vars that are calculated on motor_slow_loop
+    M365State.speed = MSPublic.speed;
+
 		// search and process display message
 		search_DashboardMessage(&M365State, huart1);
+    // update vars to MSPublic
+    MSPublic.i_q_setpoint_target = M365State.i_q_setpoint_target;
+    MSPublic.brake_active = M365State.brake_active;
 
 		//slow loop process, every 20ms
     static uint32_t systick_cnt_old = 0;
@@ -329,21 +333,24 @@ int main(void) {
 
       // process buttons
 		  checkButton(&M365State);
+      // update vars to MSPublic
+      MSPublic.mode = M365State.mode;
+      MSPublic.speed_limit = M365State.speed_limit;
 
+      // battery voltage
       // low pass filter measured battery voltage 
       static q31_t q31_batt_voltage_acc = 0;
       q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 7);
       q31_batt_voltage_acc += MSPublic.adcData[ADC_VOLTAGE];
-      q31_Battery_Voltage = (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
+      q31_t q31_battery_voltage = (q31_batt_voltage_acc >> 7) * CAL_BAT_V;
+      // update vars to MSPublic
+			MSPublic.battery_voltage = M365State.battery_voltage = q31_battery_voltage;
 
       // increase shutdown counter
 			if (M365State.shutdown) M365State.shutdown++;
 
       // temperature
-			M365State.Temperature = (MSPublic.adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
-
-      // battery voltage
-			M365State.Voltage = q31_Battery_Voltage;
+			M365State.temperature = (MSPublic.adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
 		}
 	}
 }
