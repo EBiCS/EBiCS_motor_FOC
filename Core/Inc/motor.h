@@ -23,6 +23,13 @@ extern "C" {
 #define I_FACTOR_I_D 10
 #define MAX_D_FACTOR 1
 
+// PLL for speed
+#define SPEED_PLL 1 // 1 for using PLL, 0 for angle extrapolation
+
+// PLL for hall sensor angle
+#define P_FACTOR_PLL 9 // 7 for original M365 motor
+#define I_FACTOR_PLL 10 // 7 for original M365 motor
+
 #define iabs(x) (((x) >= 0)?(x):-(x))
 #define sign(x) (((x) >= 0)?(1):(-1))
 
@@ -48,6 +55,9 @@ typedef struct {
 	int16_t phase_current_limit;
   int16_t spec_angle;
   bool brake_active;
+  int8_t angle_est;
+	int16_t KV_detect_flag;
+  bool hall_angle_detect_flag;
 } MotorState_t;
 
 typedef struct {
@@ -106,6 +116,7 @@ void motor_init(MotorStatePublic_t* p_MotorStatePublic);
 void motor_autodetect();
 void motor_runPIcontrol();
 void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic);
+void motor_disable_pwm();
 
 #ifdef __cplusplus
 }

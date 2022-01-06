@@ -39,7 +39,6 @@ q31_t raw_inj2;
 uint8_t ui8_hall_state = 0;
 uint8_t ui8_hall_state_old = 0;
 uint8_t ui8_hall_case = 0;
-bool hall_angle_detect_flag = false;
 bool ui8_BC_limit_flag = false;
 uint16_t ui16_tim2_recent = 0;
 uint16_t ui16_timertics = 5000; //timertics between two hall events for 60° interpolation
@@ -94,7 +93,6 @@ uint16_t ui16_ph1_offset = 0;
 uint16_t ui16_ph2_offset = 0;
 uint16_t ui16_ph3_offset = 0;
 
-uint8_t ui8_KV_detect_flag = 0;
 uint16_t ui16_KV_detect_counter = 0; // for getting timing of the KV detect
 static int16_t ui32_KV = 0;
 
@@ -116,15 +114,19 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	ui8_adc_regular_flag = 1;
 }
 
-static void motor_disable_pwm(void) {
+void motor_disable_pwm(void) {
   CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);
 }
 
-static void motor_enable_pwm(void) {
+static inline void disable_pwm(void) {
+  CLEAR_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+}
+
+static inline void enable_pwm(void) {
   SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
 }
 
-static bool motor_pwm_is_enabled(void) {
+static inline bool pwm_is_enabled(void) {
   return READ_BIT(TIM1->BDTR, TIM_BDTR_MOE);
 }
 
@@ -156,7 +158,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		ui8_hall_case = ui8_hall_state_old * 10 + ui8_hall_state; // old state + current state
 
     // only process, if autodetect process is finished
-		if (hall_angle_detect_flag == false) {
+		if (MS.hall_angle_detect_flag == false) {
 			ui8_hall_state_old = ui8_hall_state;
 		}
 
@@ -239,9 +241,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         break;
 		}
 
-#ifdef SPEED_PLL
-		q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL, q31_rotorposition_hall);
-#endif
+    if (MS.angle_est == SPEED_PLL) {
+		  q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL, q31_rotorposition_hall);
+    }
 	}
 }
 
@@ -288,8 +290,8 @@ int8_t tics_to_speed(uint32_t tics) {
 }
 
 void motor_autodetect() {
-	motor_enable_pwm();
-	hall_angle_detect_flag = true;
+	enable_pwm();
+	MS.hall_angle_detect_flag = true;
 	q31_rotorposition_absolute = 1 << 31;
   i16_hall_order = 1; // reset hall order
   MS.i_d_setpoint = 200; // set MS.id to appr. 2000mA
@@ -360,11 +362,11 @@ void motor_autodetect() {
 		}
 	}
 
-  motor_disable_pwm();
+  disable_pwm();
   TIM1->CCR1 = 1023; // set initial PWM values
   TIM1->CCR2 = 1023;
   TIM1->CCR3 = 1023;
-  hall_angle_detect_flag = false;
+  MS.hall_angle_detect_flag = false;
   MS.i_d = 0;
   MS.i_q = 0;
   MS.u_d = 0;
@@ -390,8 +392,10 @@ void motor_autodetect() {
 
 	HAL_FLASH_Lock();
 
-	hall_angle_detect_flag = false;
-	ui8_KV_detect_flag = 20;
+	MS.hall_angle_detect_flag = false;
+
+	ui16_KV_detect_counter = HAL_GetTick();
+	MS.KV_detect_flag = 100;
 }
 
 int16_t internal_tics_to_speedx100 (uint32_t tics) {
@@ -450,7 +454,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
   arm_sqrt_q31((MS.i_q_setpoint_temp * MS.i_q_setpoint_temp + MS.i_d_setpoint_temp * MS.i_d_setpoint_temp) << 1, &MS.i_setpoint_abs);
   MS.i_setpoint_abs = (MS.i_setpoint_abs >> 16) + 1;
 
-  if (hall_angle_detect_flag == false) {
+  if (MS.hall_angle_detect_flag == false) {
     if (MS.i_setpoint_abs > MSP->phase_current_limit) {
       MS.i_q_setpoint = (MS.i_q_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
       MS.i_d_setpoint = (MS.i_d_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
@@ -461,29 +465,47 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     }
   }
 
-  // detect KV
-  if (ui8_KV_detect_flag > 0) {
-    MS.i_q_setpoint = ui8_KV_detect_flag;
-    MS.i_d_setpoint = 0;
+  // run KV detection
+  if (MS.KV_detect_flag > 0) {
+    static int8_t dir = 1;
+    static uint16_t KVtemp;
+    MS.i_q_setpoint = 1;
+    MS.angle_est = 0; // switch to angle extrapolation
     
     if (MS.u_q > 0) {
       ui32_KV -= ui32_KV >> 4;
-      ui32_KV += (uint32_SPEEDx100_cumulated) / ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); //unit: kph*100/V
+      ui32_KV += (uint32_SPEEDx100_cumulated) / ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); // unit: kph*100/V
     }
-    
-    if (HAL_GetTick() - ui16_KV_detect_counter > 1000) {
-      
-      ui8_KV_detect_flag++;
-      ui16_KV_detect_counter = HAL_GetTick();
-      
-      if (MS.u_abs > 1900) {
-        ui8_KV_detect_flag = 0;
-        ui32_KV = ui32_KV >> 4;
 
-        HAL_FLASH_Unlock();
-        EE_WriteVariable(EEPROM_POS_KV, (int16_t) (ui32_KV));
-        HAL_FLASH_Lock();
-      }
+    if (ui16_KV_detect_counter > 200) {
+      MS.KV_detect_flag += 10 * dir;
+      ui16_KV_detect_counter = 0;
+    }
+
+    if (MS.u_q > 1900) {
+      KVtemp = ui32_KV >> 4;
+      dir = -1;
+    }
+
+    // KV detection finished
+    if (MS.KV_detect_flag < 100) {
+      dir = 1;
+      MS.i_q_setpoint = 0;
+      ui32_KV = KVtemp;
+      disable_pwm();
+      MS.angle_est = SPEED_PLL; // switch back to config setting
+      MS.KV_detect_flag = 0;
+      HAL_FLASH_Unlock();
+      EE_WriteVariable(EEPROM_POS_KV, (int16_t) (KVtemp));
+      HAL_FLASH_Lock();
+    }
+
+    // abort if over current
+    if (abs(MS.i_q > 300)) {
+      MS.i_q_setpoint = 0;
+      disable_pwm();
+      MS.KV_detect_flag = 0;
+      MS.angle_est = SPEED_PLL; // switch back to config setting
     }
   }
 
@@ -514,7 +536,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
   MS.Battery_Current = get_battery_current(iq_filtered, id_filtered, uq_filtered, ud_filtered) * sign(iq_filtered) * i8_direction * i8_reverse_flag;
 
   // if we should startup the motor
-  if (MS.i_q_setpoint && motor_pwm_is_enabled() == 0) {
+  if (MS.i_q_setpoint && pwm_is_enabled() == 0) {
     // set initial PWM values
     TIM1->CCR1 = 1023; 
     TIM1->CCR2 = 1023;
@@ -525,7 +547,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     __HAL_TIM_SET_COUNTER(&htim2, 0); //reset tim2 counter
     ui16_timertics = 40000; //set interval between two hallevents to a large value
     i8_recent_rotor_direction = i8_direction * i8_reverse_flag;
-    motor_enable_pwm();
+    enable_pwm();
 
     if (MS.system_state == Stop) {
       speed_PLL(0, 0); //reset integral part
@@ -551,15 +573,13 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     // see if PWM should be disable
     if (MS.i_q_setpoint == 0 && (uint16_full_rotation_counter > 7999 || uint16_half_rotation_counter > 7999)) {
 
-      if (motor_pwm_is_enabled()) {
-        motor_disable_pwm();
+      if (pwm_is_enabled()) {
+        disable_pwm();
         get_standstill_position();
       }
 
+      MSP->speed = 0;
       MS.system_state = Stop;
-
-    } else if (ui8_6step_flag) {
-      MS.system_state = SixStep;
     }
   }
 }
@@ -863,12 +883,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	
   if (htim == &htim3) {
 
-#ifdef SPEED_PLL
-    //keep q31_rotorposition_PLL updated when PWM is off
-    if (motor_pwm_is_enabled() == false) {
-      q31_rotorposition_PLL += (q31_angle_per_tic << 1);
+    if (MS.angle_est == SPEED_PLL) {
+      //keep q31_rotorposition_PLL updated when PWM is off
+      if (pwm_is_enabled() == false) {
+        q31_rotorposition_PLL += (q31_angle_per_tic << 1);
+      }
     }
-#endif
+		
+    if (MS.KV_detect_flag > 0) {
+      ui16_KV_detect_counter++;
+    }
 
     if (uint16_full_rotation_counter < 8000) {
 			uint16_full_rotation_counter++;	//full rotation counter for motor standstill detection
@@ -941,7 +965,7 @@ q31_t PI_control(PI_control_t* PI_c)
 
   if (PI_c->integral_part > PI_c->limit_i << PI_c->shift) PI_c->integral_part = PI_c->limit_i << PI_c->shift;
   if (PI_c->integral_part < -(PI_c->limit_i << PI_c->shift)) PI_c->integral_part = -(PI_c->limit_i << PI_c->shift);
-  if (motor_pwm_is_enabled() == false) PI_c->integral_part = 0 ; // reset integral part if PWM is disabled
+  if (pwm_is_enabled() == false) PI_c->integral_part = 0 ; // reset integral part if PWM is disabled
 
   //avoid too big steps in one loop run
   if (q31_p+PI_c->integral_part > PI_c->out+PI_c->max_step) PI_c->out+=PI_c->max_step;
@@ -950,7 +974,7 @@ q31_t PI_control(PI_control_t* PI_c)
 
   if (PI_c->out>PI_c->limit_output << PI_c->shift) PI_c->out = PI_c->limit_output<< PI_c->shift;
   if (PI_c->out<-(PI_c->limit_output << PI_c->shift)) PI_c->out = -(PI_c->limit_output<< PI_c->shift); // allow no negative voltage.
-  if (motor_pwm_is_enabled() == false) PI_c->out = 0 ; //reset output if PWM is disabled
+  if (pwm_is_enabled() == false) PI_c->out = 0 ; //reset output if PWM is disabled
 
   return (PI_c->out>>PI_c->shift);
 }
@@ -1054,14 +1078,15 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
   DMA_Init();
 
 	// initialize MS struct.
-	hall_angle_detect_flag = false;
+	MS.hall_angle_detect_flag = false;
+  MS.KV_detect_flag = 0;
 	MS.assist_level = 1;
 	MS.regen_level = 7;
 	MS.i_q_setpoint = 0;
 	MS.i_d_setpoint = 0;
+  MS.angle_est = SPEED_PLL;
 
 	MS.phase_current_limit = PH_CURRENT_MAX_NORMAL;
-	// MS.speed_limit = SPEEDLIMIT_NORMAL;
 
   // init PI structs
   PI_id.gain_i = I_FACTOR_I_D;
@@ -1130,7 +1155,7 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 		Error_Handler();
 	}
 
-	motor_disable_pwm();
+	disable_pwm();
 	TIM1->CCR1 = 1023; //set initial PWM values
 	TIM1->CCR2 = 1023;
 	TIM1->CCR3 = 1023;
@@ -1176,7 +1201,7 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 
 	HAL_Delay(5);
 
-  motor_disable_pwm();
+  disable_pwm();
 
 	get_standstill_position();
 }
@@ -1232,7 +1257,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
   // extrapolate recent rotor position
   ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
 
-  if (hall_angle_detect_flag == false) {
+  if (MS.hall_angle_detect_flag == false) {
 
     if (ui16_timertics < SIXSTEPTHRESHOLD && ui16_tim2_recent < 200) {
       ui8_6step_flag = false; 
@@ -1242,22 +1267,22 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
       ui8_6step_flag = true;
     }
 
-#ifdef SPEED_PLL
-    q31_rotorposition_PLL += q31_angle_per_tic;
-#endif
+    if (MS.angle_est == SPEED_PLL) {
+      q31_rotorposition_PLL += q31_angle_per_tic;
+    }
 
     if (ui16_tim2_recent < (ui16_timertics + (ui16_timertics >> 2)) && ui8_overflow_flag == false && ui8_6step_flag == false) { // prevent angle running away at standstill
-#ifdef SPEED_PLL
-			q31_rotorposition_absolute = q31_rotorposition_PLL;
-			MS.system_state = PLL;
-#else
-      q31_rotorposition_absolute = q31_rotorposition_hall
-         + (q31_t) (i16_hall_order * i8_recent_rotor_direction
-        * ((10923 * ui16_tim2_recent) / ui16_timertics)
-        << 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
-      
-      MS.system_state = Interpolation;
-#endif
+      if (MS.angle_est == SPEED_PLL) {
+        q31_rotorposition_absolute = q31_rotorposition_PLL;
+        MS.system_state = PLL;
+      } else {
+        q31_rotorposition_absolute = q31_rotorposition_hall
+          + (q31_t) (i16_hall_order * i8_recent_rotor_direction
+          * ((10923 * ui16_tim2_recent) / ui16_timertics)
+          << 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
+        
+        MS.system_state = Interpolation;
+      }
     } else {
       ui8_overflow_flag = true;
       q31_rotorposition_absolute = q31_rotorposition_hall - i8_direction * 357913941; // offset of 30 degree to get the middle of the sector
@@ -1279,7 +1304,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 #endif
 
   // call FOC procedure if PWM is enabled
-  if (motor_pwm_is_enabled()) {
+  if (pwm_is_enabled()) {
     FOC_calculation(i16_ph1_current, i16_ph2_current, q31_rotorposition_absolute, &MS);
   }
 

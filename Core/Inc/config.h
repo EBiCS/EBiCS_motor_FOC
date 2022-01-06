@@ -17,7 +17,7 @@
 //#define ADCTHROTTLE
 #define THROTTLEOFFSET 45
 #define THROTTLEMAX 175
-#define BRAKEOFFSET 40
+#define BRAKEOFFSET 50
 #define BRAKEMAX 190
 #define WHEEL_CIRCUMFERENCE 550 //690 for original M365 motor
 #define GEAR_RATIO 24 //15 for original M365 motor
@@ -41,11 +41,5 @@
 
 #define REGEN_CURRENT 1000
 #define REGEN_CURRENT_MAX 10000
-
-#define SPEED_PLL
-#define P_FACTOR_PLL 9 // 7 for original M365 motor
-#define I_FACTOR_PLL 10 // 7 for original M365 motor
-
-//#define DISABLE_DYNAMIC_ADC
 
 #endif /* CONFIG_H_ */

@@ -46,7 +46,7 @@ void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta) {
 	}
 }
 
-void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, MotorState_t *MS_FOC) {
+void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, MotorState_t *MS) {
 
   q31_t q31_i_alpha = 0;
 	q31_t q31_i_beta = 0;
@@ -61,25 +61,33 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, Mot
 	arm_clarke_q31((q31_t) int16_i_as, (q31_t) int16_i_bs, &q31_i_alpha, &q31_i_beta);
 
 	arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
-	if(sinevalue==-2147483648)sinevalue=-2147483647;
-	if(cosinevalue==2147483648)cosinevalue=2147483647;
+  // limit output valyes of arm_sin_cos_q31() as some seem wrong
+	if (sinevalue == -2147483648) sinevalue = -2147483647;
+	if (cosinevalue == 2147483648) cosinevalue = 2147483647;
 
 	// Park transformation
 	arm_park_q31(q31_i_alpha, q31_i_beta, &q31_i_d, &q31_i_q, sinevalue, cosinevalue);
 
 	q31_i_q_fil -= q31_i_q_fil >> 4;
 	q31_i_q_fil += q31_i_q;
-	MS_FOC->i_q = q31_i_q_fil >> 4;
+	MS->i_q = q31_i_q_fil >> 4;
 
 	q31_i_d_fil -= q31_i_d_fil >> 4;
 	q31_i_d_fil += q31_i_d;
-	MS_FOC->i_d = q31_i_d_fil >> 4;
+	MS->i_d = q31_i_d_fil >> 4;
 
 	// Control iq
-  motor_runPIcontrol();
+  
+  //set static volatage for hall angle detection
+	if (MS->KV_detect_flag) {  
+    MS->u_q = MS->KV_detect_flag;
+    MS->u_d = 0;
+  } else {
+    motor_runPIcontrol();
+  }
 
 	// inverse Park transformation
-	arm_inv_park_q31(MS_FOC->u_d, MS_FOC->u_q, &q31_u_alpha, &q31_u_beta, -sinevalue, cosinevalue);
+	arm_inv_park_q31(MS->u_d, MS->u_q, &q31_u_alpha, &q31_u_beta, -sinevalue, cosinevalue);
 
 	// call SVPWM calculation
 	svpwm(q31_u_alpha, q31_u_beta);

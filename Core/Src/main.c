@@ -245,12 +245,14 @@ void Error_Handler(void) {
 	/* User can add his own implementation to report the HAL error return state */
 	__disable_irq();
 	while (1) {
+    motor_disable_pwm();
   }
 }
 
 void _Error_Handler(char *file, int line) {
 	/* User can add his own implementation to report the HAL error return state */
 	while (1) {
+    motor_disable_pwm();
 	}
 }
 
