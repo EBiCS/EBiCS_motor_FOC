@@ -395,7 +395,7 @@ void motor_autodetect() {
 	MS.hall_angle_detect_flag = false;
 
 	ui16_KV_detect_counter = HAL_GetTick();
-	MS.KV_detect_flag = 100;
+	MS.KV_detect_flag = 20;
 }
 
 int16_t internal_tics_to_speedx100 (uint32_t tics) {
@@ -456,11 +456,11 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 
   if (MS.hall_angle_detect_flag == false) {
     if (MS.i_setpoint_abs > MSP->phase_current_limit) {
-      MS.i_q_setpoint = (MS.i_q_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
+      MS.i_q_setpoint = i8_direction * (MS.i_q_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
       MS.i_d_setpoint = (MS.i_d_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
       MS.i_setpoint_abs = MSP->phase_current_limit;
     } else {
-      MS.i_q_setpoint = MS.i_q_setpoint_temp;
+      MS.i_q_setpoint = i8_direction * MS.i_q_setpoint_temp;
       MS.i_d_setpoint = MS.i_d_setpoint_temp;
     }
   }
@@ -472,7 +472,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     MS.i_q_setpoint = 1;
     MS.angle_est = 0; // switch to angle extrapolation
     
-    if (MS.u_q > 0) {
+    if ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)) {
       ui32_KV -= ui32_KV >> 4;
       ui32_KV += (uint32_SPEEDx100_cumulated) / ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); // unit: kph*100/V
     }
@@ -488,13 +488,14 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     }
 
     // KV detection finished
-    if (MS.KV_detect_flag < 100) {
+    if (MS.KV_detect_flag < 20) {
       dir = 1;
       MS.i_q_setpoint = 0;
       ui32_KV = KVtemp;
       disable_pwm();
       MS.angle_est = SPEED_PLL; // switch back to config setting
       MS.KV_detect_flag = 0;
+      i8_direction = REVERSE;
       HAL_FLASH_Unlock();
       EE_WriteVariable(EEPROM_POS_KV, (int16_t) (KVtemp));
       HAL_FLASH_Lock();
@@ -1195,6 +1196,9 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
     EE_ReadVariable(EEPROM_POS_HALL_64, &temp);
     Hall_64 = temp << 16;
     EE_ReadVariable(EEPROM_POS_KV, &ui32_KV);
+    if (ui32_KV == 0) {
+      ui32_KV = 111;
+    }
   } else {
     motor_autodetect();
   }
@@ -1276,16 +1280,21 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
         q31_rotorposition_absolute = q31_rotorposition_PLL;
         MS.system_state = PLL;
       } else {
-        q31_rotorposition_absolute = q31_rotorposition_hall
-          + (q31_t) (i16_hall_order * i8_recent_rotor_direction
-          * ((10923 * ui16_tim2_recent) / ui16_timertics)
+        q31_rotorposition_absolute = q31_rotorposition_hall +
+          (q31_t) (i8_recent_rotor_direction * ((10923 * ui16_tim2_recent) / ui16_timertics)
           << 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
         
         MS.system_state = Interpolation;
       }
     } else {
       ui8_overflow_flag = true;
-      q31_rotorposition_absolute = q31_rotorposition_hall - i8_direction * 357913941; // offset of 30 degree to get the middle of the sector
+
+      if (MS.KV_detect_flag) {
+        q31_rotorposition_absolute = q31_rotorposition_hall;
+      } else {
+        q31_rotorposition_absolute = q31_rotorposition_hall - i8_direction * 357913941; // offset of 30 degree to get the middle of the sector
+      }
+
       MS.system_state = SixStep;
     }
   }
