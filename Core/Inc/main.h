@@ -116,6 +116,7 @@ extern void UserSysTickHandler(void);
 typedef struct {
   q31_t battery_voltage;
   int16_t phase_current_limit;
+  int16_t regen_current;
 	int8_t temperature;
 	int8_t mode;
 	bool light;

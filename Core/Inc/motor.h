@@ -23,12 +23,18 @@ extern "C" {
 #define I_FACTOR_I_D 10
 #define MAX_D_FACTOR 1
 
-// PLL for speed
-#define SPEED_PLL 1 // 1 for using PLL, 0 for angle extrapolation
+#define SPEEDFILTER 3
+#define SPEC_ANGLE -167026406L
+#define REVERSE 1 // 1 for original M365 motor
 
-// PLL for hall sensor angle
-#define P_FACTOR_PLL 9 // 7 for original M365 motor
-#define I_FACTOR_PLL 10 // 7 for original M365 motor
+// settings for speed PLL (angle estimation)
+#define SPEED_PLL 1 // 1 for using PLL, 0 for angle extrapolation
+#define P_FACTOR_PLL 10 // 10 for original M365 motor
+#define I_FACTOR_PLL 10 // 10 for original M365 motor
+
+#define TRIGGER_OFFSET_ADC 50
+#define TRIGGER_DEFAULT 2020
+#define _T 2028
 
 #define iabs(x) (((x) >= 0)?(x):-(x))
 #define sign(x) (((x) >= 0)?(1):(-1))
@@ -71,7 +77,9 @@ typedef struct {
 	q31_t u_q;
 	q31_t u_abs;
   q31_t battery_voltage;
+  q31_t battery_voltage_min;
 	q31_t battery_burrent;
+  uint16_t fw_current_max;
 	uint8_t assist_level;
 	uint8_t regen_level;
 	int8_t Temperature;
@@ -107,6 +115,7 @@ enum {
 };
 
 enum errors {
+  none = 0,
   hall = 1,
   lowbattery = 2,
   overcurrent = 4

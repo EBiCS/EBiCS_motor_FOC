@@ -295,10 +295,14 @@ int main(void) {
   MSPublic.speed = 128000;
 	MSPublic.speed_limit = SPEEDLIMIT_NORMAL;
   MSPublic.phase_current_limit = PH_CURRENT_MAX_NORMAL;
+  MSPublic.fw_current_max = FIELD_WEAKNING_CURRENT_MAX / CAL_I;
+  MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
+
   motor_init(&MSPublic);
 
-  M365State.phase_current_limit = PH_CURRENT_MAX_NORMAL;
+  M365State.phase_current_limit = PH_CURRENT_MAX_NORMAL / CAL_I;
   M365State.speed_limit = SPEEDLIMIT_NORMAL;
+  M365State.regen_current = REGEN_CURRENT / CAL_I;
 
   // init dashboard
 	M365Dashboard_init(huart1);
@@ -312,6 +316,7 @@ int main(void) {
 		// search and process display message
 		search_DashboardMessage(&M365State, huart1);
     // update vars to MSPublic
+    MSPublic.phase_current_limit = M365State.phase_current_limit;
     MSPublic.i_q_setpoint_target = M365State.i_q_setpoint_target;
     MSPublic.brake_active = M365State.brake_active;
 

@@ -424,89 +424,102 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 
   MS.brake_active = MSP->brake_active;
 
-  // i_q current limits
-  if (MSP->i_q_setpoint_target > MSP->phase_current_limit) {
-    MS.i_q_setpoint_temp = MSP->phase_current_limit;
-  }
-  if (MSP->i_q_setpoint_target < -MSP->phase_current_limit) {
-    MS.i_q_setpoint_temp = -MSP->phase_current_limit;
-  }
 
-	calculate_tic_limits(MSP->speed_limit);
-
-  // ramp down current at speed limit
-  MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
-
-  if (MSP->field_weakening_enable) {
+  // set power to zero at low voltage
+  if (p_MotorStatePublic->battery_voltage < p_MotorStatePublic->battery_voltage_min) {
     
-    MS.i_d_setpoint_temp =
-      -map(MSP->speed,
-          (ui32_KV * MSP->battery_voltage / 100000) - 8,
-          (ui32_KV * MSP->battery_voltage / 100000) + 30,
-          0,
-          FW_CURRENT_MAX);
+    MS.i_q_setpoint = 0;
+    MS.i_d_setpoint = 0;
+    MS.error_state = lowbattery;
 
   } else {
-    MS.i_d_setpoint_temp = 0;
-  }
 
-  // check and limit absolute value of current vector
-  arm_sqrt_q31((MS.i_q_setpoint_temp * MS.i_q_setpoint_temp + MS.i_d_setpoint_temp * MS.i_d_setpoint_temp) << 1, &MS.i_setpoint_abs);
-  MS.i_setpoint_abs = (MS.i_setpoint_abs >> 16) + 1;
+    MS.error_state = none;
 
-  if (MS.hall_angle_detect_flag == false) {
-    if (MS.i_setpoint_abs > MSP->phase_current_limit) {
-      MS.i_q_setpoint = i8_direction * (MS.i_q_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
-      MS.i_d_setpoint = (MS.i_d_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
-      MS.i_setpoint_abs = MSP->phase_current_limit;
+    // i_q current limits
+    if (MSP->i_q_setpoint_target > MSP->phase_current_limit) {
+      MS.i_q_setpoint_temp = MSP->phase_current_limit;
+    }
+    if (MSP->i_q_setpoint_target < -MSP->phase_current_limit) {
+      MS.i_q_setpoint_temp = -MSP->phase_current_limit;
+    }
+
+    calculate_tic_limits(MSP->speed_limit);
+
+    // ramp down current at speed limit
+    MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
+
+    if (MSP->field_weakening_enable) {
+      
+      MS.i_d_setpoint_temp =
+        -map(MSP->speed,
+            (ui32_KV * MSP->battery_voltage / 100000) - 8,
+            (ui32_KV * MSP->battery_voltage / 100000) + 30,
+            0,
+            MSP->fw_current_max);
+
     } else {
-      MS.i_q_setpoint = i8_direction * MS.i_q_setpoint_temp;
-      MS.i_d_setpoint = MS.i_d_setpoint_temp;
-    }
-  }
-
-  // run KV detection
-  if (MS.KV_detect_flag > 0) {
-    static int8_t dir = 1;
-    static uint16_t KVtemp;
-    MS.i_q_setpoint = 1;
-    MS.angle_est = 0; // switch to angle extrapolation
-    
-    if ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)) {
-      ui32_KV -= ui32_KV >> 4;
-      ui32_KV += (uint32_SPEEDx100_cumulated) / ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); // unit: kph*100/V
+      MS.i_d_setpoint_temp = 0;
     }
 
-    if (ui16_KV_detect_counter > 200) {
-      MS.KV_detect_flag += 10 * dir;
-      ui16_KV_detect_counter = 0;
+    // check and limit absolute value of current vector
+    arm_sqrt_q31((MS.i_q_setpoint_temp * MS.i_q_setpoint_temp + MS.i_d_setpoint_temp * MS.i_d_setpoint_temp) << 1, &MS.i_setpoint_abs);
+    MS.i_setpoint_abs = (MS.i_setpoint_abs >> 16) + 1;
+
+    if (MS.hall_angle_detect_flag == false) {
+      if (MS.i_setpoint_abs > MSP->phase_current_limit) {
+        MS.i_q_setpoint = i8_direction * (MS.i_q_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
+        MS.i_d_setpoint = (MS.i_d_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
+        MS.i_setpoint_abs = MSP->phase_current_limit;
+      } else {
+        MS.i_q_setpoint = i8_direction * MS.i_q_setpoint_temp;
+        MS.i_d_setpoint = MS.i_d_setpoint_temp;
+      }
     }
 
-    if (MS.u_q > 1900) {
-      KVtemp = ui32_KV >> 4;
-      dir = -1;
-    }
+    // run KV detection
+    if (MS.KV_detect_flag > 0) {
+      static int8_t dir = 1;
+      static uint16_t KVtemp;
+      MS.i_q_setpoint = 1;
+      MS.angle_est = 0; // switch to angle extrapolation
+      
+      if ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)) {
+        ui32_KV -= ui32_KV >> 4;
+        ui32_KV += (uint32_SPEEDx100_cumulated) / ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); // unit: kph*100/V
+      }
 
-    // KV detection finished
-    if (MS.KV_detect_flag < 20) {
-      dir = 1;
-      MS.i_q_setpoint = 0;
-      ui32_KV = KVtemp;
-      disable_pwm();
-      MS.angle_est = SPEED_PLL; // switch back to config setting
-      MS.KV_detect_flag = 0;
-      i8_direction = REVERSE;
-      HAL_FLASH_Unlock();
-      EE_WriteVariable(EEPROM_POS_KV, (int16_t) (KVtemp));
-      HAL_FLASH_Lock();
-    }
+      if (ui16_KV_detect_counter > 200) {
+        MS.KV_detect_flag += 10 * dir;
+        ui16_KV_detect_counter = 0;
+      }
 
-    // abort if over current
-    if (abs(MS.i_q > 300)) {
-      MS.i_q_setpoint = 0;
-      disable_pwm();
-      MS.KV_detect_flag = 0;
-      MS.angle_est = SPEED_PLL; // switch back to config setting
+      if (MS.u_q > 1900) {
+        KVtemp = ui32_KV >> 4;
+        dir = -1;
+      }
+
+      // KV detection finished
+      if (MS.KV_detect_flag < 20) {
+        dir = 1;
+        MS.i_q_setpoint = 0;
+        ui32_KV = KVtemp;
+        disable_pwm();
+        MS.angle_est = SPEED_PLL; // switch back to config setting
+        MS.KV_detect_flag = 0;
+        i8_direction = REVERSE;
+        HAL_FLASH_Unlock();
+        EE_WriteVariable(EEPROM_POS_KV, (int16_t) (KVtemp));
+        HAL_FLASH_Lock();
+      }
+
+      // abort if over current
+      if (abs(MS.i_q > 300)) {
+        MS.i_q_setpoint = 0;
+        disable_pwm();
+        MS.KV_detect_flag = 0;
+        MS.angle_est = SPEED_PLL; // switch back to config setting
+      }
     }
   }
 
@@ -536,8 +549,9 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 
   MS.Battery_Current = get_battery_current(iq_filtered, id_filtered, uq_filtered, ud_filtered) * sign(iq_filtered) * i8_direction * i8_reverse_flag;
 
-  // if we should startup the motor
-  if (MS.i_q_setpoint && pwm_is_enabled() == 0) {
+  // enable PWM if power is wanted and speed is lower than idle speed
+  if (MS.i_q_setpoint && pwm_is_enabled() == 0 && (uint32_SPEEDx100_cumulated >> SPEEDFILTER) * 1000 < (ui32_KV * MSP->battery_voltage)) {
+    
     // set initial PWM values
     TIM1->CCR1 = 1023; 
     TIM1->CCR2 = 1023;
