@@ -295,7 +295,7 @@ int main(void) {
   MSPublic.speed = 128000;
 	MSPublic.speed_limit = SPEEDLIMIT_NORMAL;
   MSPublic.phase_current_limit = PH_CURRENT_MAX_NORMAL;
-  MSPublic.fw_current_max = FIELD_WEAKNING_CURRENT_MAX / CAL_I;
+  MSPublic.field_weakening_current_max = FIELD_WEAKNING_CURRENT_MAX / CAL_I;
   MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
 
   motor_init(&MSPublic);

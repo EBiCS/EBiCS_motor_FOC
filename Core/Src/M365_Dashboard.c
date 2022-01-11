@@ -234,13 +234,12 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 		case 0x65:
 			if (map(message[Brake], BRAKEOFFSET, BRAKEMAX, 0, p_M365State->regen_current) > 0) {
 				if (p_M365State->speed > 2) {
-					p_M365State->i_q_setpoint_target = -map(message[Brake], BRAKEOFFSET, BRAKEMAX, 0, p_M365State->regen_current);
+
+					p_M365State->i_q_setpoint_target = map(message[Brake], BRAKEOFFSET, BRAKEMAX, 0, p_M365State->regen_current);
 
           // ramp down regen strength at the max voltage to avoid the BMS shutting down the battery.
-          if (p_M365State->battery_voltage > BATTERYVOLTAGE_MAX - 1000) {
-					  p_M365State->i_q_setpoint_target = map(p_M365State->battery_voltage, BATTERYVOLTAGE_MAX, BATTERYVOLTAGE_MAX - 1000, 0, p_M365State->i_q_setpoint_target);
-          }
-					
+          p_M365State->i_q_setpoint_target = -map(p_M365State->battery_voltage, BATTERYVOLTAGE_MAX - 1000, BATTERYVOLTAGE_MAX, p_M365State->i_q_setpoint_target, 0);
+
 					p_M365State->brake_active = true;
         } else {
           p_M365State->i_q_setpoint_target = 0;
