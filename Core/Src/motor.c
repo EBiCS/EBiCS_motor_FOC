@@ -6,6 +6,64 @@
 #include "eeprom.h"
 #include "config.h"
 
+#define TRIGGER_OFFSET_ADC 50
+#define TRIGGER_DEFAULT 2020
+#define _T 2028
+
+#define iabs(x) (((x) >= 0)?(x):-(x))
+#define sign(x) (((x) >= 0)?(1):(-1))
+
+#ifdef DISABLE_DYNAMIC_ADC
+#define _U_MAX	2000L  / /little lower than period of timer1 for proper phase current reading. Could be improved by dynamic timing of AD-conversion
+#else
+#define _U_MAX	2000L
+#endif
+
+// Square Root of 3
+#define _SQRT3	28  //1.73205081*16
+
+#define JSQR_PHASE_A 0b00011000000000000000 //3
+#define JSQR_PHASE_B 0b00100000000000000000 //4
+#define JSQR_PHASE_C 0b00101000000000000000 //5
+
+typedef struct {
+	q31_t i_d;
+	q31_t i_q;
+	q31_t i_q_setpoint;
+	q31_t i_d_setpoint;
+	q31_t i_setpoint_abs;
+	int32_t i_q_setpoint_temp;
+	int32_t i_d_setpoint_temp;
+	q31_t u_d;
+	q31_t u_q;
+	q31_t u_abs;
+	q31_t Battery_Current;
+	uint8_t char_dyn_adc_state;
+	int8_t system_state;
+	int8_t error_state;
+	uint8_t shutdown;
+	int16_t phase_current_limit;
+  int16_t spec_angle;
+  bool brake_active;
+  int8_t angle_est;
+	int16_t KV_detect_flag;
+  bool hall_angle_detect_flag;
+} MotorState_t;
+
+typedef struct
+{
+	int16_t gain_p;
+	int16_t gain_i;
+	int16_t limit_i;
+	int16_t limit_output;
+	int16_t recent_value;
+	int32_t setpoint;
+	int32_t integral_part;
+	int16_t max_step;
+	int32_t out;
+	int8_t shift;
+} PI_control_t;
+
 // EEPROM number of variables to use
 uint16_t VirtAddVarTab[NB_OF_VAR] = {
   0x01,
@@ -23,10 +81,6 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
 uint16_t adcData1[6 * sizeof(uint32_t)]; // point to buffer for ADC1 inputs
-
-#define JSQR_PHASE_A 0b00011000000000000000 //3
-#define JSQR_PHASE_B 0b00100000000000000000 //4
-#define JSQR_PHASE_C 0b00101000000000000000 //5
 
 MotorState_t MS;
 
