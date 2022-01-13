@@ -37,7 +37,6 @@ typedef struct {
 	uint8_t char_dyn_adc_state;
 	int8_t system_state;
 	int8_t error_state;
-	uint8_t shutdown;
 	int16_t phase_current_limit;
   int16_t spec_angle;
   bool brake_active;

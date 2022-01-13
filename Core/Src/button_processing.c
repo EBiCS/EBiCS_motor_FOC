@@ -29,27 +29,28 @@
 static uint8_t power_button_state = 0;
 
 uint8_t buttonState() {
-    static const uint32_t DEBOUNCE_MILLIS = 20 ;
-    bool buttonstate = HAL_GPIO_ReadPin( PWR_BTN_GPIO_Port, PWR_BTN_Pin ) == GPIO_PIN_SET ;
-    uint32_t buttonstate_ts = HAL_GetTick() ;
+  static const uint32_t DEBOUNCE_MILLIS = 20 ;
+  bool buttonstate = HAL_GPIO_ReadPin(PWR_BTN_GPIO_Port, PWR_BTN_Pin) == GPIO_PIN_SET;
+  uint32_t buttonstate_ts = HAL_GetTick();
 
-    uint32_t now = HAL_GetTick() ;
-    if( now - buttonstate_ts > DEBOUNCE_MILLIS )
+  uint32_t now = HAL_GetTick();
+  if (now - buttonstate_ts > DEBOUNCE_MILLIS)
+  {
+    if (buttonstate != (HAL_GPIO_ReadPin( PWR_BTN_GPIO_Port, PWR_BTN_Pin ) == GPIO_PIN_SET))
     {
-        if( buttonstate != (HAL_GPIO_ReadPin( PWR_BTN_GPIO_Port, PWR_BTN_Pin ) == GPIO_PIN_SET))
-        {
-            buttonstate = !buttonstate ;
-            buttonstate_ts = now ;
-        }
+      buttonstate = !buttonstate;
+      buttonstate_ts = now;
     }
-    return buttonstate ;
+  }
+
+  return buttonstate;
 }
 
 eButtonEvent getButtonEvent()
 {
-  static const uint32_t DOUBLE_GAP_MILLIS_MAX 	= 250;
+  static const uint32_t DOUBLE_GAP_MILLIS_MAX     = 250;
   static const uint32_t SINGLE_PRESS_MILLIS_MAX 	= 800;
-  static const uint32_t LONG_PRESS_MILLIS_MAX 	= 5000;
+  static const uint32_t LONG_PRESS_MILLIS_MAX 	  = 5000;
 
   static uint32_t button_down_ts = 0;
   static uint32_t button_up_ts = 0;
@@ -77,7 +78,7 @@ eButtonEvent getButtonEvent()
   if (!button_down && double_pending && now - button_up_ts > DOUBLE_GAP_MILLIS_MAX) {
     double_pending = false;
     button_event = SINGLE_PRESS;
-	} else if (button_down && now -button_down_ts >= SINGLE_PRESS_MILLIS_MAX && now -button_down_ts <= LONG_PRESS_MILLIS_MAX) {
+	} else if (button_down && now - button_down_ts >= SINGLE_PRESS_MILLIS_MAX && now - button_down_ts <= LONG_PRESS_MILLIS_MAX) {
     double_pending = false;
     button_event = LONG_PRESS;
   } else if (button_down && now - button_down_ts > LONG_PRESS_MILLIS_MAX) {
@@ -92,7 +93,8 @@ void checkButton(M365State_t *p_M365State) {
   static uint32_t counter;
 
   // check the shutdown counter
-  if ((p_M365State->shutdown > 85) && (p_M365State->mode >> 4)) {
+  if ((p_M365State->shutdown > 250) && // 5 seconds (5 / 0.02 = 250)
+   (p_M365State->mode >> 4)) {
     power_control(DEV_PWR_OFF);
   }
 
