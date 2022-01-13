@@ -47,86 +47,89 @@ uint8_t buttonState() {
 
 eButtonEvent getButtonEvent()
 {
-    static const uint32_t DOUBLE_GAP_MILLIS_MAX 	= 250;
-    static const uint32_t SINGLE_PRESS_MILLIS_MAX 	= 300;
-    static const uint32_t LONG_PRESS_MILLIS_MAX 	= 5000;
+  static const uint32_t DOUBLE_GAP_MILLIS_MAX 	= 250;
+  static const uint32_t SINGLE_PRESS_MILLIS_MAX 	= 800;
+  static const uint32_t LONG_PRESS_MILLIS_MAX 	= 5000;
 
-    static uint32_t button_down_ts = 0 ;
-    static uint32_t button_up_ts = 0 ;
-    static bool double_pending = false ;
-    static bool button_down = false ; ;
+  static uint32_t button_down_ts = 0;
+  static uint32_t button_up_ts = 0;
+  static bool double_pending = false;
+  static bool button_down = false;
 
-    eButtonEvent button_event = NO_PRESS ;
-    uint32_t now = HAL_GetTick() ;
+  eButtonEvent button_event = NO_PRESS;
+  uint32_t now = HAL_GetTick();
 
-    if( button_down != buttonState() ) {
-        button_down = !button_down ;
-        if( button_down ) {
-            button_down_ts = now ;
-        } else {
-            button_up_ts = now ;
-            if( double_pending ) {
-                button_event = DOUBLE_PRESS ;
-                double_pending = false ;
-            }
-            else {
-                double_pending = true ;
-            }
-        }
+  if (button_down != buttonState()) {
+    button_down = !button_down;
+    if (button_down) {
+      button_down_ts = now;
+    } else {
+      button_up_ts = now;
+      if (double_pending) {
+        button_event = DOUBLE_PRESS;
+        double_pending = false;
+      } else {
+        double_pending = true;
+      }
     }
+  }
 
-    uint32_t diff =  button_up_ts - button_down_ts;
-    if (!button_down && double_pending && now - button_up_ts > DOUBLE_GAP_MILLIS_MAX) {
-    	double_pending = false ;
-    	button_event = SINGLE_PRESS ;
-	} else if (!button_down && double_pending && diff >= SINGLE_PRESS_MILLIS_MAX && diff <= LONG_PRESS_MILLIS_MAX) {
-		double_pending = false ;
-		button_event = LONG_PRESS ;
-	} else if (button_down && now - button_down_ts > LONG_PRESS_MILLIS_MAX) {
-		double_pending = false ;
-		button_event = VERY_LONG_PRESS ;
-	}
+  if (!button_down && double_pending && now - button_up_ts > DOUBLE_GAP_MILLIS_MAX) {
+    double_pending = false;
+    button_event = SINGLE_PRESS;
+	} else if (button_down && now -button_down_ts >= SINGLE_PRESS_MILLIS_MAX && now -button_down_ts <= LONG_PRESS_MILLIS_MAX) {
+    double_pending = false;
+    button_event = LONG_PRESS;
+  } else if (button_down && now - button_down_ts > LONG_PRESS_MILLIS_MAX) {
+    double_pending = false;
+    button_event = VERY_LONG_PRESS;
+  }
 
-    return button_event ;
+  return button_event;
 }
 
 void checkButton(M365State_t *p_M365State) {
   static uint32_t counter;
 
   // check the shutdown counter
-  if (p_M365State->shutdown > 16) power_control(DEV_PWR_OFF);
-  
+  if ((p_M365State->shutdown > 85) && (p_M365State->mode >> 4)) {
+    power_control(DEV_PWR_OFF);
+  }
+
   counter++;
   if ((counter % 2) == 0) { // every 20ms
     switch (getButtonEvent()) {
-        case NO_PRESS:
-          break;
+      case NO_PRESS:
+        break;
 
-        case SINGLE_PRESS:
-          p_M365State->light = !p_M365State->light;
-          break;
-        
-        case VERY_LONG_PRESS:
-          motor_autodetect();
-          break;
-        
-        case LONG_PRESS:
+      case SINGLE_PRESS:
+        p_M365State->light = !p_M365State->light;
+        break;
+
+      case VERY_LONG_PRESS:
+        p_M365State->mode &= ~(1 << 4); //clear "off" (bit 4)
+        p_M365State->shutdown = 0;
+        motor_autodetect();
+        break;
+
+      case LONG_PRESS:
+        p_M365State->mode |= (1 << 4); // set "off" (bit 4)
+
+        if (p_M365State->shutdown == 0) {
+          p_M365State->shutdown = 1;
           p_M365State->beep = 1;
-          
-          if (p_M365State->shutdown == 0)
-            p_M365State->shutdown = 1;
-          
-          break;
+        }
+        break;
 
-        case DOUBLE_PRESS:
-          p_M365State->mode = p_M365State->mode + 2;
-          
-          if (p_M365State->mode > 4)
-            p_M365State->mode = 0;
-          
-          set_mode(p_M365State);
-          break;
-      }
+      case DOUBLE_PRESS:
+        p_M365State->mode = p_M365State->mode + 2;
+        
+        if (p_M365State->mode > 4)
+          p_M365State->mode = 0;
+        
+        set_mode(p_M365State);
+        break;
+    }
   }
 }
 
@@ -167,7 +170,7 @@ void power_control(uint8_t pwr)
 
 void set_mode(M365State_t *p_M365State) {
 
-	switch (p_M365State->mode) {
+	switch (p_M365State->mode & 0x07) { // look only on the lowest 3 bits
 		case eco:
 			p_M365State->phase_current_limit = PH_CURRENT_MAX_ECO / CAL_I;
 			p_M365State->speed_limit = SPEEDLIMIT_ECO;

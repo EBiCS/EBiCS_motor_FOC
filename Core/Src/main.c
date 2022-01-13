@@ -278,6 +278,7 @@ int main(void) {
 	HAL_Init();
 
 	// Configure the system clock
+  // board do not have any external crystal and so we use internal clock. Final clock is 64MHz
 	SystemClock_Config();
 
   // init GPIOS
