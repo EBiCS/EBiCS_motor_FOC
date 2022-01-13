@@ -13,11 +13,7 @@
 #define iabs(x) (((x) >= 0)?(x):-(x))
 #define sign(x) (((x) >= 0)?(1):(-1))
 
-#ifdef DISABLE_DYNAMIC_ADC
-#define _U_MAX	2000L  / /little lower than period of timer1 for proper phase current reading. Could be improved by dynamic timing of AD-conversion
-#else
 #define _U_MAX	2000L
-#endif
 
 // Square Root of 3
 #define _SQRT3	28  //1.73205081*16
@@ -45,7 +41,7 @@ typedef struct {
 	int16_t phase_current_limit;
   int16_t spec_angle;
   bool brake_active;
-  int8_t angle_est;
+  enum angle_estimation angle_estimation;
 	int16_t KV_detect_flag;
   bool hall_angle_detect_flag;
 } MotorState_t;
@@ -94,8 +90,8 @@ uint8_t ui8_hall_state = 0;
 uint8_t ui8_hall_state_old = 0;
 uint8_t ui8_hall_case = 0;
 bool ui8_BC_limit_flag = false;
-uint16_t ui16_tim2_recent = 0;
-uint16_t ui16_timertics = 5000; //timertics between two hall events for 60° interpolation
+uint16_t ui16_halls_tim2tics; // timertics between two hall events for 60° interpolation
+uint16_t ui16_halls_tim2tics_filtered = 5000;
 bool ui8_6step_flag = false;
 q31_t q31_rotorposition_absolute;
 q31_t q31_rotorposition_hall;
@@ -115,7 +111,6 @@ q31_t Hall_45 = 0;
 
 q31_t switchtime[3];
 bool ui8_overflow_flag = false;
-char char_dyn_adc_state = 1;
 char char_dyn_adc_state_old = 1;
 q31_t q31_tics_filtered = 128000;
 q31_t q31_t_Battery_Current_accumulated = 0;
@@ -127,7 +122,6 @@ int16_t i16_sinus = 0;
 int16_t i16_cosinus = 0;
 uint16_t uint16_half_rotation_counter = 0;
 uint16_t uint16_full_rotation_counter = 0;
-uint8_t ui8_adc_offset_done_flag = 0;
 
 static q31_t tics_lower_limit;
 static q31_t tics_higher_limit;
@@ -212,20 +206,28 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		if (ui8_hall_state == ui8_hall_state_old)
 			return;
 
-		ui8_hall_case = ui8_hall_state_old * 10 + ui8_hall_state; // old state + current state
+    // old state + current state: having both states makes possible to validade correct sequence (on following steps)
+		ui8_hall_case = ui8_hall_state_old * 10 + ui8_hall_state;
 
     // only process, if autodetect process is finished
 		if (MS.hall_angle_detect_flag == false) {
 			ui8_hall_state_old = ui8_hall_state;
 		}
 
-		ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last hall event
+		uint16_t ui16_tim2_ticks = __HAL_TIM_GET_COUNTER(&htim2); // read in timer2tics since last hall event
 
-		if (ui16_tim2_recent > 100) { // debounce
-			ui16_timertics = ui16_tim2_recent; // save timertics since last hall event
-			q31_tics_filtered -= q31_tics_filtered >> 3;
-			q31_tics_filtered += ui16_timertics;
+		if (ui16_tim2_ticks > 100) { // debounce
+
+			ui16_halls_tim2tics = ui16_tim2_ticks; // save timertics since last hall event
+
+      // low pass filter ui16_halls_tim2tics
+			static q31_t ui16_halls_tim2tics_acc = 128000; // start with near 0 angle
+      ui16_halls_tim2tics_acc -= ui16_halls_tim2tics_acc >> 3;
+			ui16_halls_tim2tics_acc += ui16_halls_tim2tics;
+      ui16_halls_tim2tics_filtered = ui16_halls_tim2tics_acc >> 3;
+
 			__HAL_TIM_SET_COUNTER(&htim2, 0); // reset tim2 counter
+
 			ui8_overflow_flag = false;
 		}
 
@@ -298,7 +300,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
         break;
 		}
 
-    if (MS.angle_est == SPEED_PLL) {
+    if (MS.angle_estimation == SPEED_PLL) {
 		  q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL, q31_rotorposition_hall);
     }
 	}
@@ -504,7 +506,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     calculate_tic_limits(MSP->speed_limit);
 
     // ramp down current at speed limit
-    MS.i_q_setpoint_temp = map(q31_tics_filtered >> 3, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
+    MS.i_q_setpoint_temp = map(ui16_halls_tim2tics_filtered, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
 
     if (MSP->field_weakening_enable) {
       
@@ -539,7 +541,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
       static int8_t dir = 1;
       static uint16_t KVtemp;
       MS.i_q_setpoint = 1;
-      MS.angle_est = 0; // switch to angle extrapolation
+      MS.angle_estimation = EXTRAPOLATION; // switch to angle extrapolation
       
       if ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)) {
         ui32_KV -= ui32_KV >> 4;
@@ -562,7 +564,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
         MS.i_q_setpoint = 0;
         ui32_KV = KVtemp;
         disable_pwm();
-        MS.angle_est = SPEED_PLL; // switch back to config setting
+        MS.angle_estimation = SPEED_PLL; // switch back to config setting
         MS.KV_detect_flag = 0;
         i8_direction = REVERSE;
         HAL_FLASH_Unlock();
@@ -575,13 +577,13 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
         MS.i_q_setpoint = 0;
         disable_pwm();
         MS.KV_detect_flag = 0;
-        MS.angle_est = SPEED_PLL; // switch back to config setting
+        MS.angle_estimation = SPEED_PLL; // switch back to config setting
       }
     }
   }
 
   uint32_SPEEDx100_cumulated -= uint32_SPEEDx100_cumulated >> SPEEDFILTER;
-  uint32_SPEEDx100_cumulated += internal_tics_to_speedx100(q31_tics_filtered >> 3);
+  uint32_SPEEDx100_cumulated += internal_tics_to_speedx100(ui16_halls_tim2tics_filtered);
 
   // low pass filter next signals
   static q31_t iq_cum = 0;
@@ -617,7 +619,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     uint16_half_rotation_counter = 0;
     uint16_full_rotation_counter = 0;
     __HAL_TIM_SET_COUNTER(&htim2, 0); //reset tim2 counter
-    ui16_timertics = 40000; //set interval between two hallevents to a large value
+    ui16_halls_tim2tics = 40000; //set interval between two hallevents to a large value
     i8_recent_rotor_direction = i8_direction * i8_reverse_flag;
     enable_pwm();
 
@@ -640,7 +642,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 #endif
 
     // calculate wheel speed
-    MSP->speed = tics_to_speed(q31_tics_filtered >> 3);
+    MSP->speed = tics_to_speed(ui16_halls_tim2tics_filtered);
 
     // see if PWM should be disable
     if (MS.i_q_setpoint == 0 && (uint16_full_rotation_counter > 7999 || uint16_half_rotation_counter > 7999)) {
@@ -955,7 +957,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	
   if (htim == &htim3) {
 
-    if (MS.angle_est == SPEED_PLL) {
+    if (MS.angle_estimation == SPEED_PLL) {
       //keep q31_rotorposition_PLL updated when PWM is off
       if (pwm_is_enabled() == false) {
         q31_rotorposition_PLL += (q31_angle_per_tic << 1);
@@ -1051,7 +1053,7 @@ q31_t PI_control(PI_control_t* PI_c)
   return (PI_c->out>>PI_c->shift);
 }
 
-void motor_runPIcontrol() {
+void runPIcontrol() {
 	// PI-control processing
 
   //Check battery current limit
@@ -1154,7 +1156,7 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
   MS.KV_detect_flag = 0;
 	MS.i_q_setpoint = 0;
 	MS.i_d_setpoint = 0;
-  MS.angle_est = SPEED_PLL;
+  MS.angle_estimation = SPEED_PLL;
 
 	MS.phase_current_limit = PH_CURRENT_MAX_NORMAL;
 
@@ -1245,8 +1247,6 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 
   ADC1->JSQR = JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
   ADC1->JOFR1 = ui16_ph1_offset;
-
-  ui8_adc_offset_done_flag = 1;
 
   EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);
   // set variables to value from emulated EEPROM only if valid
@@ -1348,7 +1348,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, Mot
     MS->u_q = MS->KV_detect_flag;
     MS->u_d = 0;
   } else {
-    motor_runPIcontrol();
+    runPIcontrol();
   }
 
 	// inverse Park transformation
@@ -1360,19 +1360,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, Mot
 
 // injected ADC
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	//for oszi-check of used time in FOC procedere
-	//HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_SET);
 
-	if (!ui8_adc_offset_done_flag) {
-		i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-		i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
-		ui8_adc_inj_flag = 1;
-	} else {
-
-#ifdef DISABLE_DYNAMIC_ADC
-  i16_ph1_current = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
-  i16_ph2_current = HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
-#else
   switch (MS.char_dyn_adc_state) //read in according to state
   {
     case 1: //Phase C at high dutycycles, read from A+B directly
@@ -1402,34 +1390,35 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
       //do nothing
       break;
   } // end case
-#endif
 
   __disable_irq(); // ENTER CRITICAL SECTION!!!!!!!!!!!!!
 
-  // extrapolate recent rotor position
-  ui16_tim2_recent = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
-
   if (MS.hall_angle_detect_flag == false) {
+    
+    // extrapolate recent rotor position
+    uint16_t ui16_tim2_ticks = __HAL_TIM_GET_COUNTER(&htim2); // read in timertics since last event
 
-    if (ui16_timertics < SIXSTEPTHRESHOLD && ui16_tim2_recent < 200) {
+    if (ui16_halls_tim2tics < SIXSTEPTHRESHOLD && ui16_tim2_ticks < 200) {
       ui8_6step_flag = false; 
     }
     
-    if (ui16_timertics > (SIXSTEPTHRESHOLD * 6) >> 2) { 
+    if (ui16_halls_tim2tics > (SIXSTEPTHRESHOLD * 6) >> 2) { 
       ui8_6step_flag = true;
     }
 
-    if (MS.angle_est == SPEED_PLL) {
+    if (MS.angle_estimation == SPEED_PLL) {
       q31_rotorposition_PLL += q31_angle_per_tic;
     }
 
-    if (ui16_tim2_recent < (ui16_timertics + (ui16_timertics >> 2)) && ui8_overflow_flag == false && ui8_6step_flag == false) { // prevent angle running away at standstill
-      if (MS.angle_est == SPEED_PLL) {
+    if (ui16_tim2_ticks < (ui16_halls_tim2tics + (ui16_halls_tim2tics >> 2)) // if ui16_tim2_ticks < (ui16_halls_tim2tics * 1.25)
+        && ui8_overflow_flag == false
+        && ui8_6step_flag == false) { // prevent angle running away at standstill
+      if (MS.angle_estimation == SPEED_PLL) {
         q31_rotorposition_absolute = q31_rotorposition_PLL;
         MS.system_state = PLL;
       } else {
         q31_rotorposition_absolute = q31_rotorposition_hall +
-          (q31_t) (i8_recent_rotor_direction * ((10923 * ui16_tim2_recent) / ui16_timertics)
+          (q31_t) (i8_recent_rotor_direction * ((10923 * ui16_tim2_ticks) / ui16_halls_tim2tics)
           << 16); //interpolate angle between two hallevents by scaling timer2 tics, 10923<<16 is 715827883 = 60�
         
         MS.system_state = Interpolation;
@@ -1449,7 +1438,6 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
   __enable_irq(); //EXIT CRITICAL SECTION!!!!!!!!!!!!!!
 
-#ifndef DISABLE_DYNAMIC_ADC
   //get the Phase with highest duty cycle for dynamic phase current reading
   dyn_adc_state(q31_rotorposition_absolute);
 
@@ -1458,7 +1446,6 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
     set_inj_channel(MS.char_dyn_adc_state);
     char_dyn_adc_state_old = MS.char_dyn_adc_state;
   }
-#endif
 
   // call FOC procedure if PWM is enabled
   if (pwm_is_enabled()) {
@@ -1469,7 +1456,6 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
   TIM1->CCR1 = (uint16_t) switchtime[0];
   TIM1->CCR2 = (uint16_t) switchtime[1];
   TIM1->CCR3 = (uint16_t) switchtime[2];
-	}
 }
 
 #ifdef  USE_FULL_ASSERT

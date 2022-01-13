@@ -25,19 +25,19 @@
 #define SPEEDLIMIT_SPORT 50
 
 // motor current limits for invividual modes in mA
-#define PH_CURRENT_MAX_ECO 5000
-#define PH_CURRENT_MAX_NORMAL 9000
-#define PH_CURRENT_MAX_SPORT 14000
+#define PH_CURRENT_MAX_ECO 3000
+#define PH_CURRENT_MAX_NORMAL 6000
+#define PH_CURRENT_MAX_SPORT 9000
 
 // motor current limit for regen in mA
-#define REGEN_CURRENT 20000
+#define REGEN_CURRENT 10000
 
 // maximum current for field weakening in mA
-#define FIELD_WEAKNING_CURRENT_MAX 18000 //max id
+#define FIELD_WEAKNING_CURRENT_MAX 1000 //max id
 
 // maximum battery currents in mA
-#define BATTERYCURRENT_MAX 8000
-#define REGEN_CURRENT_MAX 10000
+#define BATTERYCURRENT_MAX 6000
+#define REGEN_CURRENT_MAX 6000
 
 // battery voltage limits in mV
 // #define BATTERYVOLTAGE_MIN 33000

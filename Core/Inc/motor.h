@@ -19,8 +19,6 @@ extern "C" {
 #define ADC_CHANB 4
 #define ADC_CHANC 5
 
-//#define DISABLE_DYNAMIC_ADC
-
 #define P_FACTOR_I_Q 100
 #define I_FACTOR_I_Q 2
 #define P_FACTOR_I_D 100
@@ -32,7 +30,6 @@ extern "C" {
 #define REVERSE 1 // 1 for original M365 motor
 
 // settings for speed PLL (angle estimation)
-#define SPEED_PLL 1 // 1 for using PLL, 0 for angle extrapolation
 #define P_FACTOR_PLL 10 // 10 for original M365 motor
 #define I_FACTOR_PLL 10 // 10 for original M365 motor
 
@@ -51,6 +48,11 @@ typedef struct {
   bool brake_active;
   bool field_weakening_enable;
 } MotorStatePublic_t;
+
+enum angle_estimation {
+  EXTRAPOLATION,
+  SPEED_PLL,
+};
 
 enum {
   Stop,

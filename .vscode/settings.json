@@ -10,6 +10,7 @@
       "functional": "c",
       "tuple": "c",
       "type_traits": "c",
-      "utility": "c"
+      "utility": "c",
+      "motor.h": "c"
     }
 }
