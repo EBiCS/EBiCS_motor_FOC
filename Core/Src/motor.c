@@ -37,7 +37,6 @@ typedef struct {
 	uint8_t char_dyn_adc_state;
 	int8_t system_state;
 	int8_t error_state;
-	uint8_t shutdown;
 	int16_t phase_current_limit;
   int16_t spec_angle;
   bool brake_active;
@@ -914,6 +913,7 @@ static void TIM2_Init(void) {
 	TIM_ClockConfigTypeDef sClockSourceConfig;
 	TIM_MasterConfigTypeDef sMasterConfig;
 
+  // CPU clock is 64MHz, so Timer2 ticks are 1/128 = 128ms
 	htim2.Instance = TIM2;
 	htim2.Init.Prescaler = 128;
 	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
@@ -935,7 +935,6 @@ static void TIM2_Init(void) {
 			!= HAL_OK) {
 		_Error_Handler(__FILE__, __LINE__);
 	}
-
 }
 
 static void GPIO_Init(void) {
@@ -1216,8 +1215,8 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
   HAL_ADC_Start_IT(&hadc2);
 
   // Timers
-	TIM1_Init(); //Hier die Reihenfolge getauscht!
-	TIM2_Init();
+	TIM1_Init(); // Swapped the order here!
+	TIM2_Init(); // init Timer2 as a counter, where every tick is 128ms
   TIM3_Init();
 
 	// Start Timer 1
@@ -1452,7 +1451,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
       if (MS.KV_detect_flag) {
         q31_rotorposition_absolute = q31_rotorposition_hall;
       } else {
-        q31_rotorposition_absolute = q31_rotorposition_hall - i8_direction * deg_30; // offset of 30 degree to get the middle of the sector
+        q31_rotorposition_absolute = q31_rotorposition_hall + i8_direction * deg_30; // offset of 30 degree to get the middle of the sector
       }
 
       MS.system_state = SixStep;
