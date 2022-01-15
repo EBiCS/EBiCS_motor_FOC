@@ -109,6 +109,8 @@ q31_t Hall_64 = 0;
 q31_t Hall_51 = 0;
 q31_t Hall_45 = 0;
 
+const q31_t deg_30 = 357913941;
+
 q31_t switchtime[3];
 bool ui8_overflow_flag = false;
 char char_dyn_adc_state_old = 1;
@@ -187,6 +189,16 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
   q31_t delta = target - actual;
   q31_t q31_p = (delta >> P_FACTOR_PLL);
   q31_d_i += (delta >> I_FACTOR_PLL);
+
+  q31_t limit = ((deg_30 >> 18) * 500 / ui16_halls_tim2tics) << 16;
+  if (q31_d_i > limit) {
+    q31_d_i = limit;
+  }
+  
+  limit = -((deg_30 >> 18) * 500 / ui16_halls_tim2tics) << 16;
+  if (q31_d_i < limit) {
+    q31_d_i = -((deg_30 >> 18) * 500 / ui16_halls_tim2tics) << 16;
+  }
 
   q31_t q31_d_dc = q31_p + q31_d_i;
 
@@ -483,7 +495,6 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 
   MS.brake_active = MSP->brake_active;
 
-
   // set power to zero at low voltage
   if (p_MotorStatePublic->battery_voltage < p_MotorStatePublic->battery_voltage_min) {
     
@@ -499,6 +510,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     if (MSP->i_q_setpoint_target > MSP->phase_current_limit) {
       MS.i_q_setpoint_temp = MSP->phase_current_limit;
     }
+
     if (MSP->i_q_setpoint_target < -MSP->phase_current_limit) {
       MS.i_q_setpoint_temp = -MSP->phase_current_limit;
     }
@@ -1064,6 +1076,10 @@ void runPIcontrol() {
 
   //reset battery current flag with small hysteresis
   q31_t battery_current = get_battery_current(MS.i_q_setpoint,MS.i_d_setpoint, uq_filtered, ud_filtered);
+
+  // DEBUG
+  p_MotorStatePublic->debug[0] = battery_current;
+
   if (MS.i_q * i8_direction * i8_reverse_flag > 100) { // motor mode
     if (battery_current < ((BATTERYCURRENT_MAX * 7) >> 3)) {
       ui8_BC_limit_flag = false;
@@ -1092,6 +1108,9 @@ void runPIcontrol() {
   PI_id.recent_value = MS.i_d;
   PI_id.setpoint = MS.i_d_setpoint;
   q31_u_d_temp = -PI_control(&PI_id); // control direct current to zero
+
+  // DEBUG
+  p_MotorStatePublic->debug[1] = MS.i_d;
 
   arm_sqrt_q31((q31_u_d_temp*q31_u_d_temp+q31_u_q_temp*q31_u_q_temp)<<1,&MS.u_abs);
   MS.u_abs = (MS.u_abs>>16)+1;
@@ -1361,6 +1380,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, Mot
 // injected ADC
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
+  // read phase currents
   switch (MS.char_dyn_adc_state) //read in according to state
   {
     case 1: //Phase C at high dutycycles, read from A+B directly
@@ -1406,6 +1426,9 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
       ui8_6step_flag = true;
     }
 
+    // DEBUG
+    p_MotorStatePublic->debug[2] = ui8_6step_flag;
+
     if (MS.angle_estimation == SPEED_PLL) {
       q31_rotorposition_PLL += q31_angle_per_tic;
     }
@@ -1429,7 +1452,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
       if (MS.KV_detect_flag) {
         q31_rotorposition_absolute = q31_rotorposition_hall;
       } else {
-        q31_rotorposition_absolute = q31_rotorposition_hall - i8_direction * 357913941; // offset of 30 degree to get the middle of the sector
+        q31_rotorposition_absolute = q31_rotorposition_hall - i8_direction * deg_30; // offset of 30 degree to get the middle of the sector
       }
 
       MS.system_state = SixStep;
@@ -1452,7 +1475,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
     FOC_calculation(i16_ph1_current, i16_ph2_current, q31_rotorposition_absolute, &MS);
   }
 
-  //set PWM
+  // apply PWM values that are calculated inside FOC_calculation()
   TIM1->CCR1 = (uint16_t) switchtime[0];
   TIM1->CCR2 = (uint16_t) switchtime[1];
   TIM1->CCR3 = (uint16_t) switchtime[2];

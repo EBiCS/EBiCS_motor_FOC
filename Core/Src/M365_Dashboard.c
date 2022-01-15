@@ -300,7 +300,7 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 				  /* Fill EraseInit structure*/
 				  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
 				  EraseInitStruct.PageAddress = flashstartaddress;
-				  EraseInitStruct.NbPages     = 26;
+				  EraseInitStruct.NbPages     = 29;
 
 				  if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
 				  {

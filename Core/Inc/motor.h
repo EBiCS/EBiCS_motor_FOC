@@ -47,6 +47,7 @@ typedef struct {
   uint32_t speed;
   bool brake_active;
   bool field_weakening_enable;
+  uint32_t debug[10];
 } MotorStatePublic_t;
 
 enum angle_estimation {

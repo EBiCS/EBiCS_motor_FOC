@@ -278,6 +278,7 @@ int main(void) {
 	HAL_Init();
 
 	// Configure the system clock
+  // board do not have any external crystal and so we use internal clock. Final clock is 64MHz
 	SystemClock_Config();
 
   // init GPIOS
@@ -358,6 +359,13 @@ int main(void) {
 
       // temperature
 			M365State.temperature = (MSPublic.adcData[ADC_TEMP] * 41) >> 8; //0.16 is calibration constant: Analog_in[10mV/°C]/ADC value. Depending on the sensor LM35)
+
+      // DEBUG
+      static uint8_t debug_cnt = 0;
+      if (++debug_cnt > 13) { // every 13 * 20 ms = 260ms
+        debug_cnt = 0;
+        printf_("%d, %d\n", MSPublic.debug[0], MSPublic.debug[1] * CAL_I);
+      }
 		}
 	}
 }

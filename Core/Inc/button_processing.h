@@ -32,12 +32,12 @@
 
 
 typedef enum {
-    NO_PRESS,
-    SINGLE_PRESS,
-    LONG_PRESS,
-    DOUBLE_PRESS,
+  NO_PRESS,
+  SINGLE_PRESS,
+  LONG_PRESS,
+  DOUBLE_PRESS,
 	VERY_LONG_PRESS
-} eButtonEvent ;
+} eButtonEvent;
 
 void checkButton(M365State_t *M365State);
 void PWR_init();

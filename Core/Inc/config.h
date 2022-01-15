@@ -25,9 +25,10 @@
 #define SPEEDLIMIT_SPORT 50
 
 // motor current limits for invividual modes in mA
-#define PH_CURRENT_MAX_ECO 3000
-#define PH_CURRENT_MAX_NORMAL 6000
-#define PH_CURRENT_MAX_SPORT 9000
+// note that hacked firmware allows up to 55amps motor phase current
+#define PH_CURRENT_MAX_ECO 20000
+#define PH_CURRENT_MAX_NORMAL 30000
+#define PH_CURRENT_MAX_SPORT 40000
 
 // motor current limit for regen in mA
 #define REGEN_CURRENT 10000
@@ -36,7 +37,7 @@
 #define FIELD_WEAKNING_CURRENT_MAX 1000 //max id
 
 // maximum battery currents in mA
-#define BATTERYCURRENT_MAX 6000
+#define BATTERYCURRENT_MAX 10000 // 10A, 36V battery, 350W limit
 #define REGEN_CURRENT_MAX 6000
 
 // battery voltage limits in mV
