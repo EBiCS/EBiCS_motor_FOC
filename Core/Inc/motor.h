@@ -64,9 +64,10 @@ enum {
 
 enum errors {
   none = 0,
-  hall = 1,
-  lowbattery = 2,
-  overcurrent = 4
+  hall = 18,
+  lowbattery = 24,
+  overcurrent = 4,
+  brake = 15
 };
 
 void motor_init(MotorStatePublic_t* p_MotorStatePublic);

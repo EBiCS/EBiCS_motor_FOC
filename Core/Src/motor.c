@@ -97,6 +97,7 @@ q31_t q31_rotorposition_hall;
 q31_t q31_rotorposition_motor_specific = SPEC_ANGLE;
 q31_t q31_rotorposition_PLL = 0;
 q31_t q31_angle_per_tic = 0;
+q31_t q31_PLL_error = 0;
 int8_t i8_recent_rotor_direction = 1;
 int16_t i16_hall_order = 1;
 
@@ -185,9 +186,10 @@ static inline bool pwm_is_enabled(void) {
 q31_t speed_PLL(q31_t actual, q31_t target) {
   static q31_t q31_d_i = 0;
 
-  q31_t delta = target - actual;
-  q31_t q31_p = (delta >> P_FACTOR_PLL);
-  q31_d_i += (delta >> I_FACTOR_PLL);
+  q31_t q31_PLL_error = target - actual;
+
+  q31_t q31_p = (q31_PLL_error >> P_FACTOR_PLL);
+  q31_d_i += (q31_PLL_error >> I_FACTOR_PLL);
 
   q31_t limit = ((deg_30 >> 18) * 500 / ui16_halls_tim2tics) << 16;
   if (q31_d_i > limit) {
@@ -312,6 +314,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		}
 
     if (MS.angle_estimation == SPEED_PLL) {
+      q31_PLL_error = q31_rotorposition_PLL - q31_rotorposition_hall;
 		  q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL, q31_rotorposition_hall);
     }
 	}
@@ -503,7 +506,9 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
 
   } else {
 
-    MS.error_state = none;
+    if (MS.error_state == lowbattery) {
+      MS.error_state = none;
+    }
 
     // i_q current limits
     if (MSP->i_q_setpoint_target > MSP->phase_current_limit) {
@@ -1435,7 +1440,8 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
     if (ui16_tim2_ticks < (ui16_halls_tim2tics + (ui16_halls_tim2tics >> 2)) // if ui16_tim2_ticks < (ui16_halls_tim2tics * 1.25)
         && ui8_overflow_flag == false
         && ui8_6step_flag == false) { // prevent angle running away at standstill
-      if (MS.angle_estimation == SPEED_PLL) {
+      if ((MS.angle_estimation == SPEED_PLL) &&
+          abs(q31_PLL_error) < deg_30) {
         q31_rotorposition_absolute = q31_rotorposition_PLL;
         MS.system_state = PLL;
       } else {

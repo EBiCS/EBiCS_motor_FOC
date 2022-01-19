@@ -102,7 +102,7 @@ void Error_Handler(void);
 #define HALL_3_GPIO_Port GPIOB
 
 #define PUSHASSIST_CURRENT 30
-#define SIXSTEPTHRESHOLD 9000
+#define SIXSTEPTHRESHOLD 18000
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max);
@@ -126,6 +126,7 @@ typedef struct {
 	bool brake_active;
   uint32_t shutdown;
   int8_t speed_limit;
+  int8_t error_state;
 } M365State_t;
 
 enum modes {

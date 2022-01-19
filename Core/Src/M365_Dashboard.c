@@ -55,7 +55,8 @@ enum bytesOfMessage64 {
 	Mode = 6,
 	SOC = 7,
 	Light = 8,
-	Beep = 9
+	Beep = 9,
+  errorcode = 11
 } msg64;
 
 enum bytesOfGeneralMessage {
@@ -212,7 +213,6 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 		case 0x64: {
 
 			ui8_tx_buffer[5]=0x00;
-			ui8_tx_buffer[11]=0x00;
 			ui8_tx_buffer[msglength]=0x08;
 			ui8_tx_buffer[receiver]=0x21;
 			ui8_tx_buffer[command]=message[command];
@@ -221,7 +221,8 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 			ui8_tx_buffer[SOC]=map(p_M365State->battery_voltage,BATTERYVOLTAGE_MIN,BATTERYVOLTAGE_MAX,0,96);
 			if(p_M365State->light)ui8_tx_buffer[Light]=64;
 			else ui8_tx_buffer[Light]=0;
-			ui8_tx_buffer[Beep]= p_M365State->beep;
+			ui8_tx_buffer[Beep] = p_M365State->beep;
+      ui8_tx_buffer[errorcode] = p_M365State->error_state;
 
 			addCRC((uint8_t*)ui8_tx_buffer, ui8_tx_buffer[msglength]+6);
 			HAL_HalfDuplex_EnableTransmitter(&huart1);
@@ -232,6 +233,13 @@ void process_DashboardMessage(M365State_t* p_M365State, uint8_t *message, uint8_
 			break;
 
 		case 0x65:
+    
+			if (message[Brake] < (BRAKEOFFSET >> 1)) {
+        p_M365State->error_state = brake;
+      } else if(p_M365State->error_state == brake) {
+        p_M365State->error_state = none;
+      }
+
 			if (map(message[Brake], BRAKEOFFSET, BRAKEMAX, 0, p_M365State->regen_current) > 0) {
 				if (p_M365State->speed > 2) {
 

@@ -11,7 +11,7 @@
                 "cwd": "${workspaceFolder}"
             },
             "linux": {
-                "command": "make"
+                "command": "make -j"
             },
             "problemMatcher": [],
             "group": {
