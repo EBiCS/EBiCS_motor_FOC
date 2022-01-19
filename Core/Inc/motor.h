@@ -12,9 +12,7 @@ extern "C" {
 #define WHEEL_CIRCUMFERENCE 690 // 690 for original M365 motor
 #define GEAR_RATIO 15 // 15 for original M365 motor
 
-#define ADC_VOLTAGE 0
-#define ADC_THROTTLE 1
-#define ADC_TEMP 2
+// ADC channels used to measure currents
 #define ADC_CHANA 3
 #define ADC_CHANB 4
 #define ADC_CHANC 5
@@ -32,6 +30,8 @@ extern "C" {
 // settings for speed PLL (angle estimation)
 #define P_FACTOR_PLL 10 // 10 for original M365 motor
 #define I_FACTOR_PLL 10 // 10 for original M365 motor
+
+#define SIXSTEPTHRESHOLD 18000
 
 typedef struct {
   q31_t i_q_setpoint_target;

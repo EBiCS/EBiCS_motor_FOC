@@ -162,6 +162,31 @@ q31_t q31_i_d_fil = 0;
 
 MotorStatePublic_t* p_MotorStatePublic;
 
+void _motor_error_handler(char *file, int line) {
+	__disable_irq();
+	while (1) {
+    motor_disable_pwm();
+	}
+}
+
+int32_t motor_map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
+		int32_t out_max) {
+	// if input is smaller/bigger than expected return the min/max out ranges value
+	if (x < in_min)
+		return out_min;
+	else if (x > in_max)
+		return out_max;
+
+	// map the input to the output range.
+	// round up if mapping bigger ranges to smaller ranges
+	else if ((in_max - in_min) > (out_max - out_min))
+		return (x - in_min) * (out_max - out_min + 1) / (in_max - in_min + 1)
+				+ out_min;
+	// round down if mapping smaller ranges to bigger ranges
+	else
+		return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 // regular ADC callback
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	ui8_adc_regular_flag = 1;
@@ -522,12 +547,12 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     calculate_tic_limits(MSP->speed_limit);
 
     // ramp down current at speed limit
-    MS.i_q_setpoint_temp = map(ui16_halls_tim2tics_filtered, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
+    MS.i_q_setpoint_temp = motor_map(ui16_halls_tim2tics_filtered, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
 
     if (MSP->field_weakening_enable) {
       
       MS.i_d_setpoint_temp =
-        -map(MSP->speed,
+        -motor_map(MSP->speed,
             (ui32_KV * MSP->battery_voltage / 100000) - 8,
             (ui32_KV * MSP->battery_voltage / 100000) + 30,
             0,
@@ -706,7 +731,7 @@ static void ADC1_Init(void) {
 	hadc1.Init.NbrOfDiscConversion = 0;
 
 	if (HAL_ADC_Init(&hadc1) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	/**Configure the ADC multi-mode
@@ -714,7 +739,7 @@ static void ADC1_Init(void) {
   ADC_MultiModeTypeDef multimode;
 	multimode.Mode = ADC_DUALMODE_REGSIMULT_INJECSIMULT;
 	if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	/**Configure Injected Channel
@@ -730,7 +755,7 @@ static void ADC1_Init(void) {
 	sConfigInjected.InjectedOffset = 0;
 	HAL_ADC_Stop(&hadc1); //ADC muß gestoppt sein, damit Triggerquelle gesetzt werden kann.
 	if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	/**Configure Regular Channel
@@ -740,7 +765,7 @@ static void ADC1_Init(void) {
 	sConfig.Rank = ADC_REGULAR_RANK_1;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	/**Configure Regular Channel
@@ -749,7 +774,7 @@ static void ADC1_Init(void) {
 	sConfig.Rank = ADC_REGULAR_RANK_2;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 	/**Configure Regular Channel
 	 */
@@ -757,7 +782,7 @@ static void ADC1_Init(void) {
 	sConfig.Rank = ADC_REGULAR_RANK_3;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 	/**Configure Regular Channel
 	 */
@@ -765,7 +790,7 @@ static void ADC1_Init(void) {
 	sConfig.Rank = ADC_REGULAR_RANK_4;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 	/**Configure Regular Channel
 	 */
@@ -773,14 +798,14 @@ static void ADC1_Init(void) {
 	sConfig.Rank = ADC_REGULAR_RANK_5;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sConfig.Channel = JSQR_PHASE_C >> 15;
 	sConfig.Rank = ADC_REGULAR_RANK_6;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 }
 
@@ -803,7 +828,7 @@ static void ADC2_Init(void) {
 	hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	hadc2.Init.NbrOfConversion = 1;
 	if (HAL_ADC_Init(&hadc2) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	/**Configure Injected Channel
@@ -817,7 +842,7 @@ static void ADC2_Init(void) {
 	sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
 	sConfigInjected.InjectedOffset = 0;
 	if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 }
 
@@ -841,27 +866,27 @@ static void TIM1_Init(void) {
 	htim1.Init.RepetitionCounter = 0;
 	htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
 	if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	if (HAL_TIM_PWM_Init(&htim1) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	if (HAL_TIM_OC_Init(&htim1) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC4REF;
 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
 	if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig)
 			!= HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sConfigOC.OCMode = TIM_OCMODE_PWM1;
@@ -873,24 +898,24 @@ static void TIM1_Init(void) {
 	sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
 	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1)
 			!= HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2)
 			!= HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3)
 			!= HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sConfigOC.OCMode = TIM_OCMODE_PWM2;
 	sConfigOC.Pulse = _T - 1;
 	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4)
 			!= HAL_OK) {
-		Error_Handler();
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
@@ -902,7 +927,7 @@ static void TIM1_Init(void) {
 	sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
 	if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig)
 			!= HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	HAL_TIM_MspPostInit(&htim1);
@@ -926,19 +951,19 @@ static void TIM2_Init(void) {
 	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
 	if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
 	if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig)
 			!= HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 }
 
@@ -1142,19 +1167,19 @@ static void TIM3_Init(void) {
 	htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
 	htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_Base_Init(&htim3) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
 	if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC1;
 	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
 	if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig)
 			!= HAL_OK) {
-		_Error_Handler(__FILE__, __LINE__);
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	HAL_TIM_MspPostInit(&htim3);
@@ -1203,11 +1228,11 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 	// ADC init and run calibration
 	ADC1_Init();
 	if (HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) {
-		Error_Handler();
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 	ADC2_Init();
 	if (HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK) {
-		Error_Handler();
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
   // enable external trigger
@@ -1226,7 +1251,7 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 
 	// Start Timer 1
 	if (HAL_TIM_Base_Start_IT(&htim1) != HAL_OK) {
-		Error_Handler();
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -1242,12 +1267,12 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 
 	// Start Timer 2
 	if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) {
-		Error_Handler();
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
   // Start Timer 3
 	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
-		Error_Handler();
+		_motor_error_handler(__FILE__, __LINE__);
 	}
 
 	disable_pwm();
