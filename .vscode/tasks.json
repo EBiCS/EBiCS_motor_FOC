@@ -4,14 +4,14 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "build dev",
             "type": "shell",
             "args": [],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
             "linux": {
-                "command": "make -j"
+                "command": "make -j BUILD_ENV=development"
             },
             "problemMatcher": [],
             "group": {
