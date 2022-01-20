@@ -141,6 +141,7 @@ endif
 #ifeq ($(@), development)
 ifeq ($(BUILD_ENV), development)
 CFLAGS += -DDO_NOT_USE_M365_BOOTLOADER
+OPT = -O0 # overwrite optimization value, need to have no optimizations for development debug
 else
 endif
 
