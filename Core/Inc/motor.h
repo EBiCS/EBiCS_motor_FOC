@@ -39,6 +39,21 @@ extern "C" {
 
 #define SIXSTEPTHRESHOLD 18000
 
+#define Phase_Current_1_Pin GPIO_PIN_3
+#define Phase_Current_1_GPIO_Port GPIOA
+#define Phase_Current_2_Pin GPIO_PIN_4
+#define Phase_Current_2_GPIO_Port GPIOA
+#define Phase_Current_3_Pin GPIO_PIN_5
+#define Phase_Current_3_GPIO_Port GPIOA
+
+// motor hall sensor pins
+#define HALL_1_Pin GPIO_PIN_4
+#define HALL_1_GPIO_Port GPIOB
+#define HALL_2_Pin GPIO_PIN_5
+#define HALL_2_GPIO_Port GPIOB
+#define HALL_3_Pin GPIO_PIN_0
+#define HALL_3_GPIO_Port GPIOB
+
 typedef struct {
   q31_t i_q_setpoint_target;
   int16_t phase_current_limit;

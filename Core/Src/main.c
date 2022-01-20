@@ -189,13 +189,11 @@ static void GPIO_Init(void) {
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
 
-//	HAL_GPIO_WritePin(UART1_Tx_GPIO_Port, UART1_Tx_Pin, GPIO_PIN_RESET);
 	/*Configure GPIO pin : UART1Tx_Pin */
 	GPIO_InitStruct.Pin = UART1_Tx_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-//	HAL_GPIO_Init(UART1_Tx_GPIO_Port, &GPIO_InitStruct);
 
 	HAL_GPIO_WritePin(BrakeLight_GPIO_Port, BrakeLight_Pin, GPIO_PIN_RESET);
 	/*Configure GPIO pin : BrakeLight_Pin */
@@ -204,8 +202,6 @@ static void GPIO_Init(void) {
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
 	HAL_GPIO_Init(BrakeLight_GPIO_Port, &GPIO_InitStruct);
-
-	HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {

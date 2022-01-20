@@ -6,6 +6,8 @@
 #include "eeprom.h"
 #include "utils.h"
 
+extern void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 #define TRIGGER_OFFSET_ADC 50
 #define TRIGGER_DEFAULT 2020
 #define _T 2028
@@ -955,12 +957,14 @@ static void GPIO_Init(void) {
 	/* GPIO Ports Clock Enable */
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 
+  // The GPIO pin has to be in reset state to set it's properties.
+  HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
+
 	/* Configure GPIO pins for motor hall sensors */
 	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin | HALL_3_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
 
 	/*Configure peripheral I/O remapping */
 	__HAL_AFIO_REMAP_PD01_ENABLE();
