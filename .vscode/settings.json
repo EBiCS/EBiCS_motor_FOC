@@ -11,6 +11,7 @@
       "tuple": "c",
       "type_traits": "c",
       "utility": "c",
-      "motor.h": "c"
+      "motor.h": "c",
+      "main.h": "c"
     }
 }

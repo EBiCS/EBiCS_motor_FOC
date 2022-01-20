@@ -219,24 +219,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
 
 }
 
-int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
-		int32_t out_max) {
-	// if input is smaller/bigger than expected return the min/max out ranges value
-	if (x < in_min)
-		return out_min;
-	else if (x > in_max)
-		return out_max;
-
-	// map the input to the output range.
-	// round up if mapping bigger ranges to smaller ranges
-	else if ((in_max - in_min) > (out_max - out_min))
-		return (x - in_min) * (out_max - out_min + 1) / (in_max - in_min + 1)
-				+ out_min;
-	// round down if mapping smaller ranges to bigger ranges
-	else
-		return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
 /**
  * @brief  This function is executed in case of error occurrence.
  * @retval None
@@ -296,14 +278,14 @@ int main(void) {
   MSPublic.speed = 128000;
 	MSPublic.speed_limit = SPEEDLIMIT_NORMAL;
   MSPublic.phase_current_limit = PH_CURRENT_MAX_NORMAL;
-  MSPublic.field_weakening_current_max = FIELD_WEAKNING_CURRENT_MAX / CAL_I;
+  MSPublic.field_weakening_current_max = FIELD_WEAKNING_CURRENT_MAX;
   MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
 
   motor_init(&MSPublic);
 
-  M365State.phase_current_limit = PH_CURRENT_MAX_NORMAL / CAL_I;
+  M365State.phase_current_limit = PH_CURRENT_MAX_NORMAL;
   M365State.speed_limit = SPEEDLIMIT_NORMAL;
-  M365State.regen_current = REGEN_CURRENT / CAL_I;
+  M365State.regen_current = REGEN_CURRENT;
 
   // init dashboard
 	M365Dashboard_init(huart1);

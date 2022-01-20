@@ -174,17 +174,17 @@ void set_mode(M365State_t *p_M365State) {
 
 	switch (p_M365State->mode & 0x07) { // look only on the lowest 3 bits
 		case eco:
-			p_M365State->phase_current_limit = PH_CURRENT_MAX_ECO / CAL_I;
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_ECO;
 			p_M365State->speed_limit = SPEEDLIMIT_ECO;
 			break;
 
 		case normal:
-			p_M365State->phase_current_limit = PH_CURRENT_MAX_NORMAL / CAL_I;
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_NORMAL;
 			p_M365State->speed_limit = SPEEDLIMIT_NORMAL;
       break;
 
 		case sport:
-			p_M365State->phase_current_limit = PH_CURRENT_MAX_SPORT / CAL_I;
+			p_M365State->phase_current_limit = PH_CURRENT_MAX_SPORT;
 			p_M365State->speed_limit = SPEEDLIMIT_SPORT;
       break;
 	}

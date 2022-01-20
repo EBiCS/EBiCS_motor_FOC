@@ -8,6 +8,10 @@
 extern "C" {
 #endif
 
+// maximum currents in mA
+#define BATTERYCURRENT_MAX 10000 // 10A, 36V battery, 350W limit
+#define REGEN_CURRENT_MAX 6000
+
 // parameters for speed calculation
 #define WHEEL_CIRCUMFERENCE 690 // 690 for original M365 motor
 #define GEAR_RATIO 15 // 15 for original M365 motor
@@ -16,6 +20,8 @@ extern "C" {
 #define ADC_CHANA 3
 #define ADC_CHANB 4
 #define ADC_CHANC 5
+
+#define CAL_I 38 // ADC counts * CAL_I = current in mA
 
 #define P_FACTOR_I_Q 100
 #define I_FACTOR_I_Q 2

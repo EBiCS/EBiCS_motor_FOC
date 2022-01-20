@@ -11,7 +11,6 @@
 
 // calibration factors for voltage and current
 #define CAL_BAT_V 14 	// ADC counts * CAL_BAT_V = Battery voltage in mV
-#define CAL_I 38		// ADC counts * CAL_I = current in mA
 
 //#define ADCTHROTTLE
 #define THROTTLEOFFSET 45
@@ -35,10 +34,6 @@
 
 // maximum current for field weakening in mA
 #define FIELD_WEAKNING_CURRENT_MAX 1000 //max id
-
-// maximum battery currents in mA
-#define BATTERYCURRENT_MAX 10000 // 10A, 36V battery, 350W limit
-#define REGEN_CURRENT_MAX 6000
 
 // battery voltage limits in mV
 // #define BATTERYVOLTAGE_MIN 33000

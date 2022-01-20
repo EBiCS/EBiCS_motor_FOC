@@ -4,7 +4,7 @@
 #include "motor.h"
 #include "print.h"
 #include "eeprom.h"
-#include "config.h"
+#include "utils.h"
 
 #define TRIGGER_OFFSET_ADC 50
 #define TRIGGER_DEFAULT 2020
@@ -37,7 +37,6 @@ typedef struct {
 	uint8_t char_dyn_adc_state;
 	int8_t system_state;
 	int8_t error_state;
-	int16_t phase_current_limit;
   int16_t spec_angle;
   bool brake_active;
   enum angle_estimation angle_estimation;
@@ -167,24 +166,6 @@ void _motor_error_handler(char *file, int line) {
 	while (1) {
     motor_disable_pwm();
 	}
-}
-
-int32_t motor_map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
-		int32_t out_max) {
-	// if input is smaller/bigger than expected return the min/max out ranges value
-	if (x < in_min)
-		return out_min;
-	else if (x > in_max)
-		return out_max;
-
-	// map the input to the output range.
-	// round up if mapping bigger ranges to smaller ranges
-	else if ((in_max - in_min) > (out_max - out_min))
-		return (x - in_min) * (out_max - out_min + 1) / (in_max - in_min + 1)
-				+ out_min;
-	// round down if mapping smaller ranges to bigger ranges
-	else
-		return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
 // regular ADC callback
@@ -536,27 +517,28 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     }
 
     // i_q current limits
-    if (MSP->i_q_setpoint_target > MSP->phase_current_limit) {
-      MS.i_q_setpoint_temp = MSP->phase_current_limit;
+    int16_t phase_current_limit = MSP->phase_current_limit / 38;
+    if (MSP->i_q_setpoint_target > phase_current_limit) {
+      MS.i_q_setpoint_temp = phase_current_limit;
     }
 
-    if (MSP->i_q_setpoint_target < -MSP->phase_current_limit) {
-      MS.i_q_setpoint_temp = -MSP->phase_current_limit;
+    if (MSP->i_q_setpoint_target < -phase_current_limit) {
+      MS.i_q_setpoint_temp = -phase_current_limit;
     }
 
     calculate_tic_limits(MSP->speed_limit);
 
     // ramp down current at speed limit
-    MS.i_q_setpoint_temp = motor_map(ui16_halls_tim2tics_filtered, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
+    MS.i_q_setpoint_temp = map(ui16_halls_tim2tics_filtered, tics_higher_limit, tics_lower_limit, 0, MSP->i_q_setpoint_target);
 
     if (MSP->field_weakening_enable) {
       
       MS.i_d_setpoint_temp =
-        -motor_map(MSP->speed,
+        -map(MSP->speed,
             (ui32_KV * MSP->battery_voltage / 100000) - 8,
             (ui32_KV * MSP->battery_voltage / 100000) + 30,
             0,
-            MSP->field_weakening_current_max);
+            (MSP->field_weakening_current_max / CAL_I));
 
     } else {
       MS.i_d_setpoint_temp = 0;
@@ -1205,8 +1187,6 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 	MS.i_q_setpoint = 0;
 	MS.i_d_setpoint = 0;
   MS.angle_estimation = SPEED_PLL;
-
-	MS.phase_current_limit = PH_CURRENT_MAX_NORMAL;
 
   // init PI structs
   PI_id.gain_i = I_FACTOR_I_D;

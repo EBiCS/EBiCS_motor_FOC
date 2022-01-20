@@ -13,6 +13,7 @@ extern "C" {
 #include <stdlib.h>
 #include <arm_math.h>
 #include <stdbool.h>
+#include "utils.h"
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
@@ -60,9 +61,6 @@ void Error_Handler(void);
 #define ADC_VOLTAGE 0
 #define ADC_THROTTLE 1
 #define ADC_TEMP 2
-
-int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
-		int32_t out_max);
 
 extern void UserSysTickHandler(void);
 
