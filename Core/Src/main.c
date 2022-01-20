@@ -24,11 +24,11 @@ void UserSysTickHandler(void) {
   
   systick_cnt++;
 
+  c++;
   // every 10ms
   if ((c % 10) == 0) {
     motor_slow_loop(&MSPublic);
   }
-  c++;
 }
 
 /**

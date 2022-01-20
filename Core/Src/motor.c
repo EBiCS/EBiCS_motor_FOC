@@ -517,7 +517,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     }
 
     // i_q current limits
-    int16_t phase_current_limit = MSP->phase_current_limit / 38;
+    int16_t phase_current_limit = MSP->phase_current_limit / CAL_I;
     if (MSP->i_q_setpoint_target > phase_current_limit) {
       MS.i_q_setpoint_temp = phase_current_limit;
     }
