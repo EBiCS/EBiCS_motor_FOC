@@ -184,7 +184,7 @@ static inline void disable_pwm(void) {
 }
 
 static inline void enable_pwm(void) {
-  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+  // SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
 }
 
 static inline bool pwm_is_enabled(void) {
@@ -220,117 +220,118 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	// Hall sensor event processing
-	if (GPIO_Pin == HALL_1_Pin || GPIO_Pin == HALL_2_Pin || GPIO_Pin == HALL_3_Pin) // check for right interrupt source
-	{
-		ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); // mask input register with Hall 1 - 3 bits
+  // ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); // mask input register with Hall 1 - 3 bits
+  ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOA->IDR >> 11) & 0b11); // mask input register with Hall 1 - 3 bits
 
-		if (ui8_hall_state == ui8_hall_state_old)
-			return;
+  uint32_t GPIOA_ = (GPIOA->IDR >> 11) & 0b11;
+  uint32_t GPIOB_ = GPIOB->IDR & 1;
 
-    // old state + current state: having both states makes possible to validade correct sequence (on following steps)
-		ui8_hall_case = ui8_hall_state_old * 10 + ui8_hall_state;
+  if (ui8_hall_state == ui8_hall_state_old)
+    return;
 
-    // only process, if autodetect process is finished
-		if (MS.hall_angle_detect_flag == false) {
-			ui8_hall_state_old = ui8_hall_state;
-		}
+  // old state + current state: having both states makes possible to validade correct sequence (on following steps)
+  ui8_hall_case = ui8_hall_state_old * 10 + ui8_hall_state;
 
-		uint16_t ui16_tim2_ticks = __HAL_TIM_GET_COUNTER(&htim2); // read in timer2tics since last hall event
+  // only process, if autodetect process is finished
+  if (MS.hall_angle_detect_flag == false) {
+    ui8_hall_state_old = ui8_hall_state;
+  }
 
-		if (ui16_tim2_ticks > 100) { // debounce
+  uint16_t ui16_tim2_ticks = __HAL_TIM_GET_COUNTER(&htim2); // read in timer2tics since last hall event
 
-			ui16_halls_tim2tics = ui16_tim2_ticks; // save timertics since last hall event
+  if (ui16_tim2_ticks > 100) { // debounce
 
-      // low pass filter ui16_halls_tim2tics
-			static q31_t ui16_halls_tim2tics_acc = 128000; // start with near 0 angle
-      ui16_halls_tim2tics_acc -= ui16_halls_tim2tics_acc >> 3;
-			ui16_halls_tim2tics_acc += ui16_halls_tim2tics;
-      ui16_halls_tim2tics_filtered = ui16_halls_tim2tics_acc >> 3;
+    ui16_halls_tim2tics = ui16_tim2_ticks; // save timertics since last hall event
 
-			__HAL_TIM_SET_COUNTER(&htim2, 0); // reset tim2 counter
+    // low pass filter ui16_halls_tim2tics
+    static q31_t ui16_halls_tim2tics_acc = 128000; // start with near 0 angle
+    ui16_halls_tim2tics_acc -= ui16_halls_tim2tics_acc >> 3;
+    ui16_halls_tim2tics_acc += ui16_halls_tim2tics;
+    ui16_halls_tim2tics_filtered = ui16_halls_tim2tics_acc >> 3;
 
-			ui8_overflow_flag = false;
-		}
+    __HAL_TIM_SET_COUNTER(&htim2, 0); // reset tim2 counter
 
-		switch (ui8_hall_case) // 12 cases for each transition from one stage to the next. 6x forward, 6x reverse
-		{
-      // 6 cases for forward direction
-      case 64:
-        q31_rotorposition_hall = Hall_64;
-        i8_recent_rotor_direction = -i16_hall_order;
-        uint16_full_rotation_counter = 0;
-        break;
+    ui8_overflow_flag = false;
+  }
 
-      case 45:
-        q31_rotorposition_hall = Hall_45;
-        i8_recent_rotor_direction = -i16_hall_order;
-        break;
+  switch (ui8_hall_case) // 12 cases for each transition from one stage to the next. 6x forward, 6x reverse
+  {
+    // 6 cases for forward direction
+    case 64:
+      q31_rotorposition_hall = Hall_64;
+      i8_recent_rotor_direction = -i16_hall_order;
+      uint16_full_rotation_counter = 0;
+      break;
 
-      case 51:
-        q31_rotorposition_hall = Hall_51;
-        i8_recent_rotor_direction = -i16_hall_order;
-        break;
+    case 45:
+      q31_rotorposition_hall = Hall_45;
+      i8_recent_rotor_direction = -i16_hall_order;
+      break;
 
-      case 13:
-        q31_rotorposition_hall = Hall_13;
-        i8_recent_rotor_direction = -i16_hall_order;
-        uint16_half_rotation_counter = 0;
-        break;
+    case 51:
+      q31_rotorposition_hall = Hall_51;
+      i8_recent_rotor_direction = -i16_hall_order;
+      break;
 
-      case 32:
-        q31_rotorposition_hall = Hall_32;
-        i8_recent_rotor_direction = -i16_hall_order;
-        break;
+    case 13:
+      q31_rotorposition_hall = Hall_13;
+      i8_recent_rotor_direction = -i16_hall_order;
+      uint16_half_rotation_counter = 0;
+      break;
 
-      case 26:
-        q31_rotorposition_hall = Hall_26;
-        i8_recent_rotor_direction = -i16_hall_order;
-        break;
+    case 32:
+      q31_rotorposition_hall = Hall_32;
+      i8_recent_rotor_direction = -i16_hall_order;
+      break;
 
-      // 6 cases for reverse direction
-      case 46:
-        q31_rotorposition_hall = Hall_64;
-        i8_recent_rotor_direction = i16_hall_order;
-        break;
+    case 26:
+      q31_rotorposition_hall = Hall_26;
+      i8_recent_rotor_direction = -i16_hall_order;
+      break;
 
-      case 62:
-        q31_rotorposition_hall = Hall_26;
-        i8_recent_rotor_direction = i16_hall_order;
-        break;
+    // 6 cases for reverse direction
+    case 46:
+      q31_rotorposition_hall = Hall_64;
+      i8_recent_rotor_direction = i16_hall_order;
+      break;
 
-      case 23:
-        q31_rotorposition_hall = Hall_32;
-        i8_recent_rotor_direction = i16_hall_order;
-        uint16_half_rotation_counter = 0;
-        break;
+    case 62:
+      q31_rotorposition_hall = Hall_26;
+      i8_recent_rotor_direction = i16_hall_order;
+      break;
 
-      case 31:
-        q31_rotorposition_hall = Hall_13;
-        i8_recent_rotor_direction = i16_hall_order;
-        break;
+    case 23:
+      q31_rotorposition_hall = Hall_32;
+      i8_recent_rotor_direction = i16_hall_order;
+      uint16_half_rotation_counter = 0;
+      break;
 
-      case 15:
-        q31_rotorposition_hall = Hall_51;
-        i8_recent_rotor_direction = i16_hall_order;
-        break;
+    case 31:
+      q31_rotorposition_hall = Hall_13;
+      i8_recent_rotor_direction = i16_hall_order;
+      break;
 
-      case 54:
-        q31_rotorposition_hall = Hall_45;
-        i8_recent_rotor_direction = i16_hall_order;
-        uint16_full_rotation_counter = 0;
-        break;
-		}
+    case 15:
+      q31_rotorposition_hall = Hall_51;
+      i8_recent_rotor_direction = i16_hall_order;
+      break;
 
-    if (MS.angle_estimation == SPEED_PLL) {
-      q31_PLL_error = q31_rotorposition_PLL - q31_rotorposition_hall;
-		  q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL, q31_rotorposition_hall);
-    }
-	}
+    case 54:
+      q31_rotorposition_hall = Hall_45;
+      i8_recent_rotor_direction = i16_hall_order;
+      uint16_full_rotation_counter = 0;
+      break;
+  }
+
+  if (MS.angle_estimation == SPEED_PLL) {
+    q31_PLL_error = q31_rotorposition_PLL - q31_rotorposition_hall;
+    q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL, q31_rotorposition_hall);
+  }
 }
 
 void get_standstill_position() {
 	// HAL_Delay(100); // will BLOCK because it is called inside systick interrupt
-	HAL_GPIO_EXTI_Callback(GPIO_PIN_4); // read in initial rotor position
+	HAL_GPIO_EXTI_Callback(HALL_1_Pin); // read in initial rotor position
 
 	switch (ui8_hall_state) {
     // 6 cases for forward direction
@@ -499,14 +500,22 @@ q31_t get_battery_current(q31_t iq, q31_t id, q31_t uq, q31_t ud) {
 }
 
 // call every 10ms
-void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
+void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
 
-  MotorStatePublic_t* MSP = p_MotorStatePublic;
+  MotorStatePublic_t* MSP = motorStatePublic;
 
   MS.brake_active = MSP->brake_active;
 
+  // battery voltage
+  // low pass filter measured battery voltage 
+  static q31_t q31_batt_voltage_acc = 0;
+  q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 5);
+  q31_batt_voltage_acc += MSP->adcData[ADC_VOLTAGE];
+  q31_t q31_battery_voltage = (q31_batt_voltage_acc >> 5) * CAL_BAT_V;
+  MSP->battery_voltage = q31_battery_voltage;
+
   // set power to zero at low voltage
-  if (p_MotorStatePublic->battery_voltage < p_MotorStatePublic->battery_voltage_min) {
+  if (q31_battery_voltage < p_MotorStatePublic->battery_voltage_min) {
     
     MS.i_q_setpoint = 0;
     MS.i_d_setpoint = 0;
@@ -537,8 +546,8 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
       
       MS.i_d_setpoint_temp =
         -map(MSP->speed,
-            (ui32_KV * MSP->battery_voltage / 100000) - 8,
-            (ui32_KV * MSP->battery_voltage / 100000) + 30,
+            (ui32_KV * q31_battery_voltage / 100000) - 8,
+            (ui32_KV * q31_battery_voltage / 100000) + 30,
             0,
             (MSP->field_weakening_current_max / CAL_I));
 
@@ -568,9 +577,9 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
       MS.i_q_setpoint = 1;
       MS.angle_estimation = EXTRAPOLATION; // switch to angle extrapolation
       
-      if ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)) {
+      if ((q31_battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)) {
         ui32_KV -= ui32_KV >> 4;
-        ui32_KV += (uint32_SPEEDx100_cumulated) / ((MSP->battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); // unit: kph*100/V
+        ui32_KV += (uint32_SPEEDx100_cumulated) / ((q31_battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); // unit: kph*100/V
       }
 
       if (ui16_KV_detect_counter > 200) {
@@ -634,7 +643,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
   MS.Battery_Current = get_battery_current(iq_filtered, id_filtered, uq_filtered, ud_filtered) * sign(iq_filtered) * i8_direction * i8_reverse_flag;
 
   // enable PWM if power is wanted and speed is lower than idle speed
-  if (MS.i_q_setpoint && pwm_is_enabled() == 0 && (uint32_SPEEDx100_cumulated >> SPEEDFILTER) * 1000 < (ui32_KV * MSP->battery_voltage)) {
+  if (MS.i_q_setpoint && pwm_is_enabled() == 0 && (uint32_SPEEDx100_cumulated >> SPEEDFILTER) * 1000 < (ui32_KV * q31_battery_voltage)) {
     
     // set initial PWM values
     TIM1->CCR1 = 1023; 
@@ -651,7 +660,7 @@ void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic) {
     if (MS.system_state == Stop) {
       speed_PLL(0, 0); //reset integral part
     } else {
-      PI_iq.integral_part = (((uint32_SPEEDx100_cumulated >> SPEEDFILTER) << 11) * 1000 / (ui32_KV * MSP->battery_voltage)) << PI_iq.shift;
+      PI_iq.integral_part = (((uint32_SPEEDx100_cumulated >> SPEEDFILTER) << 11) * 1000 / (ui32_KV * q31_battery_voltage)) << PI_iq.shift;
       PI_iq.out = PI_iq.integral_part;
     }
 
@@ -961,7 +970,12 @@ static void GPIO_Init(void) {
   HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
 
 	/* Configure GPIO pins for motor hall sensors */
-	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin | HALL_3_Pin;
+	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = HALL_3_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -970,11 +984,8 @@ static void GPIO_Init(void) {
 	__HAL_AFIO_REMAP_PD01_ENABLE();
 
 	/* EXTI interrupt init*/
-	HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
-	HAL_NVIC_EnableIRQ(EXTI4_IRQn);
-
-	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
-	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 	HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
@@ -1490,9 +1501,13 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
   }
 
   // apply PWM values that are calculated inside FOC_calculation()
-  TIM1->CCR1 = (uint16_t) switchtime[0];
-  TIM1->CCR2 = (uint16_t) switchtime[1];
-  TIM1->CCR3 = (uint16_t) switchtime[2];
+  // TIM1->CCR1 = (uint16_t) switchtime[0];
+  // TIM1->CCR2 = (uint16_t) switchtime[1];
+  // TIM1->CCR3 = (uint16_t) switchtime[2];
+
+TIM1->CCR1 = 1023;
+TIM1->CCR2 = 1023;
+TIM1->CCR3 = 1023;
 }
 
 #ifdef  USE_FULL_ASSERT

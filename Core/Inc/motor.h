@@ -8,10 +8,6 @@
 extern "C" {
 #endif
 
-// maximum currents in mA
-#define BATTERYCURRENT_MAX 10000 // 10A, 36V battery, 350W limit
-#define REGEN_CURRENT_MAX 6000
-
 // parameters for speed calculation
 #define WHEEL_CIRCUMFERENCE 690 // 690 for original M365 motor
 #define GEAR_RATIO 15 // 15 for original M365 motor
@@ -21,7 +17,22 @@ extern "C" {
 #define ADC_CHANB 4
 #define ADC_CHANC 5
 
+// ADC channel to measure the battery voltage
+#define ADC_VOLTAGE 0
+
+// calibration factors for voltage and current
+#define CAL_BAT_V 13 	// ADC counts * CAL_BAT_V = Battery voltage in mV
+
+// battery voltage limits in mV
+// #define BATTERYVOLTAGE_MIN 33000
+#define BATTERYVOLTAGE_MIN 20000 // for development only
+#define BATTERYVOLTAGE_MAX 42000
+
 #define CAL_I 38 // ADC counts * CAL_I = current in mA
+
+// maximum currents in mA
+#define BATTERYCURRENT_MAX 10000 // 10A, 36V battery, 350W limit
+#define REGEN_CURRENT_MAX 6000
 
 #define P_FACTOR_I_Q 100
 #define I_FACTOR_I_Q 2
@@ -46,11 +57,21 @@ extern "C" {
 #define Phase_Current_3_Pin GPIO_PIN_5
 #define Phase_Current_3_GPIO_Port GPIOA
 
-// motor hall sensor pins
-#define HALL_1_Pin GPIO_PIN_4
-#define HALL_1_GPIO_Port GPIOB
-#define HALL_2_Pin GPIO_PIN_5
-#define HALL_2_GPIO_Port GPIOB
+#define Batt_Voltage_Pin GPIO_PIN_2
+#define Batt_Voltage_GPIO_Port GPIOA
+
+// hall sensor pins
+// #define HALL_1_Pin GPIO_PIN_4
+// #define HALL_1_GPIO_Port GPIOB
+// #define HALL_2_Pin GPIO_PIN_5
+// #define HALL_2_GPIO_Port GPIOB
+// #define HALL_3_Pin GPIO_PIN_0
+// #define HALL_3_GPIO_Port GPIOB
+
+#define HALL_1_Pin GPIO_PIN_11
+#define HALL_1_GPIO_Port GPIOA
+#define HALL_2_Pin GPIO_PIN_12
+#define HALL_2_GPIO_Port GPIOA
 #define HALL_3_Pin GPIO_PIN_0
 #define HALL_3_GPIO_Port GPIOB
 

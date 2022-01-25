@@ -238,32 +238,6 @@ void DMA1_Channel3_IRQHandler(void) {
 }
 
 /**
- * @brief This function handles DMA1 channel4 global interrupt.
- */
-void DMA1_Channel4_IRQHandler(void) {
-	/* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
-
-	/* USER CODE END DMA1_Channel4_IRQn 0 */
-	HAL_DMA_IRQHandler(&hdma_usart1_tx);
-	/* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
-
-	/* USER CODE END DMA1_Channel4_IRQn 1 */
-}
-
-/**
- * @brief This function handles DMA1 channel5 global interrupt.
- */
-void DMA1_Channel5_IRQHandler(void) {
-	/* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
-
-	/* USER CODE END DMA1_Channel5_IRQn 0 */
-	HAL_DMA_IRQHandler(&hdma_usart1_rx);
-	/* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
-
-	/* USER CODE END DMA1_Channel5_IRQn 1 */
-}
-
-/**
  * @brief This function handles ADC1 and ADC2 global interrupts.
  */
 void ADC1_2_IRQHandler(void) {
@@ -352,19 +326,6 @@ void TIM4_IRQHandler(void) {
 /**
  * @brief This function handles USART1 global interrupt.
  */
-void USART1_IRQHandler(void) {
-	/* USER CODE BEGIN USART1_IRQn 0 */
-
-	/* USER CODE END USART1_IRQn 0 */
-	HAL_UART_IRQHandler(&huart1);
-	/* USER CODE BEGIN USART1_IRQn 1 */
-
-	/* USER CODE END USART1_IRQn 1 */
-}
-
-/**
- * @brief This function handles USART1 global interrupt.
- */
 void USART3_IRQHandler(void) {
 	/* USER CODE BEGIN USART1_IRQn 0 */
 
@@ -375,43 +336,14 @@ void USART3_IRQHandler(void) {
 	/* USER CODE END USART1_IRQn 1 */
 }
 
-/**
- * @brief This function handles EXTI line[9:5] interrupts.
- */
-void EXTI9_5_IRQHandler(void) {
-	/* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
-	/* USER CODE END EXTI9_5_IRQn 0 */
-	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
-	/* USER CODE BEGIN EXTI9_5_IRQn 1 */
-
-	/* USER CODE END EXTI9_5_IRQn 1 */
+void EXTI15_10_IRQHandler(void) {
+	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
 }
 
-/**
- * @brief This function handles EXTI line[9:5] interrupts.
- */
+
 void EXTI0_IRQHandler(void) {
-	/* USER CODE BEGIN EXTI9_5_IRQn 0 */
-
-	/* USER CODE END EXTI9_5_IRQn 0 */
 	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
-	/* USER CODE BEGIN EXTI9_5_IRQn 1 */
-
-	/* USER CODE END EXTI9_5_IRQn 1 */
-}
-
-/**
- * @brief This function handles EXTI line[9:5] interrupts.
- */
-void EXTI4_IRQHandler(void) {
-	/* USER CODE BEGIN EXTI9_5_IRQn 0 */
-
-	/* USER CODE END EXTI9_5_IRQn 0 */
-	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
-	/* USER CODE BEGIN EXTI9_5_IRQn 1 */
-
-	/* USER CODE END EXTI9_5_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
