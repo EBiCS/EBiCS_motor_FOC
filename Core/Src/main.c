@@ -1,7 +1,20 @@
 #include "main.h"
 #include "print.h"
-#include "config.h"
 #include "motor.h"
+
+#define THROTTLEOFFSET 700
+#define THROTTLEMAX 3350
+#define BRAKEOFFSET 50
+#define BRAKEMAX 190
+
+// motor current limits for invividual modes in mA
+#define PH_CURRENT_MAX 20000
+
+// motor current limit for regen in mA
+#define REGEN_CURRENT 10000
+
+// maximum current for field weakening in mA
+#define FIELD_WEAKNING_CURRENT_MAX 0 //max id
 
 // not need to optimize the motor_slow_loop
 #pragma GCC push_options
