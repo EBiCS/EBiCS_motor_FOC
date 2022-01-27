@@ -1,27 +1,7 @@
-Fork of EBiCS firmware for Lishui devices. Ported to Xaiomi M365 controller. 
-Use JST PA series 2mm pitch for the connectors. (need to be confirmed) 
+This firmware implements FOC motor control on a STM32F103 microcontroller. The code was written from scratch and is relatively simple to understand.
 
-This branch works with the original M365 dashboard  
+The purpose of this repository FOC motor control code is [to be included as a library / git submodule on your project](https://git-scm.com/book/en/v2/Git-Tools-Submodules)!!
 
-How to use:  
-Install the [STM Cube IDE](https://www.st.com/en/development-tools/stm32cubeide.html#overview&secondary=st-get-software)  
-Start the IDE and install egit from the eclipse marketplace (Help --> Eclipse Marketplace...)  
-Import this repo from github (File --> Import --> git --> Projects from git)  
+# How to use
 
-Edit the file config.h (in the folder Core/Inc) according to your wishes. Working settings for the original M365 are in the comments, so use them to have a proven start setting.  
-
-Click on "Build" (The icon with the hammer)  
-
-in the folder /tools/zip-output the zip-file ready for use with your scooter is generated.
-Copy it to your mobile phone and flash it to the scooter by the app downG.
-
-After flashing, lift the motor, so it can spin in the air without load. Press the dashboard button for 5s, the autodetect routine starts. The motor turns slowly. After stopping, the scooter is ready to run.  
-
-Dashboard button use:  
-short press: switch lights  
-double click: switch ride modes  
-long press: switch off  
-very long press: run autodetect  
-
-
-![PCB Layout M365](https://github.com/Koxx3/SmartESC_STM32_v3/blob/master/Documentation/PCB%20Layout%20M365.PNG)
+See the example folder. In that example, a throttle is used to define the motor target current. Here a [video showing this example driving a Xiaomi M365 motor](https://www.youtube.com/watch?v=NelnB91Vqgw).

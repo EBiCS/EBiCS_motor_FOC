@@ -12,7 +12,7 @@
             "args": [],
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/build/firmware.elf",
+            "program": "${workspaceFolder}/example/build/example.elf",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",            
@@ -31,7 +31,7 @@
             "customLaunchSetupCommands": [
                 {
                     "description": "Set remote target",
-                    "text": "file ${workspaceFolder}/build/firmware.elf"
+                    "text": "file ${workspaceFolder}/example/build/example.elf"
                 },
                 {
                     "description": "Set remote target",
@@ -45,7 +45,7 @@
                 },
                 {
                     "description": "Flash firmware",
-                    "text": "monitor flash write_image erase ${workspaceFolder}/build/firmware.hex"
+                    "text": "monitor flash write_image erase ${workspaceFolder}/example/build/example.hex"
                 },
                 {
                     "description": "Start debug",
@@ -60,7 +60,7 @@
           "args": [],
           "stopAtEntry": true,
           "cwd": "${workspaceFolder}",
-          "program": "${workspaceFolder}/build/firmware.elf",
+          "program": "${workspaceFolder}/example/build/example.elf",
           "environment": [],
           "externalConsole": false,
           "MIMode": "gdb",            
