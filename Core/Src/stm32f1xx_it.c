@@ -199,19 +199,6 @@ void SysTick_Handler(void) {
 /******************************************************************************/
 
 /**
- * @brief This function handles DMA1 channel1 global interrupt.
- */
-void DMA1_Channel1_IRQHandler(void) {
-	/* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
-
-	/* USER CODE END DMA1_Channel1_IRQn 0 */
-	HAL_DMA_IRQHandler(&hdma_adc1);
-	/* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
-
-	/* USER CODE END DMA1_Channel1_IRQn 1 */
-}
-
-/**
  * @brief This function handles DMA1 channel4 global interrupt.
  */
 void DMA1_Channel2_IRQHandler(void) {
@@ -251,73 +238,11 @@ void ADC1_2_IRQHandler(void) {
 	/* USER CODE END ADC1_2_IRQn 1 */
 }
 
-/**
- * @brief This function handles TIM1 update interrupt.
- */
-void TIM1_UP_IRQHandler(void) {
-	/* USER CODE BEGIN TIM1_UP_IRQn 0 */
-
-	/* USER CODE END TIM1_UP_IRQn 0 */
-	HAL_TIM_IRQHandler(&htim1);
-	/* USER CODE BEGIN TIM1_UP_IRQn 1 */
-
-	/* USER CODE END TIM1_UP_IRQn 1 */
-}
-
-/**
- * @brief This function handles TIM1 trigger and commutation interrupts.
- */
-void TIM1_TRG_COM_IRQHandler(void) {
-	/* USER CODE BEGIN TIM1_TRG_COM_IRQn 0 */
-
-	/* USER CODE END TIM1_TRG_COM_IRQn 0 */
-	HAL_TIM_IRQHandler(&htim1);
-	/* USER CODE BEGIN TIM1_TRG_COM_IRQn 1 */
-
-	/* USER CODE END TIM1_TRG_COM_IRQn 1 */
-}
-
-/**
- * @brief This function handles TIM1 capture compare interrupt.
- */
-void TIM1_CC_IRQHandler(void) {
-	/* USER CODE BEGIN TIM1_CC_IRQn 0 */
-
-	/* USER CODE END TIM1_CC_IRQn 0 */
-	HAL_TIM_IRQHandler(&htim1);
-	/* USER CODE BEGIN TIM1_CC_IRQn 1 */
-
-	/* USER CODE END TIM1_CC_IRQn 1 */
-}
-
-/**
- * @brief This function handles TIM2 global interrupt.
- */
-void TIM2_IRQHandler(void) {
-	/* USER CODE BEGIN TIM2_IRQn 0 */
-
-	/* USER CODE END TIM2_IRQn 0 */
-	HAL_TIM_IRQHandler(&htim2);
-	/* USER CODE BEGIN TIM2_IRQn 1 */
-
-	/* USER CODE END TIM2_IRQn 1 */
-}
-
 void TIM3_IRQHandler(void) {
 	/* USER CODE BEGIN TIM2_IRQn 0 */
 
 	/* USER CODE END TIM2_IRQn 0 */
 	HAL_TIM_IRQHandler(&htim3);
-	/* USER CODE BEGIN TIM2_IRQn 1 */
-
-	/* USER CODE END TIM2_IRQn 1 */
-}
-
-void TIM4_IRQHandler(void) {
-	/* USER CODE BEGIN TIM2_IRQn 0 */
-
-	/* USER CODE END TIM2_IRQn 0 */
-	HAL_TIM_IRQHandler(&htim4);
 	/* USER CODE BEGIN TIM2_IRQn 1 */
 
 	/* USER CODE END TIM2_IRQn 1 */
@@ -336,11 +261,9 @@ void USART3_IRQHandler(void) {
 	/* USER CODE END USART1_IRQn 1 */
 }
 
-
 void EXTI15_10_IRQHandler(void) {
 	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
 }
-
 
 void EXTI0_IRQHandler(void) {
 	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);

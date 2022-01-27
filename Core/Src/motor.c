@@ -139,13 +139,12 @@ const q31_t DEG_minus120 = -1431655765;
 
 uint16_t ui16_reg_adc_value;
 uint32_t ui32_reg_adc_value_filter;
-uint8_t ui8_adc_regular_flag = 0;
 uint16_t ui16_ph1_offset = 0;
 uint16_t ui16_ph2_offset = 0;
 uint16_t ui16_ph3_offset = 0;
 
 uint16_t ui16_KV_detect_counter = 0; // for getting timing of the KV detect
-static int16_t ui32_KV = 0;
+static int16_t ui32_KV = 4;
 
 uint32_t uint32_SPEEDx100_cumulated = 0;
 
@@ -172,7 +171,7 @@ void _motor_error_handler(char *file, int line) {
 
 // regular ADC callback
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	ui8_adc_regular_flag = 1;
+	
 }
 
 void motor_disable_pwm(void) {
@@ -184,7 +183,7 @@ static inline void disable_pwm(void) {
 }
 
 static inline void enable_pwm(void) {
-  // SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
+  SET_BIT(TIM1->BDTR, TIM_BDTR_MOE);
 }
 
 static inline bool pwm_is_enabled(void) {
@@ -220,11 +219,7 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	// Hall sensor event processing
-  // ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); // mask input register with Hall 1 - 3 bits
   ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOA->IDR >> 11) & 0b11); // mask input register with Hall 1 - 3 bits
-
-  uint32_t GPIOA_ = (GPIOA->IDR >> 11) & 0b11;
-  uint32_t GPIOB_ = GPIOB->IDR & 1;
 
   if (ui8_hall_state == ui8_hall_state_old)
     return;
@@ -379,11 +374,10 @@ void motor_autodetect() {
   MS.i_d_setpoint = 200; // set MS.id to appr. 2000mA
 	MS.i_q_setpoint = 1;
 
-	HAL_Delay(5);
+	// delay_ms_soft(5);
 	for (uint32_t i = 0; i < 1080; i++) { // 1080 = 360 * 3, 3 turns, just to make sure at least a full turn happens
-
 		q31_rotorposition_absolute += 11930465; //drive motor in open loop with steps of 1 degree
-    HAL_Delay(5);
+    // delay_ms_soft(5);
 
 		if (ui8_hall_state_old != ui8_hall_state) {
 
@@ -699,11 +693,6 @@ static void DMA_Init(void) {
 
 	/* DMA controller clock enable */
 	__HAL_RCC_DMA1_CLK_ENABLE();
-
-	// DMA channel 1: used for ADC
-  /* DMA1_Channel1_IRQn interrupt configuration */
-	HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 }
 
 /**
@@ -885,7 +874,7 @@ static void TIM1_Init(void) {
 	sConfigOC.OCMode = TIM_OCMODE_PWM1;
 	sConfigOC.Pulse = 1;
 	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-	sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH; //TODO: depends on gate driver!
+	sConfigOC.OCNPolarity = TIM_OCNPOLARITY_LOW; //TODO: depends on gate driver!
 	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
 	sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
 	sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
@@ -992,7 +981,6 @@ static void GPIO_Init(void) {
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	
   if (htim == &htim3) {
 
     if (MS.angle_estimation == SPEED_PLL) {
@@ -1011,8 +999,23 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
 
     if (uint16_half_rotation_counter < 8000) {
-			uint16_half_rotation_counter++;	//half rotation counter for motor standstill detectio
+			uint16_half_rotation_counter++;	//half rotation counter for motor standstill detection
     }
+
+  } else if (htim == &htim1) {
+
+    // htim->Instance->DIER &= ~(TIM_IT_UPDATE);
+    // htim->Instance->DIER &= ~(TIM_IT_CC1);
+    // htim->Instance->DIER &= ~(TIM_IT_CC2);
+    // htim->Instance->DIER &= ~(TIM_IT_CC3);
+    // htim->Instance->DIER &= ~(TIM_IT_COM);
+    // htim->Instance->DIER &= ~(TIM_IT_TRIGGER);
+    // htim->Instance->DIER &= ~(TIM_IT_BREAK);
+
+  } else if (htim == &htim2) {
+    // DEBUG_TOGGLE;
+  } else {
+    // DEBUG_TOGGLE;
   }
 }
 
@@ -1151,7 +1154,7 @@ void runPIcontrol() {
   }
 }
 
-/* TIM3 init function 8kHz interrupt frequency for regular adc triggering */
+/* TIM3 init function 8kHz / 125us interrupt frequency for regular adc triggering */
 static void TIM3_Init(void) {
 
 	TIM_ClockConfigTypeDef sClockSourceConfig;
@@ -1245,7 +1248,7 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
   TIM3_Init();
 
 	// Start Timer 1
-	if (HAL_TIM_Base_Start_IT(&htim1) != HAL_OK) {
+	if (HAL_TIM_Base_Start(&htim1) != HAL_OK) {
 		_motor_error_handler(__FILE__, __LINE__);
 	}
 
@@ -1256,12 +1259,12 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 
-	HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_4);
+	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
 	TIM1->CCR4 = TRIGGER_DEFAULT; //ADC sampling just before timer overflow (just before middle of PWM-Cycle)
 
 	// Start Timer 2
-	if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK) {
+	if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
 		_motor_error_handler(__FILE__, __LINE__);
 	}
 
@@ -1403,7 +1406,8 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, Mot
 
 // injected ADC
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
-
+// DEBUG_TOGGLE;
+DEBUG_ON;
   // read phase currents
   switch (MS.char_dyn_adc_state) //read in according to state
   {
@@ -1501,13 +1505,15 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
   }
 
   // apply PWM values that are calculated inside FOC_calculation()
-  // TIM1->CCR1 = (uint16_t) switchtime[0];
-  // TIM1->CCR2 = (uint16_t) switchtime[1];
-  // TIM1->CCR3 = (uint16_t) switchtime[2];
+  TIM1->CCR1 = (uint16_t) switchtime[0];
+  TIM1->CCR2 = (uint16_t) switchtime[1];
+  TIM1->CCR3 = (uint16_t) switchtime[2];
 
-TIM1->CCR1 = 1023;
-TIM1->CCR2 = 1023;
-TIM1->CCR3 = 1023;
+// TIM1->CCR1 = 1023;
+// TIM1->CCR2 = 1023;
+// TIM1->CCR3 = 1023;
+
+DEBUG_OFF;
 }
 
 #ifdef  USE_FULL_ASSERT

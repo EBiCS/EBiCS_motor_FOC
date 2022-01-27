@@ -23,6 +23,8 @@ void UserSysTickHandler(void) {
   if ((c % 10) == 0) {
     motor_slow_loop(&MSPublic);
   }
+
+  // DEBUG_TOGGLE;
 }
 
 /**
@@ -119,7 +121,7 @@ static void USART3_UART_Init(void) {
  * @retval None
  */
 static void GPIO_Init(void) {
-	// GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
 	/* GPIO Ports Clock Enable */
 	__HAL_RCC_GPIOA_CLK_ENABLE();
@@ -127,6 +129,7 @@ static void GPIO_Init(void) {
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_GPIOD_CLK_ENABLE();
 
+  DEBUG_PIN_CONFIG;
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
@@ -170,6 +173,16 @@ void assert_failed(uint8_t *file, uint32_t line)
 #endif /* USE_FULL_ASSERT */
 
 int main(void) {
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+  GPIO_InitStruct.Pin = GPIO_PIN_12;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == false) {
+    while(1) ; // block here, for development
+  }
+
 	// Reset of all peripherals, Initializes the Flash interface and the Systick
 	HAL_Init();
 
@@ -212,13 +225,19 @@ int main(void) {
 	    ui16_throttle = ui32_throttle_acc >> 4;
 
       // map throttle to motor current
-      MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, 0 /* PH_CURRENT_MAX */);
+      // MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, 0 /* PH_CURRENT_MAX */);
+
+      MSPublic.i_q_setpoint_target = 0; // 10mA
 
       // DEBUG
       static uint8_t debug_cnt = 0;
       if (++debug_cnt > 13) { // every 13 * 20 ms = 260ms
         debug_cnt = 0;
         printf_("%d, %d\n", MSPublic.debug[0], MSPublic.debug[1] * CAL_I);
+      }
+
+      if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == false) {
+        motor_autodetect();
       }
 		}
 	}

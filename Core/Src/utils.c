@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "main.h"
 
 int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 		int32_t out_max) {
@@ -16,4 +17,13 @@ int32_t map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min,
 	// round down if mapping smaller ranges to bigger ranges
 	else
 		return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+void delay_ms_soft(const uint16_t ms)
+{
+  uint32_t i = ms * 42; // 4234 was adjusted manually using an oscilloscope
+  while (i-- > 0) {
+    asm("nop");
+    // DEBUG_TOGGLE;
+  }
 }
