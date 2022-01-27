@@ -32,16 +32,5 @@ jobs:
       with:
         release: '9-2020-q2'
     - name: make
+      working-directory: ./example
       run: make
-      
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-    - run: python tools/xiaotea/Scripts/prepareZip_online.py      
-    - name: 'Upload Artifact'
-      uses: actions/upload-artifact@v2
-      with:
-        path: ${{ github.workspace }}/tools/zip_output
-        name: M365_v3_build_${{ github.run_number }}
-        retention-days: 5
