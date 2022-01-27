@@ -374,10 +374,10 @@ void motor_autodetect() {
   MS.i_d_setpoint = 200; // set MS.id to appr. 2000mA
 	MS.i_q_setpoint = 1;
 
-	// delay_ms_soft(5);
+	HAL_Delay(5);
 	for (uint32_t i = 0; i < 1080; i++) { // 1080 = 360 * 3, 3 turns, just to make sure at least a full turn happens
 		q31_rotorposition_absolute += 11930465; //drive motor in open loop with steps of 1 degree
-    // delay_ms_soft(5);
+    HAL_Delay(5);
 
 		if (ui8_hall_state_old != ui8_hall_state) {
 

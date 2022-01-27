@@ -24,7 +24,7 @@ TARGET = firmware
 # debug build?
 DEBUG = 1
 # optimization
-OPT = -Os
+OPT = -O0
 
 
 #######################################
