@@ -219,7 +219,7 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	// Hall sensor event processing
-  ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOA->IDR >> 11) & 0b11); // mask input register with Hall 1 - 3 bits
+  ui8_hall_state = (GPIOC->IDR >> 13) & 0b111; // mask input register with Hall 1 - 3 bits
 
   if (ui8_hall_state == ui8_hall_state_old)
     return;
@@ -325,7 +325,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 }
 
 void get_standstill_position() {
-	// HAL_Delay(100); // will BLOCK because it is called inside systick interrupt
+
 	HAL_GPIO_EXTI_Callback(HALL_1_Pin); // read in initial rotor position
 
 	switch (ui8_hall_state) {
@@ -961,21 +961,16 @@ static void GPIO_Init(void) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
 	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOB_CLK_ENABLE();
+	__HAL_RCC_GPIOC_CLK_ENABLE();
 
   // The GPIO pin has to be in reset state to set it's properties.
   HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
 
 	/* Configure GPIO pins for motor hall sensors */
-	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin;
+	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin | HALL_3_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = HALL_3_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 	/*Configure peripheral I/O remapping */
 	__HAL_AFIO_REMAP_PD01_ENABLE();
@@ -983,9 +978,6 @@ static void GPIO_Init(void) {
 	/* EXTI interrupt init*/
 	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-
-	HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
-	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -1414,8 +1406,7 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, Mot
 
 // injected ADC
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
-// DEBUG_TOGGLE;
-DEBUG_ON;
+// DEBUG_ON;
   // read phase currents
   switch (MS.char_dyn_adc_state) //read in according to state
   {
@@ -1517,11 +1508,7 @@ DEBUG_ON;
   TIM1->CCR2 = (uint16_t) switchtime[1];
   TIM1->CCR3 = (uint16_t) switchtime[2];
 
-// TIM1->CCR1 = 1023;
-// TIM1->CCR2 = 1023;
-// TIM1->CCR3 = 1023;
-
-DEBUG_OFF;
+// DEBUG_OFF;
 }
 
 #ifdef  USE_FULL_ASSERT

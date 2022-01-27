@@ -133,7 +133,7 @@ static void GPIO_Init(void) {
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_GPIOD_CLK_ENABLE();
 
-  DEBUG_PIN_CONFIG;
+  // DEBUG_PIN_CONFIG;
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {

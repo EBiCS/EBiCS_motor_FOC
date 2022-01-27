@@ -265,10 +265,6 @@ void EXTI15_10_IRQHandler(void) {
 	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15);
 }
 
-void EXTI0_IRQHandler(void) {
-	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
-}
-
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */

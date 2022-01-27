@@ -60,20 +60,12 @@ extern "C" {
 #define Batt_Voltage_Pin GPIO_PIN_2
 #define Batt_Voltage_GPIO_Port GPIOA
 
-// hall sensor pins
-// #define HALL_1_Pin GPIO_PIN_4
-// #define HALL_1_GPIO_Port GPIOB
-// #define HALL_2_Pin GPIO_PIN_5
-// #define HALL_2_GPIO_Port GPIOB
-// #define HALL_3_Pin GPIO_PIN_0
-// #define HALL_3_GPIO_Port GPIOB
-
-#define HALL_1_Pin GPIO_PIN_11
-#define HALL_1_GPIO_Port GPIOA
-#define HALL_2_Pin GPIO_PIN_12
-#define HALL_2_GPIO_Port GPIOA
-#define HALL_3_Pin GPIO_PIN_0
-#define HALL_3_GPIO_Port GPIOB
+#define HALL_1_Pin GPIO_PIN_13
+#define HALL_1_GPIO_Port GPIOC
+#define HALL_2_Pin GPIO_PIN_14
+#define HALL_2_GPIO_Port GPIOC
+#define HALL_3_Pin GPIO_PIN_15
+#define HALL_3_GPIO_Port GPIOC
 
 typedef struct {
   q31_t i_q_setpoint_target;
