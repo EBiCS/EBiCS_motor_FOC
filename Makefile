@@ -10,9 +10,6 @@
 #   2015-07-22 - first version
 # ------------------------------------------------
 
-# uncomment next line to build the code for using the M365 bootloader
-#USE_M365_BOOTLOADER = 1
-
 ######################################
 # target
 ######################################
@@ -23,8 +20,8 @@ TARGET = firmware
 ######################################
 # debug build?
 DEBUG = 1
-# optimization
-OPT = -O0
+# max optimization: Os
+OPT = -Os # WARNING: be aware that motor control code will not work if there are no optimizations enabled, because of processing time will be to much!!
 
 
 #######################################
@@ -138,7 +135,6 @@ endif
 
 ifeq ($(BUILD_ENV), development)
 CFLAGS += -DDO_NOT_USE_M365_BOOTLOADER
-OPT = -O0 # overwrite optimization value, need to have no optimizations for development debug
 else
 endif
 

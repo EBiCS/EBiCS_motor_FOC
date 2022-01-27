@@ -9,8 +9,8 @@
 #define CONFIG_H_
 #include "stdint.h"
 
-#define THROTTLEOFFSET 45
-#define THROTTLEMAX 175
+#define THROTTLEOFFSET 700
+#define THROTTLEMAX 3350
 #define BRAKEOFFSET 50
 #define BRAKEMAX 190
 

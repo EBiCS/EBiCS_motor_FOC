@@ -144,7 +144,7 @@ uint16_t ui16_ph2_offset = 0;
 uint16_t ui16_ph3_offset = 0;
 
 uint16_t ui16_KV_detect_counter = 0; // for getting timing of the KV detect
-static int16_t ui32_KV = 4;
+static int16_t ui32_KV = 77; // 77 is the value from a M365 motor (no the M365 Pro motor!!)
 
 uint32_t uint32_SPEEDx100_cumulated = 0;
 
@@ -493,10 +493,14 @@ q31_t get_battery_current(q31_t iq, q31_t id, q31_t uq, q31_t ud) {
 	return abs(ibatd) + abs(ibatq);
 }
 
+// not need to optimize the motor_slow_loop
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 // call every 10ms
 void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
 
   MotorStatePublic_t* MSP = motorStatePublic;
+  static q31_t q31_battery_voltage; // don´t know why, but seems this variable must be static here or it will get garbage data
 
   MS.brake_active = MSP->brake_active;
 
@@ -505,7 +509,7 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
   static q31_t q31_batt_voltage_acc = 0;
   q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 5);
   q31_batt_voltage_acc += MSP->adcData[ADC_VOLTAGE];
-  q31_t q31_battery_voltage = (q31_batt_voltage_acc >> 5) * CAL_BAT_V;
+  q31_battery_voltage = (q31_batt_voltage_acc >> 5) * CAL_BAT_V;
   MSP->battery_voltage = q31_battery_voltage;
 
   // set power to zero at low voltage
@@ -565,9 +569,11 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
     }
 
     // run KV detection
+    // KV detection works with ramping up uq until it reaches 1900, than it is ramped down to near zero again. 
     if (MS.KV_detect_flag > 0) {
       static int8_t dir = 1;
       static uint16_t KVtemp;
+      enable_pwm();
       MS.i_q_setpoint = 1;
       MS.angle_estimation = EXTRAPOLATION; // switch to angle extrapolation
       
@@ -576,11 +582,12 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
         ui32_KV += (uint32_SPEEDx100_cumulated) / ((q31_battery_voltage * MS.u_q) >> (21 - SPEEDFILTER)); // unit: kph*100/V
       }
 
-      if (ui16_KV_detect_counter > 200) {
+      if (ui16_KV_detect_counter > 200) { // every 25ms (200 * Timer3 ticks 125us = 25ms)
         MS.KV_detect_flag += 10 * dir;
         ui16_KV_detect_counter = 0;
       }
 
+      // ok, now ramp down
       if (MS.u_q > 1900) {
         KVtemp = ui32_KV >> 4;
         dir = -1;
@@ -601,7 +608,7 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
       }
 
       // abort if over current
-      if (abs(MS.i_q > 300)) {
+      if (abs(MS.i_q > 400)) { // 400 * 38 (CAL_I) = 15.2 amps phase current
         MS.i_q_setpoint = 0;
         disable_pwm();
         MS.KV_detect_flag = 0;
@@ -685,6 +692,7 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
     }
   }
 }
+#pragma GCC pop_options
 
 /**
  * Enable DMA controller clock

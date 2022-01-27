@@ -3,6 +3,10 @@
 #include "config.h"
 #include "motor.h"
 
+// not need to optimize the motor_slow_loop
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 UART_HandleTypeDef huart3;
 
 DMA_HandleTypeDef hdma_usart3_tx;
@@ -206,7 +210,6 @@ int main(void) {
   MSPublic.phase_current_limit = PH_CURRENT_MAX;
   MSPublic.field_weakening_current_max = FIELD_WEAKNING_CURRENT_MAX;
   MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
-
   motor_init(&MSPublic);
 
 	while (1) {
@@ -225,9 +228,7 @@ int main(void) {
 	    ui16_throttle = ui32_throttle_acc >> 4;
 
       // map throttle to motor current
-      // MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, 0 /* PH_CURRENT_MAX */);
-
-      MSPublic.i_q_setpoint_target = 0; // 10mA
+      MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, PH_CURRENT_MAX);
 
       // DEBUG
       static uint8_t debug_cnt = 0;
@@ -242,3 +243,4 @@ int main(void) {
 		}
 	}
 }
+#pragma GCC pop_options
