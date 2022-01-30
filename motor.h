@@ -44,11 +44,15 @@ extern "C" {
 #define SPEC_ANGLE -167026406L
 #define REVERSE 1 // 1 for original M365 motor
 
-// settings for speed PLL (angle estimation)
-#define P_FACTOR_PLL 10 // 10 for original M365 motor
-#define I_FACTOR_PLL 10 // 10 for original M365 motor
+// M365 motor
+#define P_FACTOR_PLL 8 // 8 for original M365 motor
+#define I_FACTOR_PLL 8 // 8 for original M365 motor
+#define SIXSTEPTHRESHOLD 9000
 
-#define SIXSTEPTHRESHOLD 18000
+// TSDZ2 36V motor
+// #define P_FACTOR_PLL 6
+// #define I_FACTOR_PLL 8
+// #define SIXSTEPTHRESHOLD 27000
 
 #define Phase_Current_1_Pin GPIO_PIN_3
 #define Phase_Current_1_GPIO_Port GPIOA
@@ -60,12 +64,12 @@ extern "C" {
 #define Batt_Voltage_Pin GPIO_PIN_2
 #define Batt_Voltage_GPIO_Port GPIOA
 
-#define HALL_1_Pin GPIO_PIN_13
-#define HALL_1_GPIO_Port GPIOC
-#define HALL_2_Pin GPIO_PIN_14
-#define HALL_2_GPIO_Port GPIOC
-#define HALL_3_Pin GPIO_PIN_15
-#define HALL_3_GPIO_Port GPIOC
+#define HALL_1_Pin GPIO_PIN_4
+#define HALL_1_GPIO_Port GPIOB
+#define HALL_2_Pin GPIO_PIN_5
+#define HALL_2_GPIO_Port GPIOB
+#define HALL_3_Pin GPIO_PIN_0
+#define HALL_3_GPIO_Port GPIOB
 
 typedef struct {
   q31_t i_q_setpoint_target;

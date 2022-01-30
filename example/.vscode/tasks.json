@@ -52,9 +52,9 @@
             "command": "openocd",
             "args": [
                 "-f",
-                "${workspaceFolder}/tools/openocd-v0.10.0_dev-scripts/stlink-v2.cfg",
+                "${workspaceFolder}/tools/openocd_scripts/stlink-v2.cfg",
                 "-f",
-                "${workspaceFolder}/tools/openocd-v0.10.0_dev-scripts/stm32f1x.cfg"
+                "${workspaceFolder}/tools/openocd_scripts/stm32f1x.cfg"
             ]
           },
           "problemMatcher": []

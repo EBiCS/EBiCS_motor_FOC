@@ -1,0 +1,793 @@
+ARM GAS  /tmp/ccHyrZOP.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 6
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"decr_and_flash.c"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.global	key
+  16              		.section	.data.key,"aw"
+  17              		.align	2
+  20              	key:
+  21 0000 FE801CB2 		.ascii	"\376\200\034\262\321\357A\246\244\0271\365\240h$\360"
+  21      D1EF41A6 
+  21      A41731F5 
+  21      A06824F0 
+  22              		.global	iv
+  23              		.section	.bss.iv,"aw",%nobits
+  24              		.align	2
+  27              	iv:
+  28 0000 00000000 		.space	8
+  28      00000000 
+  29              		.global	offset
+  30              		.section	.bss.offset,"aw",%nobits
+  31              		.align	2
+  34              	offset:
+  35 0000 00000000 		.space	4
+  36              		.section	.data.update_startaddress,"aw"
+  37              		.align	2
+  40              	update_startaddress:
+  41 0000 00840008 		.word	134251520
+  42              		.section	.text.update_key,"ax",%progbits
+  43              		.align	1
+  44              		.global	update_key
+  45              		.arch armv7-m
+  46              		.syntax unified
+  47              		.thumb
+  48              		.thumb_func
+  49              		.fpu softvfp
+  51              	update_key:
+  52              	.LFB123:
+  53              		.file 1 "Core/Src/decr_and_flash.c"
+   1:Core/Src/decr_and_flash.c **** /*
+   2:Core/Src/decr_and_flash.c ****  * decr_and_flash.c
+   3:Core/Src/decr_and_flash.c ****  *
+   4:Core/Src/decr_and_flash.c ****  *  Created on: 21.12.2021
+   5:Core/Src/decr_and_flash.c ****  *      Author: Thanks to Tom!
+   6:Core/Src/decr_and_flash.c ****  */
+   7:Core/Src/decr_and_flash.c **** 
+   8:Core/Src/decr_and_flash.c **** #include <stdio.h>
+   9:Core/Src/decr_and_flash.c **** #include <stdint.h>
+ARM GAS  /tmp/ccHyrZOP.s 			page 2
+
+
+  10:Core/Src/decr_and_flash.c **** #include <string.h>
+  11:Core/Src/decr_and_flash.c **** #include "main.h"
+  12:Core/Src/decr_and_flash.c **** 
+  13:Core/Src/decr_and_flash.c **** uint8_t key[16] = {0xFE,0x80,0x1C,0xB2,0xD1,0xEF,0x41,0xA6,0xA4,0x17,0x31,0xF5,0xA0,0x68,0x24,0xF0}
+  14:Core/Src/decr_and_flash.c **** uint8_t iv[8] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+  15:Core/Src/decr_and_flash.c **** int offset = 0;
+  16:Core/Src/decr_and_flash.c **** static uint32_t update_startaddress = 0x08008400;
+  17:Core/Src/decr_and_flash.c **** 
+  18:Core/Src/decr_and_flash.c **** void update_key()
+  19:Core/Src/decr_and_flash.c **** {
+  54              		.loc 1 19 1
+  55              		.cfi_startproc
+  56              		@ args = 0, pretend = 0, frame = 8
+  57              		@ frame_needed = 1, uses_anonymous_args = 0
+  58              		@ link register save eliminated.
+  59 0000 80B4     		push	{r7}
+  60              	.LCFI0:
+  61              		.cfi_def_cfa_offset 4
+  62              		.cfi_offset 7, -4
+  63 0002 83B0     		sub	sp, sp, #12
+  64              	.LCFI1:
+  65              		.cfi_def_cfa_offset 16
+  66 0004 00AF     		add	r7, sp, #0
+  67              	.LCFI2:
+  68              		.cfi_def_cfa_register 7
+  69              	.LBB2:
+  20:Core/Src/decr_and_flash.c ****     for (int i = 0; i < 16; i = i + 1) {
+  70              		.loc 1 20 14
+  71 0006 0023     		movs	r3, #0
+  72 0008 7B60     		str	r3, [r7, #4]
+  73              		.loc 1 20 5
+  74 000a 0FE0     		b	.L2
+  75              	.L3:
+  21:Core/Src/decr_and_flash.c ****         key[i] = (key[i] + i) & 0xFF;
+  76              		.loc 1 21 22 discriminator 3
+  77 000c 0B4A     		ldr	r2, .L5
+  78 000e 7B68     		ldr	r3, [r7, #4]
+  79 0010 1344     		add	r3, r3, r2
+  80 0012 1A78     		ldrb	r2, [r3]	@ zero_extendqisi2
+  81              		.loc 1 21 26 discriminator 3
+  82 0014 7B68     		ldr	r3, [r7, #4]
+  83 0016 DBB2     		uxtb	r3, r3
+  84 0018 1344     		add	r3, r3, r2
+  85 001a D9B2     		uxtb	r1, r3
+  86              		.loc 1 21 16 discriminator 3
+  87 001c 074A     		ldr	r2, .L5
+  88 001e 7B68     		ldr	r3, [r7, #4]
+  89 0020 1344     		add	r3, r3, r2
+  90 0022 0A46     		mov	r2, r1
+  91 0024 1A70     		strb	r2, [r3]
+  20:Core/Src/decr_and_flash.c ****     for (int i = 0; i < 16; i = i + 1) {
+  92              		.loc 1 20 31 discriminator 3
+  93 0026 7B68     		ldr	r3, [r7, #4]
+  94 0028 0133     		adds	r3, r3, #1
+  95 002a 7B60     		str	r3, [r7, #4]
+  96              	.L2:
+  20:Core/Src/decr_and_flash.c ****     for (int i = 0; i < 16; i = i + 1) {
+ARM GAS  /tmp/ccHyrZOP.s 			page 3
+
+
+  97              		.loc 1 20 5 discriminator 1
+  98 002c 7B68     		ldr	r3, [r7, #4]
+  99 002e 0F2B     		cmp	r3, #15
+ 100 0030 ECDD     		ble	.L3
+ 101              	.LBE2:
+  22:Core/Src/decr_and_flash.c ****     }
+  23:Core/Src/decr_and_flash.c ****     return;
+ 102              		.loc 1 23 5
+ 103 0032 00BF     		nop
+  24:Core/Src/decr_and_flash.c **** }
+ 104              		.loc 1 24 1
+ 105 0034 0C37     		adds	r7, r7, #12
+ 106              	.LCFI3:
+ 107              		.cfi_def_cfa_offset 4
+ 108 0036 BD46     		mov	sp, r7
+ 109              	.LCFI4:
+ 110              		.cfi_def_cfa_register 13
+ 111              		@ sp needed
+ 112 0038 80BC     		pop	{r7}
+ 113              	.LCFI5:
+ 114              		.cfi_restore 7
+ 115              		.cfi_def_cfa_offset 0
+ 116 003a 7047     		bx	lr
+ 117              	.L6:
+ 118              		.align	2
+ 119              	.L5:
+ 120 003c 00000000 		.word	key
+ 121              		.cfi_endproc
+ 122              	.LFE123:
+ 124              		.section	.text.decrypt_ecb,"ax",%progbits
+ 125              		.align	1
+ 126              		.global	decrypt_ecb
+ 127              		.syntax unified
+ 128              		.thumb
+ 129              		.thumb_func
+ 130              		.fpu softvfp
+ 132              	decrypt_ecb:
+ 133              	.LFB124:
+  25:Core/Src/decr_and_flash.c **** 
+  26:Core/Src/decr_and_flash.c **** void decrypt_ecb(uint8_t *block, uint8_t *out)
+  27:Core/Src/decr_and_flash.c **** {
+ 134              		.loc 1 27 1
+ 135              		.cfi_startproc
+ 136              		@ args = 0, pretend = 0, frame = 40
+ 137              		@ frame_needed = 1, uses_anonymous_args = 0
+ 138              		@ link register save eliminated.
+ 139 0000 80B4     		push	{r7}
+ 140              	.LCFI6:
+ 141              		.cfi_def_cfa_offset 4
+ 142              		.cfi_offset 7, -4
+ 143 0002 8BB0     		sub	sp, sp, #44
+ 144              	.LCFI7:
+ 145              		.cfi_def_cfa_offset 48
+ 146 0004 00AF     		add	r7, sp, #0
+ 147              	.LCFI8:
+ 148              		.cfi_def_cfa_register 7
+ 149 0006 7860     		str	r0, [r7, #4]
+ARM GAS  /tmp/ccHyrZOP.s 			page 4
+
+
+ 150 0008 3960     		str	r1, [r7]
+ 151 000a 7B68     		ldr	r3, [r7, #4]
+ 152 000c 1B68     		ldr	r3, [r3]	@ unaligned
+  28:Core/Src/decr_and_flash.c ****     uint32_t y, z;
+  29:Core/Src/decr_and_flash.c ****     memcpy(&y, block, 4);
+ 153              		.loc 1 29 5
+ 154 000e FB61     		str	r3, [r7, #28]
+  30:Core/Src/decr_and_flash.c ****     memcpy(&z, block + 4, 4);
+ 155              		.loc 1 30 22
+ 156 0010 7B68     		ldr	r3, [r7, #4]
+ 157 0012 0433     		adds	r3, r3, #4
+ 158 0014 1B68     		ldr	r3, [r3]	@ unaligned
+ 159              		.loc 1 30 5
+ 160 0016 BB61     		str	r3, [r7, #24]
+ 161 0018 234B     		ldr	r3, .L11
+ 162 001a 1B68     		ldr	r3, [r3]
+  31:Core/Src/decr_and_flash.c **** 
+  32:Core/Src/decr_and_flash.c ****     uint32_t k[4];
+  33:Core/Src/decr_and_flash.c ****     memcpy(&k[0], key, 4);
+ 163              		.loc 1 33 5
+ 164 001c BB60     		str	r3, [r7, #8]
+  34:Core/Src/decr_and_flash.c ****     memcpy(&k[1], key + 4, 4);
+ 165              		.loc 1 34 5
+ 166 001e 234B     		ldr	r3, .L11+4
+ 167 0020 1B68     		ldr	r3, [r3]	@ unaligned
+ 168 0022 FB60     		str	r3, [r7, #12]
+  35:Core/Src/decr_and_flash.c ****     memcpy(&k[2], key + 8, 4);
+ 169              		.loc 1 35 5
+ 170 0024 224B     		ldr	r3, .L11+8
+ 171 0026 1B68     		ldr	r3, [r3]	@ unaligned
+ 172 0028 3B61     		str	r3, [r7, #16]
+  36:Core/Src/decr_and_flash.c ****     memcpy(&k[3], key + 12, 4);
+ 173              		.loc 1 36 5
+ 174 002a 224B     		ldr	r3, .L11+12
+ 175 002c 1B68     		ldr	r3, [r3]	@ unaligned
+ 176 002e 7B61     		str	r3, [r7, #20]
+  37:Core/Src/decr_and_flash.c **** 
+  38:Core/Src/decr_and_flash.c ****     uint32_t s = 0xC6EF3720;
+ 177              		.loc 1 38 14
+ 178 0030 214B     		ldr	r3, .L11+16
+ 179 0032 7B62     		str	r3, [r7, #36]
+ 180              	.LBB3:
+  39:Core/Src/decr_and_flash.c **** 
+  40:Core/Src/decr_and_flash.c ****     for (int i = 0; i < 32; i = i + 1) {
+ 181              		.loc 1 40 14
+ 182 0034 0023     		movs	r3, #0
+ 183 0036 3B62     		str	r3, [r7, #32]
+ 184              		.loc 1 40 5
+ 185 0038 26E0     		b	.L8
+ 186              	.L9:
+  41:Core/Src/decr_and_flash.c ****         z = (z - (((y << 4) + k[2]) ^ (y + s) ^ ((y >> 5) + k[3]))) & 0xFFFFFFFF;
+ 187              		.loc 1 41 69 discriminator 3
+ 188 003a BA69     		ldr	r2, [r7, #24]
+ 189              		.loc 1 41 23 discriminator 3
+ 190 003c FB69     		ldr	r3, [r7, #28]
+ 191 003e 1901     		lsls	r1, r3, #4
+ 192              		.loc 1 41 32 discriminator 3
+ARM GAS  /tmp/ccHyrZOP.s 			page 5
+
+
+ 193 0040 3B69     		ldr	r3, [r7, #16]
+ 194              		.loc 1 41 29 discriminator 3
+ 195 0042 1944     		add	r1, r1, r3
+ 196              		.loc 1 41 42 discriminator 3
+ 197 0044 F869     		ldr	r0, [r7, #28]
+ 198 0046 7B6A     		ldr	r3, [r7, #36]
+ 199 0048 0344     		add	r3, r3, r0
+ 200              		.loc 1 41 37 discriminator 3
+ 201 004a 5940     		eors	r1, r1, r3
+ 202              		.loc 1 41 53 discriminator 3
+ 203 004c FB69     		ldr	r3, [r7, #28]
+ 204 004e 5809     		lsrs	r0, r3, #5
+ 205              		.loc 1 41 62 discriminator 3
+ 206 0050 7B69     		ldr	r3, [r7, #20]
+ 207              		.loc 1 41 59 discriminator 3
+ 208 0052 0344     		add	r3, r3, r0
+ 209              		.loc 1 41 47 discriminator 3
+ 210 0054 4B40     		eors	r3, r3, r1
+ 211              		.loc 1 41 16 discriminator 3
+ 212 0056 D31A     		subs	r3, r2, r3
+ 213              		.loc 1 41 11 discriminator 3
+ 214 0058 BB61     		str	r3, [r7, #24]
+  42:Core/Src/decr_and_flash.c ****         y = (y - (((z << 4) + k[0]) ^ (z + s) ^ ((z >> 5) + k[1]))) & 0xFFFFFFFF;
+ 215              		.loc 1 42 69 discriminator 3
+ 216 005a FA69     		ldr	r2, [r7, #28]
+ 217              		.loc 1 42 23 discriminator 3
+ 218 005c BB69     		ldr	r3, [r7, #24]
+ 219 005e 1901     		lsls	r1, r3, #4
+ 220              		.loc 1 42 32 discriminator 3
+ 221 0060 BB68     		ldr	r3, [r7, #8]
+ 222              		.loc 1 42 29 discriminator 3
+ 223 0062 1944     		add	r1, r1, r3
+ 224              		.loc 1 42 42 discriminator 3
+ 225 0064 B869     		ldr	r0, [r7, #24]
+ 226 0066 7B6A     		ldr	r3, [r7, #36]
+ 227 0068 0344     		add	r3, r3, r0
+ 228              		.loc 1 42 37 discriminator 3
+ 229 006a 5940     		eors	r1, r1, r3
+ 230              		.loc 1 42 53 discriminator 3
+ 231 006c BB69     		ldr	r3, [r7, #24]
+ 232 006e 5809     		lsrs	r0, r3, #5
+ 233              		.loc 1 42 62 discriminator 3
+ 234 0070 FB68     		ldr	r3, [r7, #12]
+ 235              		.loc 1 42 59 discriminator 3
+ 236 0072 0344     		add	r3, r3, r0
+ 237              		.loc 1 42 47 discriminator 3
+ 238 0074 4B40     		eors	r3, r3, r1
+ 239              		.loc 1 42 16 discriminator 3
+ 240 0076 D31A     		subs	r3, r2, r3
+ 241              		.loc 1 42 11 discriminator 3
+ 242 0078 FB61     		str	r3, [r7, #28]
+  43:Core/Src/decr_and_flash.c ****         s = (s - 0x9E3779B9) & 0xFFFFFFFF;
+ 243              		.loc 1 43 11 discriminator 3
+ 244 007a 7A6A     		ldr	r2, [r7, #36]
+ 245 007c 0F4B     		ldr	r3, .L11+20
+ 246 007e 1344     		add	r3, r3, r2
+ 247 0080 7B62     		str	r3, [r7, #36]
+ARM GAS  /tmp/ccHyrZOP.s 			page 6
+
+
+  40:Core/Src/decr_and_flash.c ****         z = (z - (((y << 4) + k[2]) ^ (y + s) ^ ((y >> 5) + k[3]))) & 0xFFFFFFFF;
+ 248              		.loc 1 40 31 discriminator 3
+ 249 0082 3B6A     		ldr	r3, [r7, #32]
+ 250 0084 0133     		adds	r3, r3, #1
+ 251 0086 3B62     		str	r3, [r7, #32]
+ 252              	.L8:
+  40:Core/Src/decr_and_flash.c ****         z = (z - (((y << 4) + k[2]) ^ (y + s) ^ ((y >> 5) + k[3]))) & 0xFFFFFFFF;
+ 253              		.loc 1 40 5 discriminator 1
+ 254 0088 3B6A     		ldr	r3, [r7, #32]
+ 255 008a 1F2B     		cmp	r3, #31
+ 256 008c D5DD     		ble	.L9
+ 257 008e FA69     		ldr	r2, [r7, #28]
+ 258              	.LBE3:
+  44:Core/Src/decr_and_flash.c ****     }
+  45:Core/Src/decr_and_flash.c **** 
+  46:Core/Src/decr_and_flash.c ****     memcpy(out, &y, 4);
+ 259              		.loc 1 46 5
+ 260 0090 3B68     		ldr	r3, [r7]
+ 261 0092 1A60     		str	r2, [r3]	@ unaligned
+  47:Core/Src/decr_and_flash.c ****     memcpy(out + 4, &z, 4);
+ 262              		.loc 1 47 16
+ 263 0094 3B68     		ldr	r3, [r7]
+ 264 0096 0433     		adds	r3, r3, #4
+ 265 0098 BA69     		ldr	r2, [r7, #24]
+ 266              		.loc 1 47 5
+ 267 009a 1A60     		str	r2, [r3]	@ unaligned
+  48:Core/Src/decr_and_flash.c **** 
+  49:Core/Src/decr_and_flash.c ****     return;
+ 268              		.loc 1 49 5
+ 269 009c 00BF     		nop
+  50:Core/Src/decr_and_flash.c **** }
+ 270              		.loc 1 50 1
+ 271 009e 2C37     		adds	r7, r7, #44
+ 272              	.LCFI9:
+ 273              		.cfi_def_cfa_offset 4
+ 274 00a0 BD46     		mov	sp, r7
+ 275              	.LCFI10:
+ 276              		.cfi_def_cfa_register 13
+ 277              		@ sp needed
+ 278 00a2 80BC     		pop	{r7}
+ 279              	.LCFI11:
+ 280              		.cfi_restore 7
+ 281              		.cfi_def_cfa_offset 0
+ 282 00a4 7047     		bx	lr
+ 283              	.L12:
+ 284 00a6 00BF     		.align	2
+ 285              	.L11:
+ 286 00a8 00000000 		.word	key
+ 287 00ac 04000000 		.word	key+4
+ 288 00b0 08000000 		.word	key+8
+ 289 00b4 0C000000 		.word	key+12
+ 290 00b8 2037EFC6 		.word	-957401312
+ 291 00bc 4786C861 		.word	1640531527
+ 292              		.cfi_endproc
+ 293              	.LFE124:
+ 295              		.section	.text.xor,"ax",%progbits
+ 296              		.align	1
+ARM GAS  /tmp/ccHyrZOP.s 			page 7
+
+
+ 297              		.global	xor
+ 298              		.syntax unified
+ 299              		.thumb
+ 300              		.thumb_func
+ 301              		.fpu softvfp
+ 303              	xor:
+ 304              	.LFB125:
+  51:Core/Src/decr_and_flash.c **** 
+  52:Core/Src/decr_and_flash.c **** void xor(uint8_t *s1, uint8_t *s2){
+ 305              		.loc 1 52 35
+ 306              		.cfi_startproc
+ 307              		@ args = 0, pretend = 0, frame = 16
+ 308              		@ frame_needed = 1, uses_anonymous_args = 0
+ 309              		@ link register save eliminated.
+ 310 0000 80B4     		push	{r7}
+ 311              	.LCFI12:
+ 312              		.cfi_def_cfa_offset 4
+ 313              		.cfi_offset 7, -4
+ 314 0002 85B0     		sub	sp, sp, #20
+ 315              	.LCFI13:
+ 316              		.cfi_def_cfa_offset 24
+ 317 0004 00AF     		add	r7, sp, #0
+ 318              	.LCFI14:
+ 319              		.cfi_def_cfa_register 7
+ 320 0006 7860     		str	r0, [r7, #4]
+ 321 0008 3960     		str	r1, [r7]
+ 322              	.LBB4:
+  53:Core/Src/decr_and_flash.c ****     for (int i = 0; i < 8; i+=1) {
+ 323              		.loc 1 53 14
+ 324 000a 0023     		movs	r3, #0
+ 325 000c FB60     		str	r3, [r7, #12]
+ 326              		.loc 1 53 5
+ 327 000e 10E0     		b	.L14
+ 328              	.L15:
+  54:Core/Src/decr_and_flash.c ****         s1[i] = s1[i] ^ s2[i];
+ 329              		.loc 1 54 19 discriminator 3
+ 330 0010 FB68     		ldr	r3, [r7, #12]
+ 331 0012 7A68     		ldr	r2, [r7, #4]
+ 332 0014 1344     		add	r3, r3, r2
+ 333 0016 1978     		ldrb	r1, [r3]	@ zero_extendqisi2
+ 334              		.loc 1 54 27 discriminator 3
+ 335 0018 FB68     		ldr	r3, [r7, #12]
+ 336 001a 3A68     		ldr	r2, [r7]
+ 337 001c 1344     		add	r3, r3, r2
+ 338 001e 1A78     		ldrb	r2, [r3]	@ zero_extendqisi2
+ 339              		.loc 1 54 11 discriminator 3
+ 340 0020 FB68     		ldr	r3, [r7, #12]
+ 341 0022 7868     		ldr	r0, [r7, #4]
+ 342 0024 0344     		add	r3, r3, r0
+ 343              		.loc 1 54 15 discriminator 3
+ 344 0026 4A40     		eors	r2, r2, r1
+ 345 0028 D2B2     		uxtb	r2, r2
+ 346 002a 1A70     		strb	r2, [r3]
+  53:Core/Src/decr_and_flash.c ****     for (int i = 0; i < 8; i+=1) {
+ 347              		.loc 1 53 29 discriminator 3
+ 348 002c FB68     		ldr	r3, [r7, #12]
+ 349 002e 0133     		adds	r3, r3, #1
+ARM GAS  /tmp/ccHyrZOP.s 			page 8
+
+
+ 350 0030 FB60     		str	r3, [r7, #12]
+ 351              	.L14:
+  53:Core/Src/decr_and_flash.c ****     for (int i = 0; i < 8; i+=1) {
+ 352              		.loc 1 53 5 discriminator 1
+ 353 0032 FB68     		ldr	r3, [r7, #12]
+ 354 0034 072B     		cmp	r3, #7
+ 355 0036 EBDD     		ble	.L15
+ 356              	.LBE4:
+  55:Core/Src/decr_and_flash.c ****     }
+  56:Core/Src/decr_and_flash.c **** }
+ 357              		.loc 1 56 1
+ 358 0038 00BF     		nop
+ 359 003a 00BF     		nop
+ 360 003c 1437     		adds	r7, r7, #20
+ 361              	.LCFI15:
+ 362              		.cfi_def_cfa_offset 4
+ 363 003e BD46     		mov	sp, r7
+ 364              	.LCFI16:
+ 365              		.cfi_def_cfa_register 13
+ 366              		@ sp needed
+ 367 0040 80BC     		pop	{r7}
+ 368              	.LCFI17:
+ 369              		.cfi_restore 7
+ 370              		.cfi_def_cfa_offset 0
+ 371 0042 7047     		bx	lr
+ 372              		.cfi_endproc
+ 373              	.LFE125:
+ 375              		.section	.text.decrypt,"ax",%progbits
+ 376              		.align	1
+ 377              		.global	decrypt
+ 378              		.syntax unified
+ 379              		.thumb
+ 380              		.thumb_func
+ 381              		.fpu softvfp
+ 383              	decrypt:
+ 384              	.LFB126:
+  57:Core/Src/decr_and_flash.c **** 
+  58:Core/Src/decr_and_flash.c **** void decrypt(uint8_t *out, uint8_t *data, int len)
+  59:Core/Src/decr_and_flash.c **** {
+ 385              		.loc 1 59 1
+ 386              		.cfi_startproc
+ 387              		@ args = 0, pretend = 0, frame = 40
+ 388              		@ frame_needed = 1, uses_anonymous_args = 0
+ 389 0000 80B5     		push	{r7, lr}
+ 390              	.LCFI18:
+ 391              		.cfi_def_cfa_offset 8
+ 392              		.cfi_offset 7, -8
+ 393              		.cfi_offset 14, -4
+ 394 0002 8AB0     		sub	sp, sp, #40
+ 395              	.LCFI19:
+ 396              		.cfi_def_cfa_offset 48
+ 397 0004 00AF     		add	r7, sp, #0
+ 398              	.LCFI20:
+ 399              		.cfi_def_cfa_register 7
+ 400 0006 F860     		str	r0, [r7, #12]
+ 401 0008 B960     		str	r1, [r7, #8]
+ 402 000a 7A60     		str	r2, [r7, #4]
+ARM GAS  /tmp/ccHyrZOP.s 			page 9
+
+
+  60:Core/Src/decr_and_flash.c ****     int i;
+  61:Core/Src/decr_and_flash.c ****     uint8_t tmp[8];
+  62:Core/Src/decr_and_flash.c **** 
+  63:Core/Src/decr_and_flash.c ****     for (i = 0; i < len; i = i + 8) {
+ 403              		.loc 1 63 12
+ 404 000c 0023     		movs	r3, #0
+ 405 000e 7B62     		str	r3, [r7, #36]
+ 406              		.loc 1 63 5
+ 407 0010 36E0     		b	.L17
+ 408              	.L19:
+ 409              	.LBB5:
+  64:Core/Src/decr_and_flash.c ****         uint8_t ct[8];
+  65:Core/Src/decr_and_flash.c ****         memcpy(ct, data + i, 8);
+ 410              		.loc 1 65 9
+ 411 0012 7B6A     		ldr	r3, [r7, #36]
+ 412              		.loc 1 65 25
+ 413 0014 BA68     		ldr	r2, [r7, #8]
+ 414 0016 1A44     		add	r2, r2, r3
+ 415              		.loc 1 65 9
+ 416 0018 07F11403 		add	r3, r7, #20
+ 417 001c 1068     		ldr	r0, [r2]	@ unaligned
+ 418 001e 5168     		ldr	r1, [r2, #4]	@ unaligned
+ 419 0020 03C3     		stmia	r3!, {r0, r1}
+  66:Core/Src/decr_and_flash.c **** 
+  67:Core/Src/decr_and_flash.c ****         decrypt_ecb(ct, tmp);
+ 420              		.loc 1 67 9
+ 421 0022 07F11C02 		add	r2, r7, #28
+ 422 0026 07F11403 		add	r3, r7, #20
+ 423 002a 1146     		mov	r1, r2
+ 424 002c 1846     		mov	r0, r3
+ 425 002e FFF7FEFF 		bl	decrypt_ecb
+  68:Core/Src/decr_and_flash.c ****         xor(tmp, iv);
+ 426              		.loc 1 68 9
+ 427 0032 07F11C03 		add	r3, r7, #28
+ 428 0036 1649     		ldr	r1, .L21
+ 429 0038 1846     		mov	r0, r3
+ 430 003a FFF7FEFF 		bl	xor
+  69:Core/Src/decr_and_flash.c **** 
+  70:Core/Src/decr_and_flash.c ****         memcpy(out + i, tmp, 8);
+ 431              		.loc 1 70 9
+ 432 003e 7B6A     		ldr	r3, [r7, #36]
+ 433              		.loc 1 70 20
+ 434 0040 FA68     		ldr	r2, [r7, #12]
+ 435 0042 1344     		add	r3, r3, r2
+ 436              		.loc 1 70 9
+ 437 0044 1A46     		mov	r2, r3
+ 438 0046 07F11C03 		add	r3, r7, #28
+ 439 004a 03CB     		ldmia	r3!, {r0, r1}
+ 440 004c 1060     		str	r0, [r2]	@ unaligned
+ 441 004e 5160     		str	r1, [r2, #4]	@ unaligned
+  71:Core/Src/decr_and_flash.c ****         memcpy(iv, ct, 8);
+ 442              		.loc 1 71 9
+ 443 0050 0F4B     		ldr	r3, .L21
+ 444 0052 1A46     		mov	r2, r3
+ 445 0054 07F11403 		add	r3, r7, #20
+ 446 0058 93E80300 		ldm	r3, {r0, r1}
+ 447 005c 82E80300 		stm	r2, {r0, r1}
+ARM GAS  /tmp/ccHyrZOP.s 			page 10
+
+
+  72:Core/Src/decr_and_flash.c ****         offset += 8;
+ 448              		.loc 1 72 16
+ 449 0060 0C4B     		ldr	r3, .L21+4
+ 450 0062 1B68     		ldr	r3, [r3]
+ 451 0064 0833     		adds	r3, r3, #8
+ 452 0066 0B4A     		ldr	r2, .L21+4
+ 453 0068 1360     		str	r3, [r2]
+  73:Core/Src/decr_and_flash.c ****         if (offset % 1024 == 0) { update_key(); }
+ 454              		.loc 1 73 27
+ 455 006a 0A4B     		ldr	r3, .L21+4
+ 456 006c 1B68     		ldr	r3, [r3]
+ 457 006e C3F30903 		ubfx	r3, r3, #0, #10
+ 458              		.loc 1 73 12
+ 459 0072 002B     		cmp	r3, #0
+ 460 0074 01D1     		bne	.L18
+ 461              		.loc 1 73 35 discriminator 1
+ 462 0076 FFF7FEFF 		bl	update_key
+ 463              	.L18:
+ 464              	.LBE5:
+  63:Core/Src/decr_and_flash.c ****         uint8_t ct[8];
+ 465              		.loc 1 63 28 discriminator 2
+ 466 007a 7B6A     		ldr	r3, [r7, #36]
+ 467 007c 0833     		adds	r3, r3, #8
+ 468 007e 7B62     		str	r3, [r7, #36]
+ 469              	.L17:
+  63:Core/Src/decr_and_flash.c ****         uint8_t ct[8];
+ 470              		.loc 1 63 5 discriminator 1
+ 471 0080 7A6A     		ldr	r2, [r7, #36]
+ 472 0082 7B68     		ldr	r3, [r7, #4]
+ 473 0084 9A42     		cmp	r2, r3
+ 474 0086 C4DB     		blt	.L19
+  74:Core/Src/decr_and_flash.c ****     }
+  75:Core/Src/decr_and_flash.c **** 
+  76:Core/Src/decr_and_flash.c ****     // unpad > remove last 8 bytes (could also verify checksum)
+  77:Core/Src/decr_and_flash.c **** 
+  78:Core/Src/decr_and_flash.c ****     return;
+ 475              		.loc 1 78 5
+ 476 0088 00BF     		nop
+  79:Core/Src/decr_and_flash.c **** }
+ 477              		.loc 1 79 1
+ 478 008a 2837     		adds	r7, r7, #40
+ 479              	.LCFI21:
+ 480              		.cfi_def_cfa_offset 8
+ 481 008c BD46     		mov	sp, r7
+ 482              	.LCFI22:
+ 483              		.cfi_def_cfa_register 13
+ 484              		@ sp needed
+ 485 008e 80BD     		pop	{r7, pc}
+ 486              	.L22:
+ 487              		.align	2
+ 488              	.L21:
+ 489 0090 00000000 		.word	iv
+ 490 0094 00000000 		.word	offset
+ 491              		.cfi_endproc
+ 492              	.LFE126:
+ 494              		.section	.text.decr_and_flash,"ax",%progbits
+ 495              		.align	1
+ARM GAS  /tmp/ccHyrZOP.s 			page 11
+
+
+ 496              		.global	decr_and_flash
+ 497              		.syntax unified
+ 498              		.thumb
+ 499              		.thumb_func
+ 500              		.fpu softvfp
+ 502              	decr_and_flash:
+ 503              	.LFB127:
+  80:Core/Src/decr_and_flash.c **** 
+  81:Core/Src/decr_and_flash.c **** int decr_and_flash(uint8_t enc[], uint32_t flash_address, uint16_t update_size, uint8_t packetsize)
+  82:Core/Src/decr_and_flash.c **** {
+ 504              		.loc 1 82 1
+ 505              		.cfi_startproc
+ 506              		@ args = 0, pretend = 0, frame = 160
+ 507              		@ frame_needed = 1, uses_anonymous_args = 0
+ 508 0000 80B5     		push	{r7, lr}
+ 509              	.LCFI23:
+ 510              		.cfi_def_cfa_offset 8
+ 511              		.cfi_offset 7, -8
+ 512              		.cfi_offset 14, -4
+ 513 0002 A8B0     		sub	sp, sp, #160
+ 514              	.LCFI24:
+ 515              		.cfi_def_cfa_offset 168
+ 516 0004 00AF     		add	r7, sp, #0
+ 517              	.LCFI25:
+ 518              		.cfi_def_cfa_register 7
+ 519 0006 F860     		str	r0, [r7, #12]
+ 520 0008 B960     		str	r1, [r7, #8]
+ 521 000a 1146     		mov	r1, r2
+ 522 000c 1A46     		mov	r2, r3
+ 523 000e 0B46     		mov	r3, r1	@ movhi
+ 524 0010 FB80     		strh	r3, [r7, #6]	@ movhi
+ 525 0012 1346     		mov	r3, r2
+ 526 0014 7B71     		strb	r3, [r7, #5]
+  83:Core/Src/decr_and_flash.c ****    // uint8_t enc[128] = {0x80, 0x97, 0x66, 0xD3, 0x37, 0xD2, 0xB3, 0xB5, 0x79, 0x3E, 0x4C, 0xD0, 0
+  84:Core/Src/decr_and_flash.c ****     uint8_t dec[128];
+  85:Core/Src/decr_and_flash.c ****     uint32_t data;
+  86:Core/Src/decr_and_flash.c ****     decrypt(dec, enc, packetsize);
+ 527              		.loc 1 86 5
+ 528 0016 7A79     		ldrb	r2, [r7, #5]	@ zero_extendqisi2
+ 529 0018 07F11403 		add	r3, r7, #20
+ 530 001c F968     		ldr	r1, [r7, #12]
+ 531 001e 1846     		mov	r0, r3
+ 532 0020 FFF7FEFF 		bl	decrypt
+  87:Core/Src/decr_and_flash.c ****     HAL_FLASH_Unlock();
+ 533              		.loc 1 87 5
+ 534 0024 FFF7FEFF 		bl	HAL_FLASH_Unlock
+  88:Core/Src/decr_and_flash.c ****     char *source = (char *)&dec;
+ 535              		.loc 1 88 11
+ 536 0028 07F11403 		add	r3, r7, #20
+ 537 002c C7F89830 		str	r3, [r7, #152]
+  89:Core/Src/decr_and_flash.c ****     char *target = (char *)&data;
+ 538              		.loc 1 89 11
+ 539 0030 07F11003 		add	r3, r7, #16
+ 540 0034 C7F89430 		str	r3, [r7, #148]
+ 541              	.LBB6:
+  90:Core/Src/decr_and_flash.c **** 
+  91:Core/Src/decr_and_flash.c ****     for(int i =0 ; i<packetsize; i+=4){
+ARM GAS  /tmp/ccHyrZOP.s 			page 12
+
+
+ 542              		.loc 1 91 13
+ 543 0038 0023     		movs	r3, #0
+ 544 003a C7F89C30 		str	r3, [r7, #156]
+ 545              		.loc 1 91 5
+ 546 003e 23E0     		b	.L24
+ 547              	.L26:
+  92:Core/Src/decr_and_flash.c **** 		memcpy(target,source+i,4);
+ 548              		.loc 1 92 3
+ 549 0040 D7F89C30 		ldr	r3, [r7, #156]
+ 550              		.loc 1 92 23
+ 551 0044 D7F89820 		ldr	r2, [r7, #152]
+ 552 0048 1344     		add	r3, r3, r2
+ 553 004a 1B68     		ldr	r3, [r3]	@ unaligned
+ 554 004c 1A46     		mov	r2, r3
+ 555              		.loc 1 92 3
+ 556 004e D7F89430 		ldr	r3, [r7, #148]
+ 557 0052 1A60     		str	r2, [r3]	@ unaligned
+  93:Core/Src/decr_and_flash.c **** 		if(flash_address+i<update_startaddress+update_size){
+ 558              		.loc 1 93 19
+ 559 0054 D7F89C20 		ldr	r2, [r7, #156]
+ 560 0058 BB68     		ldr	r3, [r7, #8]
+ 561 005a 1A44     		add	r2, r2, r3
+ 562              		.loc 1 93 41
+ 563 005c F988     		ldrh	r1, [r7, #6]
+ 564 005e 104B     		ldr	r3, .L28
+ 565 0060 1B68     		ldr	r3, [r3]
+ 566 0062 0B44     		add	r3, r3, r1
+ 567              		.loc 1 93 5
+ 568 0064 9A42     		cmp	r2, r3
+ 569 0066 0AD2     		bcs	.L25
+  94:Core/Src/decr_and_flash.c ****     	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, flash_address+i, data);
+ 570              		.loc 1 94 6
+ 571 0068 D7F89C20 		ldr	r2, [r7, #156]
+ 572 006c BB68     		ldr	r3, [r7, #8]
+ 573 006e D118     		adds	r1, r2, r3
+ 574 0070 3B69     		ldr	r3, [r7, #16]
+ 575 0072 1A46     		mov	r2, r3
+ 576 0074 4FF00003 		mov	r3, #0
+ 577 0078 0220     		movs	r0, #2
+ 578 007a FFF7FEFF 		bl	HAL_FLASH_Program
+ 579              	.L25:
+  91:Core/Src/decr_and_flash.c **** 		memcpy(target,source+i,4);
+ 580              		.loc 1 91 35 discriminator 2
+ 581 007e D7F89C30 		ldr	r3, [r7, #156]
+ 582 0082 0433     		adds	r3, r3, #4
+ 583 0084 C7F89C30 		str	r3, [r7, #156]
+ 584              	.L24:
+  91:Core/Src/decr_and_flash.c **** 		memcpy(target,source+i,4);
+ 585              		.loc 1 91 21 discriminator 1
+ 586 0088 7B79     		ldrb	r3, [r7, #5]	@ zero_extendqisi2
+  91:Core/Src/decr_and_flash.c **** 		memcpy(target,source+i,4);
+ 587              		.loc 1 91 5 discriminator 1
+ 588 008a D7F89C20 		ldr	r2, [r7, #156]
+ 589 008e 9A42     		cmp	r2, r3
+ 590 0090 D6DB     		blt	.L26
+ 591              	.LBE6:
+  95:Core/Src/decr_and_flash.c **** 		}
+ARM GAS  /tmp/ccHyrZOP.s 			page 13
+
+
+  96:Core/Src/decr_and_flash.c ****     }
+  97:Core/Src/decr_and_flash.c ****     HAL_FLASH_Lock();
+ 592              		.loc 1 97 5
+ 593 0092 FFF7FEFF 		bl	HAL_FLASH_Lock
+  98:Core/Src/decr_and_flash.c **** 
+  99:Core/Src/decr_and_flash.c ****     return 0;
+ 594              		.loc 1 99 12
+ 595 0096 0023     		movs	r3, #0
+ 100:Core/Src/decr_and_flash.c **** }
+ 596              		.loc 1 100 1
+ 597 0098 1846     		mov	r0, r3
+ 598 009a A037     		adds	r7, r7, #160
+ 599              	.LCFI26:
+ 600              		.cfi_def_cfa_offset 8
+ 601 009c BD46     		mov	sp, r7
+ 602              	.LCFI27:
+ 603              		.cfi_def_cfa_register 13
+ 604              		@ sp needed
+ 605 009e 80BD     		pop	{r7, pc}
+ 606              	.L29:
+ 607              		.align	2
+ 608              	.L28:
+ 609 00a0 00000000 		.word	update_startaddress
+ 610              		.cfi_endproc
+ 611              	.LFE127:
+ 613              		.text
+ 614              	.Letext0:
+ 615              		.file 2 "/usr/include/newlib/machine/_default_types.h"
+ 616              		.file 3 "/usr/lib/gcc/arm-none-eabi/9.2.1/include/stddef.h"
+ 617              		.file 4 "/usr/include/newlib/sys/_types.h"
+ 618              		.file 5 "/usr/include/newlib/sys/reent.h"
+ 619              		.file 6 "/usr/include/newlib/sys/lock.h"
+ 620              		.file 7 "/usr/include/newlib/sys/_stdint.h"
+ 621              		.file 8 "Drivers/CMSIS/Include/core_cm3.h"
+ 622              		.file 9 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/system_stm32f1xx.h"
+ 623              		.file 10 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h"
+ 624              		.file 11 "/usr/include/newlib/stdlib.h"
+ 625              		.file 12 "/usr/include/newlib/math.h"
+ARM GAS  /tmp/ccHyrZOP.s 			page 14
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 decr_and_flash.c
+     /tmp/ccHyrZOP.s:20     .data.key:0000000000000000 key
+     /tmp/ccHyrZOP.s:17     .data.key:0000000000000000 $d
+     /tmp/ccHyrZOP.s:27     .bss.iv:0000000000000000 iv
+     /tmp/ccHyrZOP.s:24     .bss.iv:0000000000000000 $d
+     /tmp/ccHyrZOP.s:34     .bss.offset:0000000000000000 offset
+     /tmp/ccHyrZOP.s:31     .bss.offset:0000000000000000 $d
+     /tmp/ccHyrZOP.s:37     .data.update_startaddress:0000000000000000 $d
+     /tmp/ccHyrZOP.s:40     .data.update_startaddress:0000000000000000 update_startaddress
+     /tmp/ccHyrZOP.s:43     .text.update_key:0000000000000000 $t
+     /tmp/ccHyrZOP.s:51     .text.update_key:0000000000000000 update_key
+     /tmp/ccHyrZOP.s:120    .text.update_key:000000000000003c $d
+     /tmp/ccHyrZOP.s:125    .text.decrypt_ecb:0000000000000000 $t
+     /tmp/ccHyrZOP.s:132    .text.decrypt_ecb:0000000000000000 decrypt_ecb
+     /tmp/ccHyrZOP.s:286    .text.decrypt_ecb:00000000000000a8 $d
+     /tmp/ccHyrZOP.s:296    .text.xor:0000000000000000 $t
+     /tmp/ccHyrZOP.s:303    .text.xor:0000000000000000 xor
+     /tmp/ccHyrZOP.s:376    .text.decrypt:0000000000000000 $t
+     /tmp/ccHyrZOP.s:383    .text.decrypt:0000000000000000 decrypt
+     /tmp/ccHyrZOP.s:489    .text.decrypt:0000000000000090 $d
+     /tmp/ccHyrZOP.s:495    .text.decr_and_flash:0000000000000000 $t
+     /tmp/ccHyrZOP.s:502    .text.decr_and_flash:0000000000000000 decr_and_flash
+     /tmp/ccHyrZOP.s:609    .text.decr_and_flash:00000000000000a0 $d
+
+UNDEFINED SYMBOLS
+HAL_FLASH_Unlock
+HAL_FLASH_Program
+HAL_FLASH_Lock

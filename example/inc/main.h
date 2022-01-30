@@ -37,7 +37,7 @@ void Error_Handler(void);
 #define Throttle_GPIO_Port GPIOA
 
 // ADC channels
-#define ADC_THROTTLE 2
+#define ADC_THROTTLE 1
 
 extern void UserSysTickHandler(void);
 

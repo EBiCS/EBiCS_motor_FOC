@@ -2,8 +2,8 @@
 #include "print.h"
 #include "motor.h"
 
-#define THROTTLEOFFSET 700
-#define THROTTLEMAX 3350
+#define THROTTLEOFFSET 1100
+#define THROTTLEMAX 3250
 #define BRAKEOFFSET 50
 #define BRAKEMAX 190
 
@@ -190,16 +190,7 @@ void assert_failed(uint8_t *file, uint32_t line)
 #endif /* USE_FULL_ASSERT */
 
 int main(void) {
-	__HAL_RCC_GPIOB_CLK_ENABLE();
-	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-  GPIO_InitStruct.Pin = GPIO_PIN_12;
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-  if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == false) {
-    while(1) ; // block here, for development
-  }
-
+	
 	// Reset of all peripherals, Initializes the Flash interface and the Systick
 	HAL_Init();
 
@@ -250,8 +241,10 @@ int main(void) {
         printf_("%d, %d\n", MSPublic.debug[0], MSPublic.debug[1] * CAL_I);
       }
 
-      if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == false) {
+      static bool do_autodetect = false;
+      if (do_autodetect == true) {
         motor_autodetect();
+        do_autodetect = false;
       }
 		}
 	}

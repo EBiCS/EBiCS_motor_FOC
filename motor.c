@@ -219,7 +219,7 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	// Hall sensor event processing
-  ui8_hall_state = (GPIOC->IDR >> 13) & 0b111; // mask input register with Hall 1 - 3 bits
+  ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); // mask input register with Hall 1 - 3 bits
 
   if (ui8_hall_state == ui8_hall_state_old)
     return;
@@ -882,7 +882,7 @@ static void TIM1_Init(void) {
 	sConfigOC.OCMode = TIM_OCMODE_PWM1;
 	sConfigOC.Pulse = 1;
 	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-	sConfigOC.OCNPolarity = TIM_OCNPOLARITY_LOW; //TODO: depends on gate driver!
+	sConfigOC.OCNPolarity = TIM_OCPOLARITY_HIGH; //TODO: depends on gate driver!
 	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
 	sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
 	sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
@@ -970,14 +970,20 @@ static void GPIO_Init(void) {
 	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin | HALL_3_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 	/*Configure peripheral I/O remapping */
 	__HAL_AFIO_REMAP_PD01_ENABLE();
 
 	/* EXTI interrupt init*/
-	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
-	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+	HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
+	HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
+	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
+	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+	HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
+	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
