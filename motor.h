@@ -24,8 +24,7 @@ extern "C" {
 #define CAL_BAT_V 13 	// ADC counts * CAL_BAT_V = Battery voltage in mV
 
 // battery voltage limits in mV
-// #define BATTERYVOLTAGE_MIN 33000
-#define BATTERYVOLTAGE_MIN 20000 // for development only
+#define BATTERYVOLTAGE_MIN 33000
 #define BATTERYVOLTAGE_MAX 42000
 
 #define CAL_I 38 // ADC counts * CAL_I = current in mA
