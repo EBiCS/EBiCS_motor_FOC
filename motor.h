@@ -71,7 +71,7 @@ typedef struct {
 typedef struct {
   PinsConfig_t motor;
   PinsConfig_t user;
-  void* user_exti_callback;
+  void (*user_exti_callback)(uint32_t* exti_pins);
 } ExtiConfig_t;
 
 typedef struct {

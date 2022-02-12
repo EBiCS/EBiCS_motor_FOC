@@ -161,6 +161,7 @@ q31_t q31_i_q_fil = 0;
 q31_t q31_i_d_fil = 0;
 
 MotorStatePublic_t* p_MotorStatePublic;
+MotorConfig_t* p_MotorConfig;
 
 void _motor_error_handler(char *file, int line) {
 	__disable_irq();
@@ -218,6 +219,16 @@ q31_t speed_PLL(q31_t actual, q31_t target) {
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+
+  // store all pins values
+  uint32_t exti_pins[] = {
+    GPIOA->IDR,
+    GPIOB->IDR,
+    GPIOC->IDR,
+    GPIOD->IDR,
+    GPIOE->IDR
+  };
+
 	// Hall sensor event processing
   ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); // mask input register with Hall 1 - 3 bits
 
@@ -321,6 +332,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (MS.angle_estimation == SPEED_PLL) {
     q31_PLL_error = q31_rotorposition_PLL - q31_rotorposition_hall;
     q31_angle_per_tic = speed_PLL(q31_rotorposition_PLL, q31_rotorposition_hall);
+  }
+
+  // now call the user EXTI callback
+  if (p_MotorConfig->exti.user_exti_callback != NULL) {
+    (*p_MotorConfig->exti.user_exti_callback)(exti_pins);
   }
 }
 
@@ -957,38 +973,71 @@ static void TIM2_Init(void) {
 	}
 }
 
-static void GPIO_Init(MotorConfig_t* motorConfig) {
+static void set_HAL_NVIC(MotorConfig_t* p_MotorConfig, uint8_t i) {
+    // set the EXTIxx_IRQn
+  if (p_MotorConfig->exti.motor.pins[i] == 0) {
+    HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  } else if (p_MotorConfig->exti.motor.pins[i] == 1) {
+    HAL_NVIC_SetPriority(EXTI1_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+  } else if (p_MotorConfig->exti.motor.pins[i] == 2) {
+    HAL_NVIC_SetPriority(EXTI2_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+  } else if (p_MotorConfig->exti.motor.pins[i] == 3) {
+    HAL_NVIC_SetPriority(EXTI3_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+  } else if (p_MotorConfig->exti.motor.pins[i] == 4) {
+    HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+  } else if (p_MotorConfig->exti.motor.pins[i] < 10) {
+    HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+  } else if (p_MotorConfig->exti.motor.pins[i] < 15) {
+    HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  }
+}
+
+static void GPIO_Init() {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
 	/* GPIO Ports Clock Enable */
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 
-  // if (motorConfig->exti.user_exti_callback != null) {}
-
   // The GPIO pin has to be in reset state to set it's properties.
   HAL_GPIO_WritePin(
-    motorConfig->exti.motor.ports[0],
-    motorConfig->exti.motor.pins[0],
+    p_MotorConfig->exti.motor.ports[0],
+    p_MotorConfig->exti.motor.pins[0],
     GPIO_PIN_RESET);
 
-	/* Configure GPIO pins for motor hall sensors */
-	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin | HALL_3_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  // configure EXTI GPIO pins for motor hall sensors
+  for (uint8_t i = 0; i < 3; i++) {
+    GPIO_InitStruct.Pin = p_MotorConfig->exti.motor.pins[i];
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(p_MotorConfig->exti.motor.ports[i], &GPIO_InitStruct);
+
+    set_HAL_NVIC(p_MotorConfig, i);
+  }
+
+  // configure EXTI GPIO pins for user
+  if (p_MotorConfig->exti.user_exti_callback != NULL) { // only configure EXTI user pins if the callback is set
+    uint8_t i = 0;
+    while (p_MotorConfig->exti.motor.pins[i] != 0) {
+      GPIO_InitStruct.Pin = p_MotorConfig->exti.motor.pins[i];
+      GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+      GPIO_InitStruct.Pull = GPIO_PULLUP;
+      HAL_GPIO_Init(p_MotorConfig->exti.motor.ports[i], &GPIO_InitStruct);
+
+      set_HAL_NVIC(p_MotorConfig, i);
+
+      i++;
+    }
+  }
 
 	/*Configure peripheral I/O remapping */
 	__HAL_AFIO_REMAP_PD01_ENABLE();
-
-	/* EXTI interrupt init*/
-	HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
-	HAL_NVIC_EnableIRQ(EXTI4_IRQn);
-
-	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
-	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-	HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
-	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -1196,8 +1245,9 @@ static void TIM3_Init(void) {
 	HAL_TIM_MspPostInit(&htim3);
 }
 
-void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic) {
-  p_MotorStatePublic = motorStatePublic; // local pointer of MotorStatePublic
+void motor_init(MotorConfig_t* p_MotorConfig, MotorStatePublic_t* motorStatePublic) {
+  p_MotorStatePublic = motorStatePublic; // copy to a local pointer
+  p_MotorConfig = p_MotorConfig; // copy to a local pointer
 
 	// Virtual EEPROM init
 	HAL_FLASH_Unlock();
@@ -1205,7 +1255,7 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
 	HAL_FLASH_Lock();
 
   // init IO pins
-	GPIO_Init(motorConfig);
+	GPIO_Init();
 
   // init DMA for ADC
   DMA_Init();
