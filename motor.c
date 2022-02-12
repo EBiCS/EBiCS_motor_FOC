@@ -957,14 +957,19 @@ static void TIM2_Init(void) {
 	}
 }
 
-static void GPIO_Init(void) {
+static void GPIO_Init(MotorConfig_t* motorConfig) {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
 	/* GPIO Ports Clock Enable */
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 
+  // if (motorConfig->exti.user_exti_callback != null) {}
+
   // The GPIO pin has to be in reset state to set it's properties.
-  HAL_GPIO_WritePin(HALL_1_GPIO_Port, HALL_1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(
+    motorConfig->exti.motor.ports[0],
+    motorConfig->exti.motor.pins[0],
+    GPIO_PIN_RESET);
 
 	/* Configure GPIO pins for motor hall sensors */
 	GPIO_InitStruct.Pin = HALL_1_Pin | HALL_2_Pin | HALL_3_Pin;
@@ -1191,7 +1196,7 @@ static void TIM3_Init(void) {
 	HAL_TIM_MspPostInit(&htim3);
 }
 
-void motor_init(MotorStatePublic_t* motorStatePublic) {
+void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic) {
   p_MotorStatePublic = motorStatePublic; // local pointer of MotorStatePublic
 
 	// Virtual EEPROM init
@@ -1200,7 +1205,7 @@ void motor_init(MotorStatePublic_t* motorStatePublic) {
 	HAL_FLASH_Lock();
 
   // init IO pins
-	GPIO_Init();
+	GPIO_Init(motorConfig);
 
   // init DMA for ADC
   DMA_Init();
