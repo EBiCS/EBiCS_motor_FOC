@@ -138,15 +138,11 @@ static void USART3_UART_Init(void) {
  * @retval None
  */
 static void GPIO_Init(void) {
-	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-
 	/* GPIO Ports Clock Enable */
 	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_GPIOD_CLK_ENABLE();
-
-  // DEBUG_PIN_CONFIG;
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
@@ -189,6 +185,53 @@ void assert_failed(uint8_t *file, uint32_t line)
 }
 #endif /* USE_FULL_ASSERT */
 
+void exti_callback() {
+
+}
+
+void init_motor() {
+  MSPublic.brake_active = false;
+  MSPublic.i_q_setpoint_target = 0; // start at 0 until throttle value is readed
+  MSPublic.speed = 128000;
+	MSPublic.speed_limit = 20; // 20km/h
+  MSPublic.phase_current_limit = PH_CURRENT_MAX;
+  MSPublic.field_weakening_current_max = FIELD_WEAKNING_CURRENT_MAX;
+  MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
+
+  // set the pins for the EXTI interrupts pins used by the motor
+  uint16_t motor_exti_pins[] = {
+    HALL_1_Pin,
+    HALL_2_Pin,
+    HALL_3_Pin,
+    0 // MUST be 0 (null) terminated
+  };
+  GPIO_TypeDef* motor_exti_ports[] = {
+    HALL_1_GPIO_Port,
+    HALL_2_GPIO_Port,
+    HALL_3_GPIO_Port,
+    0 // MUST be 0 (null) terminated
+  };
+
+  // set the pins for the EXTI interrupts pins used by the motor
+  uint16_t user_exti_pins[] = {
+    WHELL_SPEED_SENSOR_PIN,
+    0 // MUST be 0 (null) terminated
+  };
+  GPIO_TypeDef* user_exti_ports[] = {
+    WHELL_SPEED_SENSOR_PORT,
+    0 // MUST be 0 (null) terminated
+  };
+
+  static MotorConfig_t motor_config; // this motor_config MUST be static!!
+  motor_config.exti.motor.pins = motor_exti_pins;
+  motor_config.exti.motor.ports = motor_exti_ports;
+  motor_config.exti.user.pins = user_exti_pins;
+  motor_config.exti.user.ports = user_exti_ports;
+  motor_config.exti.user_exti_callback = &exti_callback;
+
+  motor_init(&motor_config, &MSPublic);
+}
+
 int main(void) {
 	
 	// Reset of all peripherals, Initializes the Flash interface and the Systick
@@ -207,14 +250,12 @@ int main(void) {
   // init USART_3 for debug
 	USART3_UART_Init();
 
-  MSPublic.brake_active = false;
-  MSPublic.i_q_setpoint_target = 0; // start at 0 until throttle value is readed
-  MSPublic.speed = 128000;
-	MSPublic.speed_limit = 20; // 20km/h
-  MSPublic.phase_current_limit = PH_CURRENT_MAX;
-  MSPublic.field_weakening_current_max = FIELD_WEAKNING_CURRENT_MAX;
-  MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
-  motor_init(&MSPublic);
+  init_motor();
+
+  // at begin, if throttle is at least halfway, do motor autodetect
+  if (MSPublic.adcData[ADC_THROTTLE] > (THROTTLEOFFSET + ((THROTTLEMAX - THROTTLEOFFSET) >> 1))) {
+    motor_autodetect();
+  }
 
 	while (1) {
 
@@ -232,19 +273,18 @@ int main(void) {
 	    ui16_throttle = ui32_throttle_acc >> 4;
 
       // map throttle to motor current
-      MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, PH_CURRENT_MAX);
+      // check to see if throttle value is at least half of the expected offset, if not, probably the throttle is not connected 
+      if (ui16_throttle > (THROTTLEOFFSET >> 1)) {
+        MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, PH_CURRENT_MAX);
+      } else {
+        MSPublic.i_q_setpoint_target = 0;
+      }
 
       // DEBUG
       static uint8_t debug_cnt = 0;
       if (++debug_cnt > 13) { // every 13 * 20 ms = 260ms
         debug_cnt = 0;
         printf_("%d, %d\n", MSPublic.debug[0], MSPublic.debug[1] * CAL_I);
-      }
-
-      static bool do_autodetect = false;
-      if (do_autodetect == true) {
-        motor_autodetect();
-        do_autodetect = false;
       }
 		}
 	}

@@ -63,12 +63,20 @@ extern "C" {
 #define Batt_Voltage_Pin GPIO_PIN_2
 #define Batt_Voltage_GPIO_Port GPIOA
 
-#define HALL_1_Pin GPIO_PIN_4
-#define HALL_1_GPIO_Port GPIOB
-#define HALL_2_Pin GPIO_PIN_5
-#define HALL_2_GPIO_Port GPIOB
-#define HALL_3_Pin GPIO_PIN_0
-#define HALL_3_GPIO_Port GPIOB
+typedef struct {
+  uint16_t* pins; // The external interrupt/event controller consists of 19 edge detector lines used to generate
+  GPIO_TypeDef** ports;
+} PinsConfig_t;
+
+typedef struct {
+  PinsConfig_t motor;
+  PinsConfig_t user;
+  void (*user_exti_callback)(uint32_t* exti_pins);
+} ExtiConfig_t;
+
+typedef struct {
+  ExtiConfig_t exti; // EXTI interrupt configurations. There are 3 EXTI used by the motor to read motor hall sensors but user can use other pins and have a callback
+} MotorConfig_t;
 
 typedef struct {
   q31_t i_q_setpoint_target;
@@ -79,11 +87,11 @@ typedef struct {
   int8_t system_state;
   int8_t mode;
   int8_t error_state;
-  uint16_t adcData[6]; // buffer for ADC1 inputs
   int8_t speed_limit;
   uint32_t speed;
   bool brake_active;
   bool field_weakening_enable;
+  uint16_t adcData[6]; // buffer for ADC1 inputs
   uint32_t debug[10];
 } MotorStatePublic_t;
 
@@ -107,7 +115,7 @@ enum errors {
   brake = 15
 };
 
-void motor_init(MotorStatePublic_t* p_MotorStatePublic);
+void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic);
 void motor_autodetect();
 void motor_slow_loop(MotorStatePublic_t* p_MotorStatePublic);
 void motor_disable_pwm();
