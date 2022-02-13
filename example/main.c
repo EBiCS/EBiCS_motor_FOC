@@ -199,13 +199,13 @@ void init_motor() {
   MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
 
   // set the pins for the EXTI interrupts pins used by the motor
-  uint16_t motor_exti_pins[] = {
+  static uint16_t motor_exti_pins[] = {
     HALL_1_Pin,
     HALL_2_Pin,
     HALL_3_Pin,
     0 // MUST be 0 (null) terminated
   };
-  GPIO_TypeDef* motor_exti_ports[] = {
+  static GPIO_TypeDef* motor_exti_ports[] = {
     HALL_1_GPIO_Port,
     HALL_2_GPIO_Port,
     HALL_3_GPIO_Port,
@@ -213,11 +213,12 @@ void init_motor() {
   };
 
   // set the pins for the EXTI interrupts pins used by the motor
-  uint16_t user_exti_pins[] = {
+  // this next arrays must be static!!
+  static uint16_t user_exti_pins[] = {
     WHELL_SPEED_SENSOR_PIN,
     0 // MUST be 0 (null) terminated
   };
-  GPIO_TypeDef* user_exti_ports[] = {
+  static GPIO_TypeDef* user_exti_ports[] = {
     WHELL_SPEED_SENSOR_PORT,
     0 // MUST be 0 (null) terminated
   };
