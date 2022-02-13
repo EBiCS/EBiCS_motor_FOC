@@ -222,7 +222,7 @@ void init_motor() {
     0 // MUST be 0 (null) terminated
   };
 
-  MotorConfig_t motor_config;
+  static MotorConfig_t motor_config; // this motor_config MUST be static!!
   motor_config.exti.motor.pins = motor_exti_pins;
   motor_config.exti.motor.ports = motor_exti_ports;
   motor_config.exti.user.pins = user_exti_pins;
@@ -252,6 +252,11 @@ int main(void) {
 
   init_motor();
 
+  // at begin, if throttle is at least halfway, do motor autodetect
+  if (MSPublic.adcData[ADC_THROTTLE] > (THROTTLEOFFSET + ((THROTTLEMAX - THROTTLEOFFSET) >> 1))) {
+    motor_autodetect();
+  }
+
 	while (1) {
 
 		//slow loop process, every 20ms
@@ -268,19 +273,18 @@ int main(void) {
 	    ui16_throttle = ui32_throttle_acc >> 4;
 
       // map throttle to motor current
-      MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, PH_CURRENT_MAX);
+      // check to see if throttle value is at least half of the expected offset, if not, probably the throttle is not connected 
+      if (ui16_throttle > (THROTTLEOFFSET >> 1)) {
+        MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, PH_CURRENT_MAX);
+      } else {
+        MSPublic.i_q_setpoint_target = 0;
+      }
 
       // DEBUG
       static uint8_t debug_cnt = 0;
       if (++debug_cnt > 13) { // every 13 * 20 ms = 260ms
         debug_cnt = 0;
         printf_("%d, %d\n", MSPublic.debug[0], MSPublic.debug[1] * CAL_I);
-      }
-
-      static bool do_autodetect = false;
-      if (do_autodetect == true) {
-        motor_autodetect();
-        do_autodetect = false;
       }
 		}
 	}

@@ -24,7 +24,7 @@ extern "C" {
 #define HALL_3_Pin GPIO_PIN_0
 #define HALL_3_GPIO_Port GPIOB
 
-#define WHELL_SPEED_SENSOR_PIN 0
+#define WHELL_SPEED_SENSOR_PIN GPIO_PIN_0
 #define WHELL_SPEED_SENSOR_PORT GPIOB
 
 

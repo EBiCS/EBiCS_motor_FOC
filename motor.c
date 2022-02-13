@@ -974,26 +974,35 @@ static void TIM2_Init(void) {
 }
 
 static void set_HAL_NVIC(MotorConfig_t* p_MotorConfig, uint8_t i) {
-    // set the EXTIxx_IRQn
-  if (p_MotorConfig->exti.motor.pins[i] == 0) {
+  // set the EXTIxx_IRQn
+  if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_0) {
     HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] == 1) {
+  } else if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_1) {
     HAL_NVIC_SetPriority(EXTI1_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] == 2) {
+  } else if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_2) {
     HAL_NVIC_SetPriority(EXTI2_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI2_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] == 3) {
+  } else if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_3) {
     HAL_NVIC_SetPriority(EXTI3_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] == 4) {
+  } else if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_4) {
     HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI4_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] < 10) {
+  } else if ((p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_5) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_6) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_7) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_8) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_9)) {
     HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] < 15) {
+  } else if ((p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_10) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_11) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_12) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_13) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_14) ||
+    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_15)) {
     HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
   }
@@ -1024,11 +1033,11 @@ static void GPIO_Init() {
   // configure EXTI GPIO pins for user
   if (p_MotorConfig->exti.user_exti_callback != NULL) { // only configure EXTI user pins if the callback is set
     uint8_t i = 0;
-    while (p_MotorConfig->exti.motor.pins[i] != 0) {
-      GPIO_InitStruct.Pin = p_MotorConfig->exti.motor.pins[i];
+    while (p_MotorConfig->exti.user.pins[i] != 0) {
+      GPIO_InitStruct.Pin = p_MotorConfig->exti.user.pins[i];
       GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
       GPIO_InitStruct.Pull = GPIO_PULLUP;
-      HAL_GPIO_Init(p_MotorConfig->exti.motor.ports[i], &GPIO_InitStruct);
+      HAL_GPIO_Init(p_MotorConfig->exti.user.ports[i], &GPIO_InitStruct);
 
       set_HAL_NVIC(p_MotorConfig, i);
 
@@ -1245,9 +1254,9 @@ static void TIM3_Init(void) {
 	HAL_TIM_MspPostInit(&htim3);
 }
 
-void motor_init(MotorConfig_t* p_MotorConfig, MotorStatePublic_t* motorStatePublic) {
+void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic) {
   p_MotorStatePublic = motorStatePublic; // copy to a local pointer
-  p_MotorConfig = p_MotorConfig; // copy to a local pointer
+  p_MotorConfig = motorConfig; // copy to a local pointer
 
 	// Virtual EEPROM init
 	HAL_FLASH_Unlock();
