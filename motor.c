@@ -229,8 +229,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     GPIOE->IDR
   };
 
-	// Hall sensor event processing
-  ui8_hall_state = ((GPIOB->IDR & 1) << 2) | ((GPIOB->IDR >> 4) & 0b11); // mask input register with Hall 1 - 3 bits
+  bool hall1_state = HAL_GPIO_ReadPin(p_MotorConfig->exti.motor.ports[0], p_MotorConfig->exti.motor.pins[0]);
+  bool hall2_state = HAL_GPIO_ReadPin(p_MotorConfig->exti.motor.ports[1], p_MotorConfig->exti.motor.pins[1]);
+  bool hall3_state = HAL_GPIO_ReadPin(p_MotorConfig->exti.motor.ports[2], p_MotorConfig->exti.motor.pins[2]);
+  ui8_hall_state = hall1_state | (hall2_state << 1) | (hall3_state << 2);
 
   if (ui8_hall_state == ui8_hall_state_old)
     return;
