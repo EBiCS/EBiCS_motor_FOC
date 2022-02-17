@@ -138,11 +138,7 @@ static void USART3_UART_Init(void) {
  * @retval None
  */
 static void GPIO_Init(void) {
-	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-	__HAL_RCC_GPIOB_CLK_ENABLE();
-	__HAL_RCC_GPIOC_CLK_ENABLE();
-	__HAL_RCC_GPIOD_CLK_ENABLE();
+  // init here any needed pins
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {

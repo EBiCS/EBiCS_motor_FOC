@@ -1013,8 +1013,23 @@ static void set_HAL_NVIC(MotorConfig_t* p_MotorConfig, uint8_t i) {
 static void GPIO_Init() {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
-	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOC_CLK_ENABLE();
+	// GPIO Ports Clock Enable
+  uint8_t i = 0;
+  while (p_MotorConfig->exti.motor.ports[i] != 0) {
+    i++;
+    
+    if (p_MotorConfig->exti.motor.ports[i] == GPIOA) {
+      __HAL_RCC_GPIOA_CLK_ENABLE();
+    } else if (p_MotorConfig->exti.motor.ports[i] == GPIOB) {
+      __HAL_RCC_GPIOB_CLK_ENABLE();
+    } else if (p_MotorConfig->exti.motor.ports[i] == GPIOC) {
+      __HAL_RCC_GPIOC_CLK_ENABLE();
+    } else if (p_MotorConfig->exti.motor.ports[i] == GPIOD) {
+      __HAL_RCC_GPIOD_CLK_ENABLE();
+    } else if (p_MotorConfig->exti.motor.ports[i] == GPIOE) {
+      __HAL_RCC_GPIOE_CLK_ENABLE();
+    }
+  }
 
   // The GPIO pin has to be in reset state to set it's properties.
   HAL_GPIO_WritePin(
