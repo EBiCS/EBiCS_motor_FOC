@@ -1106,7 +1106,7 @@ static void GPIO_Init() {
 
   // configure EXTI GPIO pins for motor hall sensors
   uint8_t i = 0;
-  while (p_MotorConfig->exti.motor.ports[i] != 0) {
+  while (p_MotorConfig->exti.motor.ports[i] != NULL) {
     GPIO_InitStruct.Pin = p_MotorConfig->exti.motor.pins[i];
     GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
@@ -1120,7 +1120,7 @@ static void GPIO_Init() {
   // configure EXTI GPIO pins for user
   i = 0;
   if (p_MotorConfig->exti.user_exti_callback != NULL) { // only configure EXTI user pins if the callback is set
-    while (p_MotorConfig->exti.user.ports[i] != 0) {
+    while (p_MotorConfig->exti.user.ports[i] != NULL) {
       GPIO_InitStruct.Pin = p_MotorConfig->exti.user.pins[i];
       GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
       GPIO_InitStruct.Pull = GPIO_PULLUP;
@@ -1134,7 +1134,7 @@ static void GPIO_Init() {
 
   // configure ADC GPIO pins needed for motor
   i = 0;
-  while (p_MotorConfig->adc.motor.ports[i] != 0) {
+  while (p_MotorConfig->adc.motor.ports[i] != NULL) {
     GPIO_InitStruct.Pin = p_MotorConfig->adc.motor.pins[i];
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(p_MotorConfig->adc.motor.ports[i], &GPIO_InitStruct);
@@ -1145,7 +1145,7 @@ static void GPIO_Init() {
 
   // configure ADC GPIO pins for user
   i = 0;
-  while (p_MotorConfig->adc.user.ports[i] != 0) {
+  while (p_MotorConfig->adc.user.ports[i] != NULL) {
     GPIO_InitStruct.Pin = p_MotorConfig->adc.user.pins[i];
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     HAL_GPIO_Init(p_MotorConfig->adc.user.ports[i], &GPIO_InitStruct);
@@ -1431,9 +1431,9 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
   // average measured ADC phase currents, to store as the offset of each one
 	for (uint32_t i = 0; i < 16; i++) {		
 	  HAL_Delay(5);
-		ui16_ph1_offset += p_MotorStatePublic->adcData[ADC_CHANA];
-		ui16_ph2_offset += p_MotorStatePublic->adcData[ADC_CHANB];
-		ui16_ph3_offset += p_MotorStatePublic->adcData[ADC_CHANC];
+		ui16_ph1_offset += p_MotorStatePublic->adcData[0];
+		ui16_ph2_offset += p_MotorStatePublic->adcData[1];
+		ui16_ph3_offset += p_MotorStatePublic->adcData[2];
 	}
 	ui16_ph1_offset = ui16_ph1_offset >> 4;
 	ui16_ph2_offset = ui16_ph2_offset >> 4;

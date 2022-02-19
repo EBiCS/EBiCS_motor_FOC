@@ -12,11 +12,6 @@ extern "C" {
 #define WHEEL_CIRCUMFERENCE 690 // 690 for original M365 motor
 #define GEAR_RATIO 15 // 15 for original M365 motor
 
-// ADC channels used to measure currents
-#define ADC_CHANA 3
-#define ADC_CHANB 4
-#define ADC_CHANC 5
-
 // ADC channel to measure the battery voltage
 #define ADC_VOLTAGE 3
 
@@ -24,7 +19,7 @@ extern "C" {
 #define CAL_BAT_V 14 	// ADC counts * CAL_BAT_V = Battery voltage in mV
 
 // battery voltage limits in mV
-#define BATTERYVOLTAGE_MIN 25000
+#define BATTERYVOLTAGE_MIN 33000
 #define BATTERYVOLTAGE_MAX 42000
 
 #define CAL_I 38 // ADC counts * CAL_I = current in mA
