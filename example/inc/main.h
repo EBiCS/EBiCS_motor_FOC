@@ -33,7 +33,7 @@ extern "C" {
 #define MOTOR_PHASE_CURRENT_C_PORT GPIOA
 
 // throttle ADC pin
-#define BATTERY_VOLTAGE_PIN 0
+#define BATTERY_VOLTAGE_PIN 2
 #define BATTERY_VOLTAGE_PORT GPIOA
 #define THROTTLE_PIN 7
 #define THROTTLE_PORT GPIOA
@@ -59,12 +59,6 @@ extern "C" {
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, false) // DEBUG
 
 void Error_Handler(void);
-
-#define Throttle_Pin GPIO_PIN_1
-#define Throttle_GPIO_Port GPIOA
-
-// ADC channels
-#define ADC_THROTTLE 1
 
 extern void UserSysTickHandler(void);
 

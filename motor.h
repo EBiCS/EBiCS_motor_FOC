@@ -18,13 +18,13 @@ extern "C" {
 #define ADC_CHANC 5
 
 // ADC channel to measure the battery voltage
-#define ADC_VOLTAGE 0
+#define ADC_VOLTAGE 3
 
 // calibration factors for voltage and current
-#define CAL_BAT_V 13 	// ADC counts * CAL_BAT_V = Battery voltage in mV
+#define CAL_BAT_V 14 	// ADC counts * CAL_BAT_V = Battery voltage in mV
 
 // battery voltage limits in mV
-#define BATTERYVOLTAGE_MIN 33000
+#define BATTERYVOLTAGE_MIN 25000
 #define BATTERYVOLTAGE_MAX 42000
 
 #define CAL_I 38 // ADC counts * CAL_I = current in mA
@@ -97,7 +97,7 @@ typedef struct {
   uint32_t speed;
   bool brake_active;
   bool field_weakening_enable;
-  uint16_t adcData[6]; // buffer for ADC1 inputs
+  uint16_t adcData[16]; // buffer for ADC inputs (this array has max ADC channels possible). Position 0, 1, 2 and 3 are used by the motor
   uint32_t debug[10];
 } MotorStatePublic_t;
 
