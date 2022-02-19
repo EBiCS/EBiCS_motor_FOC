@@ -53,16 +53,6 @@ extern "C" {
 // #define I_FACTOR_PLL 8
 // #define SIXSTEPTHRESHOLD 27000
 
-#define Phase_Current_1_Pin GPIO_PIN_3
-#define Phase_Current_1_GPIO_Port GPIOA
-#define Phase_Current_2_Pin GPIO_PIN_4
-#define Phase_Current_2_GPIO_Port GPIOA
-#define Phase_Current_3_Pin GPIO_PIN_5
-#define Phase_Current_3_GPIO_Port GPIOA
-
-#define Batt_Voltage_Pin GPIO_PIN_2
-#define Batt_Voltage_GPIO_Port GPIOA
-
 typedef struct {
   uint16_t* pins; // The external interrupt/event controller consists of 19 edge detector lines used to generate
   GPIO_TypeDef** ports;

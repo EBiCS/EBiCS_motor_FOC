@@ -1087,7 +1087,6 @@ static void ADC_Init() {
 
 	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, number_of_adc_channels_used);
   HAL_ADC_Start_IT(&hadc2);
-
 }
 #pragma GCC pop_options
 
@@ -1180,14 +1179,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
   } else if (htim == &htim1) {
 
-    // htim->Instance->DIER &= ~(TIM_IT_UPDATE);
-    // htim->Instance->DIER &= ~(TIM_IT_CC1);
-    // htim->Instance->DIER &= ~(TIM_IT_CC2);
-    // htim->Instance->DIER &= ~(TIM_IT_CC3);
-    // htim->Instance->DIER &= ~(TIM_IT_COM);
-    // htim->Instance->DIER &= ~(TIM_IT_TRIGGER);
-    // htim->Instance->DIER &= ~(TIM_IT_BREAK);
-
   } else if (htim == &htim2) {
     // DEBUG_TOGGLE;
   } else {
@@ -1225,23 +1216,23 @@ void dyn_adc_state(q31_t angle) {
 static void set_inj_channel(char state) {
 	switch (state) {
 	case 1: //Phase C at high dutycycles, read current from phase A + B
-		ADC1->JSQR = (adc_channels_used[0] << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+		ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
 		ADC1->JOFR1 = ui16_ph1_offset;
-		ADC2->JSQR = (adc_channels_used[1] << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+		ADC2->JSQR = (((uint32_t) adc_channels_used[1]) << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
 		ADC2->JOFR1 = ui16_ph2_offset;
 		break;
 
 	case 2: //Phase A at high dutycycles, read current from phase C + B
-		ADC1->JSQR = (adc_channels_used[2] << 15); //ADC1 injected reads phase C, JSQ4 = 0b00110, decimal 6
+		ADC1->JSQR = (((uint32_t) adc_channels_used[2]) << 15); //ADC1 injected reads phase C, JSQ4 = 0b00110, decimal 6
 		ADC1->JOFR1 = ui16_ph3_offset;
-		ADC2->JSQR = (adc_channels_used[1] << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+		ADC2->JSQR = (((uint32_t) adc_channels_used[1]) << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
 		ADC2->JOFR1 = ui16_ph2_offset;
 		break;
 
 	case 3: //Phase B at high dutycycles, read current from phase A + C
-		ADC1->JSQR = (adc_channels_used[0] << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+		ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
 		ADC1->JOFR1 = ui16_ph1_offset;
-		ADC2->JSQR = (adc_channels_used[2] << 15); //ADC2 injected reads phase C, JSQ4 = 0b00110, decimal 6
+		ADC2->JSQR = (((uint32_t) adc_channels_used[2]) << 15); //ADC2 injected reads phase C, JSQ4 = 0b00110, decimal 6
 		ADC2->JOFR1 = ui16_ph3_offset;
 		break;
 	}
@@ -1448,7 +1439,7 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
 	ui16_ph2_offset = ui16_ph2_offset >> 4;
 	ui16_ph3_offset = ui16_ph3_offset >> 4;
 
-  ADC1->JSQR = (adc_channels_used[0] << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+  ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
   ADC1->JOFR1 = ui16_ph1_offset;
 
   EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);

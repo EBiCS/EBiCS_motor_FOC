@@ -192,7 +192,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     PA6     ------> ADC1_IN6
     PA7     ------> ADC1_IN7
     */
-    HAL_GPIO_DeInit(GPIOA, Batt_Voltage_Pin|Phase_Current_1_Pin|Phase_Current_2_Pin);
+    // HAL_GPIO_DeInit(GPIOA, Batt_Voltage_Pin|Phase_Current_1_Pin|Phase_Current_2_Pin);
 
     /* ADC1 DMA DeInit */
     HAL_DMA_DeInit(hadc->DMA_Handle);
@@ -223,7 +223,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     PA5     ------> ADC2_IN5
     PA6     ------> ADC2_IN6
     */
-    HAL_GPIO_DeInit(GPIOA, Phase_Current_2_Pin|Phase_Current_3_Pin);
+    // HAL_GPIO_DeInit(GPIOA, Phase_Current_2_Pin|Phase_Current_3_Pin);
 
     /* ADC2 interrupt DeInit */
   /* USER CODE BEGIN ADC2:ADC1_2_IRQn disable */

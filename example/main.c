@@ -304,7 +304,8 @@ int main(void) {
       // map throttle to motor current
       // check to see if throttle value is at least half of the expected offset, if not, probably the throttle is not connected 
       if (ui16_throttle > (THROTTLEOFFSET >> 1)) {
-        MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, PH_CURRENT_MAX);
+        // MSPublic.i_q_setpoint_target = map(ui16_throttle, THROTTLEOFFSET, THROTTLEMAX, 0, PH_CURRENT_MAX);
+        MSPublic.i_q_setpoint_target = 0;
       } else {
         MSPublic.i_q_setpoint_target = 0;
       }
