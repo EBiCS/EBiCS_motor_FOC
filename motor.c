@@ -15,45 +15,45 @@ extern void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 #define iabs(x) (((x) >= 0)?(x):-(x))
 #define sign(x) (((x) >= 0)?(1):(-1))
 
-#define _U_MAX	2000L
+#define _U_MAX  2000L
 
 // Square Root of 3
-#define _SQRT3	28  //1.73205081*16
+#define _SQRT3  28  //1.73205081*16
 
 typedef struct {
-	q31_t i_d;
-	q31_t i_q;
-	q31_t i_q_setpoint;
-	q31_t i_d_setpoint;
-	q31_t i_setpoint_abs;
-	int32_t i_q_setpoint_temp;
-	int32_t i_d_setpoint_temp;
-	q31_t u_d;
-	q31_t u_q;
-	q31_t u_abs;
-	q31_t Battery_Current;
-	uint8_t char_dyn_adc_state;
-	int8_t system_state;
-	int8_t error_state;
+  q31_t i_d;
+  q31_t i_q;
+  q31_t i_q_setpoint;
+  q31_t i_d_setpoint;
+  q31_t i_setpoint_abs;
+  int32_t i_q_setpoint_temp;
+  int32_t i_d_setpoint_temp;
+  q31_t u_d;
+  q31_t u_q;
+  q31_t u_abs;
+  q31_t Battery_Current;
+  uint8_t char_dyn_adc_state;
+  int8_t system_state;
+  int8_t error_state;
   int16_t spec_angle;
   bool brake_active;
   enum angle_estimation angle_estimation;
-	int16_t KV_detect_flag;
+  int16_t KV_detect_flag;
   bool hall_angle_detect_flag;
 } MotorState_t;
 
 typedef struct
 {
-	int16_t gain_p;
-	int16_t gain_i;
-	int16_t limit_i;
-	int16_t limit_output;
-	int16_t recent_value;
-	int32_t setpoint;
-	int32_t integral_part;
-	int16_t max_step;
-	int32_t out;
-	int8_t shift;
+  int16_t gain_p;
+  int16_t gain_i;
+  int16_t limit_i;
+  int16_t limit_output;
+  int16_t recent_value;
+  int32_t setpoint;
+  int32_t integral_part;
+  int16_t max_step;
+  int32_t out;
+  int8_t shift;
 } PI_control_t;
 
 // EEPROM number of variables to use
@@ -163,15 +163,15 @@ uint8_t number_of_adc_channels_used = 0;
 uint8_t adc_channels_used[16]; // 16 is the max ADC channels possible
 
 void _motor_error_handler(char *file, int line) {
-	__disable_irq();
-	while (1) {
+  __disable_irq();
+  while (1) {
     motor_disable_pwm();
-	}
+  }
 }
 
 // regular ADC callback
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-	
+  
 }
 
 void motor_disable_pwm(void) {
@@ -343,9 +343,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 void get_standstill_position() {
 
-	HAL_GPIO_EXTI_Callback(HALL_1_PIN); // read in initial rotor position
+  HAL_GPIO_EXTI_Callback(HALL_1_PIN); // read in initial rotor position
 
-	switch (ui8_hall_state) {
+  switch (ui8_hall_state) {
     // 6 cases for forward direction
     case 2:
       q31_rotorposition_hall = Hall_32;
@@ -372,34 +372,34 @@ void get_standstill_position() {
       break;
     }
 
-	q31_rotorposition_absolute = q31_rotorposition_hall;
+  q31_rotorposition_absolute = q31_rotorposition_hall;
 }
 
 int32_t speed_to_tics(uint8_t speed) {
-	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * speed * 10);
+  return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * speed * 10);
 }
 
 int8_t tics_to_speed(uint32_t tics) {
-	return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * tics * 10);;
+  return WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * tics * 10);;
 }
 
 void motor_autodetect() {
-	enable_pwm();
-	MS.hall_angle_detect_flag = true;
-	q31_rotorposition_absolute = 1 << 31;
+  enable_pwm();
+  MS.hall_angle_detect_flag = true;
+  q31_rotorposition_absolute = 1 << 31;
   i16_hall_order = 1; // reset hall order
   MS.i_d_setpoint = 200; // set MS.id to appr. 2000mA
-	MS.i_q_setpoint = 1;
+  MS.i_q_setpoint = 1;
 
-	HAL_Delay(5);
-	for (uint32_t i = 0; i < 1080; i++) { // 1080 = 360 * 3, 3 turns, just to make sure at least a full turn happens
-		q31_rotorposition_absolute += 11930465; //drive motor in open loop with steps of 1 degree
+  HAL_Delay(5);
+  for (uint32_t i = 0; i < 1080; i++) { // 1080 = 360 * 3, 3 turns, just to make sure at least a full turn happens
+    q31_rotorposition_absolute += 11930465; //drive motor in open loop with steps of 1 degree
     HAL_Delay(5);
 
-		if (ui8_hall_state_old != ui8_hall_state) {
+    if (ui8_hall_state_old != ui8_hall_state) {
 
-	    switch (ui8_hall_case) // 12 cases for each transition from one stage to the next. 6x forward, 6x reverse
-			{
+      switch (ui8_hall_case) // 12 cases for each transition from one stage to the next. 6x forward, 6x reverse
+      {
         // 6 cases for forward direction
         case 64:
           Hall_64 = q31_rotorposition_absolute;
@@ -449,11 +449,11 @@ void motor_autodetect() {
         case 54:
           Hall_45 = q31_rotorposition_absolute;
           break;
-			} // end case
+      } // end case
 
-			ui8_hall_state_old = ui8_hall_state;
-		}
-	}
+      ui8_hall_state_old = ui8_hall_state;
+    }
+  }
 
   disable_pwm();
   TIM1->CCR1 = 1023; // set initial PWM values
@@ -467,47 +467,47 @@ void motor_autodetect() {
   q31_tics_filtered = 1000000;
 
   // store variables on flash memory
-	HAL_FLASH_Unlock();
+  HAL_FLASH_Unlock();
 
-	if (i8_recent_rotor_direction == 1) {
-		EE_WriteVariable(EEPROM_POS_HALL_ORDER, 1);
-		i16_hall_order = 1;
-	} else {
-		EE_WriteVariable(EEPROM_POS_HALL_ORDER, -1);
-		i16_hall_order = -1;
-	}
-	EE_WriteVariable(EEPROM_POS_HALL_45, Hall_45 >> 16);
-	EE_WriteVariable(EEPROM_POS_HALL_51, Hall_51 >> 16);
-	EE_WriteVariable(EEPROM_POS_HALL_13, Hall_13 >> 16);
-	EE_WriteVariable(EEPROM_POS_HALL_32, Hall_32 >> 16);
-	EE_WriteVariable(EEPROM_POS_HALL_26, Hall_26 >> 16);
-	EE_WriteVariable(EEPROM_POS_HALL_64, Hall_64 >> 16);
+  if (i8_recent_rotor_direction == 1) {
+    EE_WriteVariable(EEPROM_POS_HALL_ORDER, 1);
+    i16_hall_order = 1;
+  } else {
+    EE_WriteVariable(EEPROM_POS_HALL_ORDER, -1);
+    i16_hall_order = -1;
+  }
+  EE_WriteVariable(EEPROM_POS_HALL_45, Hall_45 >> 16);
+  EE_WriteVariable(EEPROM_POS_HALL_51, Hall_51 >> 16);
+  EE_WriteVariable(EEPROM_POS_HALL_13, Hall_13 >> 16);
+  EE_WriteVariable(EEPROM_POS_HALL_32, Hall_32 >> 16);
+  EE_WriteVariable(EEPROM_POS_HALL_26, Hall_26 >> 16);
+  EE_WriteVariable(EEPROM_POS_HALL_64, Hall_64 >> 16);
 
-	HAL_FLASH_Lock();
+  HAL_FLASH_Lock();
 
-	MS.hall_angle_detect_flag = false;
+  MS.hall_angle_detect_flag = false;
 
-	ui16_KV_detect_counter = HAL_GetTick();
-	MS.KV_detect_flag = 20;
+  ui16_KV_detect_counter = HAL_GetTick();
+  MS.KV_detect_flag = 20;
 }
 
 int16_t internal_tics_to_speedx100 (uint32_t tics) {
-	return WHEEL_CIRCUMFERENCE * 50 * 3600 / (6 * GEAR_RATIO * tics);
+  return WHEEL_CIRCUMFERENCE * 50 * 3600 / (6 * GEAR_RATIO * tics);
 }
 
 void calculate_tic_limits(int8_t speed_limit) {
   // tics = wheelcirc * timerfrequency / (no. of hallevents per rev * gear-ratio * speedlimit) * 3600 / 1000000
-	tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * speed_limit * 10);
-	tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * (speed_limit + 2) * 10);
+  tics_lower_limit = WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * speed_limit * 10);
+  tics_higher_limit = WHEEL_CIRCUMFERENCE * 5 * 3600 / (6 * GEAR_RATIO * (speed_limit + 2) * 10);
 }
 
 q31_t get_battery_current(q31_t iq, q31_t id, q31_t uq, q31_t ud) {
-	q31_t ibatq;
-	q31_t ibatd;
-	ibatq = (iq * uq * CAL_I) >> 11;
-	ibatd = (id * ud * CAL_I) >> 11;
+  q31_t ibatq;
+  q31_t ibatd;
+  ibatq = (iq * uq * CAL_I) >> 11;
+  ibatd = (id * ud * CAL_I) >> 11;
 
-	return abs(ibatd) + abs(ibatq);
+  return abs(ibatd) + abs(ibatq);
 }
 
 // not need to optimize the motor_slow_loop
@@ -717,76 +717,76 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
  * @retval None
  */
 static void ADC1_Init(void) {
-	/**Common config
-	 */
-	hadc1.Instance = ADC1;
-	hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
-	hadc1.Init.ContinuousConvMode = DISABLE;
-	hadc1.Init.DiscontinuousConvMode = DISABLE;
+  /**Common config
+   */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
-	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	hadc1.Init.NbrOfConversion = number_of_adc_channels_used;
-	hadc1.Init.NbrOfDiscConversion = 0;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = number_of_adc_channels_used;
+  hadc1.Init.NbrOfDiscConversion = 0;
 
-	if (HAL_ADC_Init(&hadc1) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  if (HAL_ADC_Init(&hadc1) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	/**Configure the ADC multi-mode
-	 */
+  /**Configure the ADC multi-mode
+   */
   ADC_MultiModeTypeDef multimode;
-	multimode.Mode = ADC_DUALMODE_REGSIMULT_INJECSIMULT;
-	if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  multimode.Mode = ADC_DUALMODE_REGSIMULT_INJECSIMULT;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	/**Configure Injected Channel
-	 */
+  /**Configure Injected Channel
+   */
   ADC_InjectionConfTypeDef sConfigInjected;
-	sConfigInjected.InjectedChannel = adc_channels_used[0];
-	sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
-	sConfigInjected.InjectedNbrOfConversion = 1;
-	sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_CC4; // Hier bin ich nicht sicher ob Trigger out oder direkt CC4
-	sConfigInjected.AutoInjectedConv = DISABLE; //muß aus sein
-	sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-	sConfigInjected.InjectedOffset = 0;
-	HAL_ADC_Stop(&hadc1); //ADC muß gestoppt sein, damit Triggerquelle gesetzt werden kann.
-	if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sConfigInjected.InjectedChannel = adc_channels_used[0];
+  sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
+  sConfigInjected.InjectedNbrOfConversion = 1;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  sConfigInjected.ExternalTrigInjecConv = ADC_EXTERNALTRIGINJECCONV_T1_CC4; // Hier bin ich nicht sicher ob Trigger out oder direkt CC4
+  sConfigInjected.AutoInjectedConv = DISABLE; //muß aus sein
+  sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
+  sConfigInjected.InjectedOffset = 0;
+  HAL_ADC_Stop(&hadc1); //ADC muß gestoppt sein, damit Triggerquelle gesetzt werden kann.
+  if (HAL_ADCEx_InjectedConfigChannel(&hadc1, &sConfigInjected) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	/**Configure Regular Channel
-	 */
+  /**Configure Regular Channel
+   */
   ADC_ChannelConfTypeDef sConfig;
-	sConfig.Channel = adc_channels_used[0]; // motor phase current A
-	sConfig.Rank = ADC_REGULAR_RANK_1;
-	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
-	/**Configure Regular Channel
-	 */
-	sConfig.Channel = adc_channels_used[1]; // motor phase current B
-	sConfig.Rank = ADC_REGULAR_RANK_2;
-	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sConfig.Channel = adc_channels_used[0]; // motor phase current A
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
+  /**Configure Regular Channel
+   */
+  sConfig.Channel = adc_channels_used[1]; // motor phase current B
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sConfig.Channel = adc_channels_used[2]; // motor phase current C
-	sConfig.Rank = ADC_REGULAR_RANK_3;
-	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sConfig.Channel = adc_channels_used[2]; // motor phase current C
+  sConfig.Rank = ADC_REGULAR_RANK_3;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sConfig.Channel = adc_channels_used[3]; // battery voltage
-	sConfig.Rank = ADC_REGULAR_RANK_4;
-	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sConfig.Channel = adc_channels_used[3]; // battery voltage
+  sConfig.Rank = ADC_REGULAR_RANK_4;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
   // now configure user ADC channels
   for (uint8_t i = 4; i < number_of_adc_channels_used; i++) {
@@ -808,34 +808,34 @@ static void ADC1_Init(void) {
  */
 static void ADC2_Init(void) {
 
-	ADC_InjectionConfTypeDef sConfigInjected;
+  ADC_InjectionConfTypeDef sConfigInjected;
 
-	/**Common config
-	 */
-	hadc2.Instance = ADC2;
-	hadc2.Init.ScanConvMode = ADC_SCAN_ENABLE; //hier auch Scan enable?!
-	hadc2.Init.ContinuousConvMode = DISABLE;
-	hadc2.Init.DiscontinuousConvMode = DISABLE;
-	hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-	hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	hadc2.Init.NbrOfConversion = 1;
-	if (HAL_ADC_Init(&hadc2) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  /**Common config
+   */
+  hadc2.Instance = ADC2;
+  hadc2.Init.ScanConvMode = ADC_SCAN_ENABLE; //hier auch Scan enable?!
+  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
+  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc2.Init.NbrOfConversion = 1;
+  if (HAL_ADC_Init(&hadc2) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	/**Configure Injected Channel
-	 */
-	sConfigInjected.InjectedChannel = adc_channels_used[1]; // motor phase current B;
-	sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
-	sConfigInjected.InjectedNbrOfConversion = 1;
-	sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	sConfigInjected.ExternalTrigInjecConv = ADC_INJECTED_SOFTWARE_START;
-	sConfigInjected.AutoInjectedConv = DISABLE;
-	sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
-	sConfigInjected.InjectedOffset = 0;
-	if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  /**Configure Injected Channel
+   */
+  sConfigInjected.InjectedChannel = adc_channels_used[1]; // motor phase current B;
+  sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
+  sConfigInjected.InjectedNbrOfConversion = 1;
+  sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  sConfigInjected.ExternalTrigInjecConv = ADC_INJECTED_SOFTWARE_START;
+  sConfigInjected.AutoInjectedConv = DISABLE;
+  sConfigInjected.InjectedDiscontinuousConvMode = DISABLE;
+  sConfigInjected.InjectedOffset = 0;
+  if (HAL_ADCEx_InjectedConfigChannel(&hadc2, &sConfigInjected) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 }
 
 /**
@@ -845,84 +845,84 @@ static void ADC2_Init(void) {
  */
 static void TIM1_Init(void) {
 
-	TIM_ClockConfigTypeDef sClockSourceConfig;
-	TIM_MasterConfigTypeDef sMasterConfig;
-	TIM_OC_InitTypeDef sConfigOC;
-	TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_OC_InitTypeDef sConfigOC;
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig;
 
-	htim1.Instance = TIM1;
-	htim1.Init.Prescaler = 0;
-	htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
-	htim1.Init.Period = _T;
-	htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim1.Init.RepetitionCounter = 0;
-	htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 0;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
+  htim1.Init.Period = _T;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-	if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	if (HAL_TIM_PWM_Init(&htim1) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	if (HAL_TIM_OC_Init(&htim1) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  if (HAL_TIM_OC_Init(&htim1) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC4REF;
-	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-	if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig)
-			!= HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC4REF;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig)
+      != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sConfigOC.OCMode = TIM_OCMODE_PWM1;
-	sConfigOC.Pulse = 1;
-	sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-	sConfigOC.OCNPolarity = TIM_OCPOLARITY_HIGH; //TODO: depends on gate driver!
-	sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-	sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
-	sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1)
-			!= HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 1;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCPOLARITY_HIGH; //TODO: depends on gate driver!
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1)
+      != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2)
-			!= HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2)
+      != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3)
-			!= HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3)
+      != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sConfigOC.OCMode = TIM_OCMODE_PWM2;
-	sConfigOC.Pulse = _T - 1;
-	if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4)
-			!= HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sConfigOC.OCMode = TIM_OCMODE_PWM2;
+  sConfigOC.Pulse = _T - 1;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4)
+      != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-	sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-	sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-	sBreakDeadTimeConfig.DeadTime = 32;
-	sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-	sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-	sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-	if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig)
-			!= HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 32;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig)
+      != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	HAL_TIM_MspPostInit(&htim1);
+  HAL_TIM_MspPostInit(&htim1);
 }
 
 /**
@@ -932,31 +932,31 @@ static void TIM1_Init(void) {
  */
 static void TIM2_Init(void) {
 
-	TIM_ClockConfigTypeDef sClockSourceConfig;
-	TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
 
   // CPU clock is 64MHz, so Timer2 ticks are 1/128 = 128ms
-	htim2.Instance = TIM2;
-	htim2.Init.Prescaler = 128;
-	htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim2.Init.Period = 64000;
-	htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 128;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 64000;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-	if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-	if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig)
-			!= HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig)
+      != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 }
 
 static void set_HAL_NVIC(uint16_t pin) {
@@ -1070,28 +1070,28 @@ static void ADC_Init() {
     j++;
   }
 
-	ADC1_Init();
-	if (HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
-	ADC2_Init();
-	if (HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  ADC1_Init();
+  if (HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
+  ADC2_Init();
+  if (HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
   // enable external trigger
-	SET_BIT(ADC1->CR2, ADC_CR2_JEXTTRIG);
-	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
-	SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG);
-	__HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC);
+  SET_BIT(ADC1->CR2, ADC_CR2_JEXTTRIG);
+  __HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
+  SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG);
+  __HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC);
 
-	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, number_of_adc_channels_used);
+  HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, number_of_adc_channels_used);
   HAL_ADC_Start_IT(&hadc2);
 }
 #pragma GCC pop_options
 
 static void GPIO_Init() {
-	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+  GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
   enable_gpio_clock(p_MotorConfig->exti.motor.ports);
   enable_gpio_clock(p_MotorConfig->exti.user.ports);
@@ -1164,17 +1164,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         q31_rotorposition_PLL += (q31_angle_per_tic << 1);
       }
     }
-		
+    
     if (MS.KV_detect_flag > 0) {
       ui16_KV_detect_counter++;
     }
 
     if (uint16_full_rotation_counter < 8000) {
-			uint16_full_rotation_counter++;	//full rotation counter for motor standstill detection
+      uint16_full_rotation_counter++; //full rotation counter for motor standstill detection
     }
 
     if (uint16_half_rotation_counter < 8000) {
-			uint16_half_rotation_counter++;	//half rotation counter for motor standstill detection
+      uint16_half_rotation_counter++; //half rotation counter for motor standstill detection
     }
 
   } else if (htim == &htim1) {
@@ -1188,54 +1188,54 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 //assuming, a proper AD conversion takes 350 timer tics, to be confirmed. DT+TR+TS deadtime + noise subsiding + sample time
 void dyn_adc_state(q31_t angle) {
-	if (switchtime[2] > switchtime[0] && switchtime[2] > switchtime[1]) {
-		MS.char_dyn_adc_state = 1; // -90° .. +30°: Phase C at high dutycycles
-		if (switchtime[2] > 1500)
-			TIM1->CCR4 = switchtime[2] - TRIGGER_OFFSET_ADC;
-		else
-			TIM1->CCR4 = TRIGGER_DEFAULT;
-	}
+  if (switchtime[2] > switchtime[0] && switchtime[2] > switchtime[1]) {
+    MS.char_dyn_adc_state = 1; // -90° .. +30°: Phase C at high dutycycles
+    if (switchtime[2] > 1500)
+      TIM1->CCR4 = switchtime[2] - TRIGGER_OFFSET_ADC;
+    else
+      TIM1->CCR4 = TRIGGER_DEFAULT;
+  }
 
-	if (switchtime[0] > switchtime[1] && switchtime[0] > switchtime[2]) {
-		MS.char_dyn_adc_state = 2; // +30° .. 150° Phase A at high dutycycles
-		if (switchtime[0] > 1500)
-			TIM1->CCR4 = switchtime[0] - TRIGGER_OFFSET_ADC;
-		else
-			TIM1->CCR4 = TRIGGER_DEFAULT;
-	}
+  if (switchtime[0] > switchtime[1] && switchtime[0] > switchtime[2]) {
+    MS.char_dyn_adc_state = 2; // +30° .. 150° Phase A at high dutycycles
+    if (switchtime[0] > 1500)
+      TIM1->CCR4 = switchtime[0] - TRIGGER_OFFSET_ADC;
+    else
+      TIM1->CCR4 = TRIGGER_DEFAULT;
+  }
 
-	if (switchtime[1] > switchtime[0] && switchtime[1] > switchtime[2]) {
-		MS.char_dyn_adc_state = 3; // +150 .. -90° Phase B at high dutycycles
-		if (switchtime[1] > 1500)
-			TIM1->CCR4 = switchtime[1] - TRIGGER_OFFSET_ADC;
-		else
-			TIM1->CCR4 = TRIGGER_DEFAULT;
-	}
+  if (switchtime[1] > switchtime[0] && switchtime[1] > switchtime[2]) {
+    MS.char_dyn_adc_state = 3; // +150 .. -90° Phase B at high dutycycles
+    if (switchtime[1] > 1500)
+      TIM1->CCR4 = switchtime[1] - TRIGGER_OFFSET_ADC;
+    else
+      TIM1->CCR4 = TRIGGER_DEFAULT;
+  }
 }
 
 static void set_inj_channel(char state) {
-	switch (state) {
-	case 1: //Phase C at high dutycycles, read current from phase A + B
-		ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
-		ADC1->JOFR1 = ui16_ph1_offset;
-		ADC2->JSQR = (((uint32_t) adc_channels_used[1]) << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
-		ADC2->JOFR1 = ui16_ph2_offset;
-		break;
+  switch (state) {
+  case 1: //Phase C at high dutycycles, read current from phase A + B
+    ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+    ADC1->JOFR1 = ui16_ph1_offset;
+    ADC2->JSQR = (((uint32_t) adc_channels_used[1]) << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+    ADC2->JOFR1 = ui16_ph2_offset;
+    break;
 
-	case 2: //Phase A at high dutycycles, read current from phase C + B
-		ADC1->JSQR = (((uint32_t) adc_channels_used[2]) << 15); //ADC1 injected reads phase C, JSQ4 = 0b00110, decimal 6
-		ADC1->JOFR1 = ui16_ph3_offset;
-		ADC2->JSQR = (((uint32_t) adc_channels_used[1]) << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
-		ADC2->JOFR1 = ui16_ph2_offset;
-		break;
+  case 2: //Phase A at high dutycycles, read current from phase C + B
+    ADC1->JSQR = (((uint32_t) adc_channels_used[2]) << 15); //ADC1 injected reads phase C, JSQ4 = 0b00110, decimal 6
+    ADC1->JOFR1 = ui16_ph3_offset;
+    ADC2->JSQR = (((uint32_t) adc_channels_used[1]) << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+    ADC2->JOFR1 = ui16_ph2_offset;
+    break;
 
-	case 3: //Phase B at high dutycycles, read current from phase A + C
-		ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
-		ADC1->JOFR1 = ui16_ph1_offset;
-		ADC2->JSQR = (((uint32_t) adc_channels_used[2]) << 15); //ADC2 injected reads phase C, JSQ4 = 0b00110, decimal 6
-		ADC2->JOFR1 = ui16_ph3_offset;
-		break;
-	}
+  case 3: //Phase B at high dutycycles, read current from phase A + C
+    ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+    ADC1->JOFR1 = ui16_ph1_offset;
+    ADC2->JSQR = (((uint32_t) adc_channels_used[2]) << 15); //ADC2 injected reads phase C, JSQ4 = 0b00110, decimal 6
+    ADC2->JOFR1 = ui16_ph3_offset;
+    break;
+  }
 }
 
 // PI Control
@@ -1262,7 +1262,7 @@ q31_t PI_control(PI_control_t* PI_c)
 }
 
 void runPIcontrol() {
-	// PI-control processing
+  // PI-control processing
 
   //Check battery current limit
   if (MS.Battery_Current > BATTERYCURRENT_MAX)
@@ -1324,53 +1324,53 @@ void runPIcontrol() {
 /* TIM3 init function 8kHz / 125us interrupt frequency for regular adc triggering */
 static void TIM3_Init(void) {
 
-	TIM_ClockConfigTypeDef sClockSourceConfig;
-	TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
 
-	htim3.Instance = TIM3;
-	htim3.Init.Prescaler = 0;
-	htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-	htim3.Init.Period = 7813;
-	htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-	htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-	if (HAL_TIM_Base_Init(&htim3) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 0;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 7813;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-	if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC1;
-	sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-	if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig)
-			!= HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC1;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig)
+      != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	HAL_TIM_MspPostInit(&htim3);
+  HAL_TIM_MspPostInit(&htim3);
 }
 
 void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic) {
   p_MotorStatePublic = motorStatePublic; // copy to a local pointer
   p_MotorConfig = motorConfig; // copy to a local pointer
 
-	// Virtual EEPROM init
-	HAL_FLASH_Unlock();
-	EE_Init();
-	HAL_FLASH_Lock();
+  // Virtual EEPROM init
+  HAL_FLASH_Unlock();
+  EE_Init();
+  HAL_FLASH_Lock();
 
   // init IO pins
-	GPIO_Init();
+  GPIO_Init();
 
   ADC_Init();
 
-	// initialize MS struct.
-	MS.hall_angle_detect_flag = false;
+  // initialize MS struct.
+  MS.hall_angle_detect_flag = false;
   MS.KV_detect_flag = 0;
-	MS.i_q_setpoint = 0;
-	MS.i_d_setpoint = 0;
+  MS.i_q_setpoint = 0;
+  MS.i_d_setpoint = 0;
   MS.angle_estimation = SPEED_PLL;
 
   // init PI structs
@@ -1391,53 +1391,53 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
   PI_iq.limit_i = _U_MAX;
 
   // Timers
-	TIM1_Init(); // Swapped the order here!
-	TIM2_Init(); // init Timer2 as a counter, where every tick is 128ms
+  TIM1_Init(); // Swapped the order here!
+  TIM2_Init(); // init Timer2 as a counter, where every tick is 128ms
   TIM3_Init();
 
-	// Start Timer 1
-	if (HAL_TIM_Base_Start(&htim1) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  // Start Timer 1
+  if (HAL_TIM_Base_Start(&htim1) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
-	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1); // turn on complementary channel
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
-	TIM1->CCR4 = TRIGGER_DEFAULT; //ADC sampling just before timer overflow (just before middle of PWM-Cycle)
+  TIM1->CCR4 = TRIGGER_DEFAULT; //ADC sampling just before timer overflow (just before middle of PWM-Cycle)
 
-	// Start Timer 2
-	if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  // Start Timer 2
+  if (HAL_TIM_Base_Start(&htim2) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
   // Start Timer 3
-	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) {
+    _motor_error_handler(__FILE__, __LINE__);
+  }
 
-	disable_pwm();
-	TIM1->CCR1 = 1023; //set initial PWM values
-	TIM1->CCR2 = 1023;
-	TIM1->CCR3 = 1023;
+  disable_pwm();
+  TIM1->CCR1 = 1023; //set initial PWM values
+  TIM1->CCR2 = 1023;
+  TIM1->CCR3 = 1023;
 
-	HAL_Delay(1000);
+  HAL_Delay(1000);
 
   // average measured ADC phase currents, to store as the offset of each one
-	for (uint32_t i = 0; i < 16; i++) {		
-	  HAL_Delay(5);
-		ui16_ph1_offset += p_MotorStatePublic->adcData[0];
-		ui16_ph2_offset += p_MotorStatePublic->adcData[1];
-		ui16_ph3_offset += p_MotorStatePublic->adcData[2];
-	}
-	ui16_ph1_offset = ui16_ph1_offset >> 4;
-	ui16_ph2_offset = ui16_ph2_offset >> 4;
-	ui16_ph3_offset = ui16_ph3_offset >> 4;
+  for (uint32_t i = 0; i < 16; i++) {   
+    HAL_Delay(5);
+    ui16_ph1_offset += p_MotorStatePublic->adcData[0];
+    ui16_ph2_offset += p_MotorStatePublic->adcData[1];
+    ui16_ph3_offset += p_MotorStatePublic->adcData[2];
+  }
+  ui16_ph1_offset = ui16_ph1_offset >> 4;
+  ui16_ph2_offset = ui16_ph2_offset >> 4;
+  ui16_ph3_offset = ui16_ph3_offset >> 4;
 
   ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
   ADC1->JOFR1 = ui16_ph1_offset;
@@ -1466,90 +1466,90 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
     motor_autodetect();
   }
 
-	HAL_Delay(5);
+  HAL_Delay(5);
 
   disable_pwm();
 
-	get_standstill_position();
+  get_standstill_position();
 }
 
 void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta) {
 
 //SVPWM according to chapter 4.9 of UM1052
 
-	q31_t q31_U_alpha = (_SQRT3 * _T * q31_u_alpha) >> 4;
-	q31_t q31_U_beta = -_T * q31_u_beta;
-	q31_t X = q31_U_beta;
-	q31_t Y = (q31_U_alpha + q31_U_beta) >> 1;
-	q31_t Z = (q31_U_beta - q31_U_alpha) >> 1;
+  q31_t q31_U_alpha = (_SQRT3 * _T * q31_u_alpha) >> 4;
+  q31_t q31_U_beta = -_T * q31_u_beta;
+  q31_t X = q31_U_beta;
+  q31_t Y = (q31_U_alpha + q31_U_beta) >> 1;
+  q31_t Z = (q31_U_beta - q31_U_alpha) >> 1;
 
-	//Sector 1 & 4
-	if ((Y >= 0 && Z < 0 && X > 0) || (Y < 0 && Z >= 0 && X <= 0)) {
-		switchtime[0] = ((_T + X - Z) >> 12) + (_T >> 1); // right shift 11 for dividing by peroid (=2^11), right shift 1 for dividing by 2
-		switchtime[1] = switchtime[0] + (Z >> 11);
-		switchtime[2] = switchtime[1] - (X >> 11);
-	}
+  //Sector 1 & 4
+  if ((Y >= 0 && Z < 0 && X > 0) || (Y < 0 && Z >= 0 && X <= 0)) {
+    switchtime[0] = ((_T + X - Z) >> 12) + (_T >> 1); // right shift 11 for dividing by peroid (=2^11), right shift 1 for dividing by 2
+    switchtime[1] = switchtime[0] + (Z >> 11);
+    switchtime[2] = switchtime[1] - (X >> 11);
+  }
 
-	//Sector 2 & 5
-	if ((Y >= 0 && Z >= 0) || (Y < 0 && Z < 0)) {
-		switchtime[0] = ((_T + Y - Z) >> 12) + (_T >> 1);
-		switchtime[1] = switchtime[0] + (Z >> 11);
-		switchtime[2] = switchtime[0] - (Y >> 11);
-	}
+  //Sector 2 & 5
+  if ((Y >= 0 && Z >= 0) || (Y < 0 && Z < 0)) {
+    switchtime[0] = ((_T + Y - Z) >> 12) + (_T >> 1);
+    switchtime[1] = switchtime[0] + (Z >> 11);
+    switchtime[2] = switchtime[0] - (Y >> 11);
+  }
 
-	//Sector 3 & 6
-	if ((Y < 0 && Z >= 0 && X > 0) || (Y >= 0 && Z < 0 && X <= 0)) {
-		switchtime[0] = ((_T + Y - X) >> 12) + (_T >> 1);
-		switchtime[2] = switchtime[0] - (Y >> 11);
-		switchtime[1] = switchtime[2] + (X >> 11);
-	}
+  //Sector 3 & 6
+  if ((Y < 0 && Z >= 0 && X > 0) || (Y >= 0 && Z < 0 && X <= 0)) {
+    switchtime[0] = ((_T + Y - X) >> 12) + (_T >> 1);
+    switchtime[2] = switchtime[0] - (Y >> 11);
+    switchtime[1] = switchtime[2] + (X >> 11);
+  }
 }
 
 void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, MotorState_t *MS) {
 
   q31_t q31_i_alpha = 0;
-	q31_t q31_i_beta = 0;
-	q31_t q31_u_alpha = 0;
-	q31_t q31_u_beta = 0;
-	q31_t q31_i_d = 0;
-	q31_t q31_i_q = 0;
+  q31_t q31_i_beta = 0;
+  q31_t q31_u_alpha = 0;
+  q31_t q31_u_beta = 0;
+  q31_t q31_i_d = 0;
+  q31_t q31_i_q = 0;
 
-	q31_t sinevalue = 0, cosinevalue = 0;
+  q31_t sinevalue = 0, cosinevalue = 0;
 
-		// Clark transformation
-	arm_clarke_q31((q31_t) int16_i_as, (q31_t) int16_i_bs, &q31_i_alpha, &q31_i_beta);
+    // Clark transformation
+  arm_clarke_q31((q31_t) int16_i_as, (q31_t) int16_i_bs, &q31_i_alpha, &q31_i_beta);
 
-	arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
+  arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
   // limit output valyes of arm_sin_cos_q31() as some seem wrong
-	if (sinevalue == -2147483648) sinevalue = -2147483647;
-	if (cosinevalue == 2147483648) cosinevalue = 2147483647;
+  if (sinevalue == -2147483648) sinevalue = -2147483647;
+  if (cosinevalue == 2147483648) cosinevalue = 2147483647;
 
-	// Park transformation
-	arm_park_q31(q31_i_alpha, q31_i_beta, &q31_i_d, &q31_i_q, sinevalue, cosinevalue);
+  // Park transformation
+  arm_park_q31(q31_i_alpha, q31_i_beta, &q31_i_d, &q31_i_q, sinevalue, cosinevalue);
 
-	q31_i_q_fil -= q31_i_q_fil >> 4;
-	q31_i_q_fil += q31_i_q;
-	MS->i_q = q31_i_q_fil >> 4;
+  q31_i_q_fil -= q31_i_q_fil >> 4;
+  q31_i_q_fil += q31_i_q;
+  MS->i_q = q31_i_q_fil >> 4;
 
-	q31_i_d_fil -= q31_i_d_fil >> 4;
-	q31_i_d_fil += q31_i_d;
-	MS->i_d = q31_i_d_fil >> 4;
+  q31_i_d_fil -= q31_i_d_fil >> 4;
+  q31_i_d_fil += q31_i_d;
+  MS->i_d = q31_i_d_fil >> 4;
 
-	// Control iq
+  // Control iq
   
   //set static volatage for hall angle detection
-	if (MS->KV_detect_flag) {  
+  if (MS->KV_detect_flag) {  
     MS->u_q = MS->KV_detect_flag;
     MS->u_d = 0;
   } else {
     runPIcontrol();
   }
 
-	// inverse Park transformation
-	arm_inv_park_q31(MS->u_d, MS->u_q, &q31_u_alpha, &q31_u_beta, -sinevalue, cosinevalue);
+  // inverse Park transformation
+  arm_inv_park_q31(MS->u_d, MS->u_q, &q31_u_alpha, &q31_u_beta, -sinevalue, cosinevalue);
 
-	// call SVPWM calculation
-	svpwm(q31_u_alpha, q31_u_beta);
+  // call SVPWM calculation
+  svpwm(q31_u_alpha, q31_u_beta);
 }
 
 // injected ADC
