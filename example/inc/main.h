@@ -16,14 +16,29 @@ extern "C" {
 #include "utils.h"
 #include "motor.h"
 
-// motor hall pins
-#define HALL_1_Pin GPIO_PIN_4
-#define HALL_1_GPIO_Port GPIOB
-#define HALL_2_Pin GPIO_PIN_5
-#define HALL_2_GPIO_Port GPIOB
-#define HALL_3_Pin GPIO_PIN_0
-#define HALL_3_GPIO_Port GPIOB
+// motor hall pins (will be used as input EXTI)
+#define HALL_1_PIN          GPIO_PIN_4
+#define HALL_1_GPIO_PORT    GPIOB
+#define HALL_2_PIN          GPIO_PIN_5
+#define HALL_2_GPIO_PORT    GPIOB
+#define HALL_3_PIN          GPIO_PIN_0
+#define HALL_3_GPIO_PORT    GPIOB
 
+// motor ADC pins
+#define MOTOR_PHASE_CURRENT_A_PIN 3
+#define MOTOR_PHASE_CURRENT_A_PORT GPIOA
+#define MOTOR_PHASE_CURRENT_B_PIN 4
+#define MOTOR_PHASE_CURRENT_B_PORT GPIOA
+#define MOTOR_PHASE_CURRENT_C_PIN 5
+#define MOTOR_PHASE_CURRENT_C_PORT GPIOA
+
+// throttle ADC pin
+#define BATTERY_VOLTAGE_PIN 0
+#define BATTERY_VOLTAGE_PORT GPIOA
+#define THROTTLE_PIN 7
+#define THROTTLE_PORT GPIOA
+
+// wheel speed sensor 
 #define WHELL_SPEED_SENSOR_PIN GPIO_PIN_0
 #define WHELL_SPEED_SENSOR_PORT GPIOB
 

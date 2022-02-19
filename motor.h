@@ -75,7 +75,13 @@ typedef struct {
 } ExtiConfig_t;
 
 typedef struct {
+  PinsConfig_t motor;
+  PinsConfig_t user;
+} ADCConfig_t;
+
+typedef struct {
   ExtiConfig_t exti; // EXTI interrupt configurations. There are 3 EXTI used by the motor to read motor hall sensors but user can use other pins and have a callback
+  ADCConfig_t adc; // ADC configurations. There are 3 ADCs used by the motor to read motor phase currents but user can use other ADC pins and have later read their data
 } MotorConfig_t;
 
 typedef struct {

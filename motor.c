@@ -344,7 +344,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 void get_standstill_position() {
 
-	HAL_GPIO_EXTI_Callback(HALL_1_Pin); // read in initial rotor position
+	HAL_GPIO_EXTI_Callback(HALL_1_PIN); // read in initial rotor position
 
 	switch (ui8_hall_state) {
     // 6 cases for forward direction
@@ -1010,26 +1010,33 @@ static void set_HAL_NVIC(MotorConfig_t* p_MotorConfig, uint8_t i) {
   }
 }
 
-static void GPIO_Init() {
-	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-
-	// GPIO Ports Clock Enable
+void enable_gpio_clock(GPIO_TypeDef** ports) {
+  // GPIO Ports Clock Enable
   uint8_t i = 0;
-  while (p_MotorConfig->exti.motor.ports[i] != 0) {
+  while (ports[i] != 0) {
     i++;
     
-    if (p_MotorConfig->exti.motor.ports[i] == GPIOA) {
+    if (ports[i] == GPIOA) {
       __HAL_RCC_GPIOA_CLK_ENABLE();
-    } else if (p_MotorConfig->exti.motor.ports[i] == GPIOB) {
+    } else if (ports[i] == GPIOB) {
       __HAL_RCC_GPIOB_CLK_ENABLE();
-    } else if (p_MotorConfig->exti.motor.ports[i] == GPIOC) {
+    } else if (ports[i] == GPIOC) {
       __HAL_RCC_GPIOC_CLK_ENABLE();
-    } else if (p_MotorConfig->exti.motor.ports[i] == GPIOD) {
+    } else if (ports[i] == GPIOD) {
       __HAL_RCC_GPIOD_CLK_ENABLE();
-    } else if (p_MotorConfig->exti.motor.ports[i] == GPIOE) {
+    } else if (ports[i] == GPIOE) {
       __HAL_RCC_GPIOE_CLK_ENABLE();
     }
   }
+}
+
+static void GPIO_Init() {
+	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+
+  enable_gpio_clock(p_MotorConfig->exti.motor.ports);
+  enable_gpio_clock(p_MotorConfig->exti.user.ports);
+  enable_gpio_clock(p_MotorConfig->adc.motor.ports);
+  enable_gpio_clock(p_MotorConfig->adc.user.ports);
 
   // The GPIO pin has to be in reset state to set it's properties.
   HAL_GPIO_WritePin(
@@ -1062,8 +1069,23 @@ static void GPIO_Init() {
     }
   }
 
-	/*Configure peripheral I/O remapping */
-	__HAL_AFIO_REMAP_PD01_ENABLE();
+  // configure ADC GPIO pins needed for motor phase currents and measure battery voltage
+  uint8_t i = 0;
+  while (p_MotorConfig->adc.motor.pins[i] != 0) {
+    GPIO_InitStruct.Pin = p_MotorConfig->adc.motor.pins[i];
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    HAL_GPIO_Init(p_MotorConfig->adc.motor.ports[i], &GPIO_InitStruct);
+    i++;
+  }
+
+  // configure ADC GPIO pins for user
+  i = 0;
+  while (p_MotorConfig->adc.user.pins[i] != 0) {
+    GPIO_InitStruct.Pin = p_MotorConfig->adc.user.pins[i];
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    HAL_GPIO_Init(p_MotorConfig->adc.user.ports[i], &GPIO_InitStruct);
+    i++;
+  }
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
