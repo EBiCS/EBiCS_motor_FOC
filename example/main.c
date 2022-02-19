@@ -138,11 +138,7 @@ static void USART3_UART_Init(void) {
  * @retval None
  */
 static void GPIO_Init(void) {
-	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOA_CLK_ENABLE();
-	__HAL_RCC_GPIOB_CLK_ENABLE();
-	__HAL_RCC_GPIOC_CLK_ENABLE();
-	__HAL_RCC_GPIOD_CLK_ENABLE();
+  // init here any needed pins
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *UartHandle) {
@@ -190,6 +186,69 @@ void exti_callback() {
 }
 
 void init_motor() {
+
+ // set the EXTI interrupts pins used by the motor hall sensors
+  static GPIO_TypeDef* motor_exti_ports[] = {
+    HALL_1_GPIO_PORT,
+    HALL_2_GPIO_PORT,
+    HALL_3_GPIO_PORT,
+    NULL // MUST be 0 (null) terminated
+  };
+  static uint16_t motor_exti_pins[] = {
+    HALL_1_PIN,
+    HALL_2_PIN,
+    HALL_3_PIN
+  };
+
+  // set the EXTI interrupts pins used by the user application
+  // this next arrays must be static!!
+  static GPIO_TypeDef* user_exti_ports[] = {
+    WHELL_SPEED_SENSOR_PORT,
+    NULL // MUST be 0 (null) terminated
+  };
+  static uint16_t user_exti_pins[] = {
+    WHELL_SPEED_SENSOR_PIN
+  };
+
+  // set the ADC pins used by the motor to measure motor phase currents
+  static GPIO_TypeDef* motor_adc_ports[] = {
+    MOTOR_PHASE_CURRENT_A_PORT,
+    MOTOR_PHASE_CURRENT_B_PORT,
+    MOTOR_PHASE_CURRENT_C_PORT,
+    BATTERY_VOLTAGE_PORT,
+    NULL // MUST be 0 (null) terminated
+  };
+  static uint16_t motor_adc_pins[] = {
+    MOTOR_PHASE_CURRENT_A_PIN,
+    MOTOR_PHASE_CURRENT_B_PIN,
+    MOTOR_PHASE_CURRENT_C_PIN,
+    BATTERY_VOLTAGE_PIN
+  };
+
+  // set the ADC pins used by the user application
+  static GPIO_TypeDef* user_adc_ports[] = {
+    THROTTLE_PORT,
+    NULL // MUST be 0 (null) terminated
+  };
+  static uint16_t user_adc_pins[] = {
+    THROTTLE_PIN
+  };
+  #define THROTTLE_ADC_ARRAY_POSITION 4 // position 0, 1, 2 and 3 are used by the motor
+
+  static MotorConfig_t motor_config; // this motor_config MUST be static!!
+  // EXTI pins
+  motor_config.exti.motor.pins = motor_exti_pins;
+  motor_config.exti.motor.ports = motor_exti_ports;
+  motor_config.exti.user.pins = user_exti_pins;
+  motor_config.exti.user.ports = user_exti_ports;
+  motor_config.exti.user_exti_callback = &exti_callback;
+
+  // ADC pins
+  motor_config.adc.motor.pins = motor_adc_pins;
+  motor_config.adc.motor.ports = motor_adc_ports;
+  motor_config.adc.user.pins = user_adc_pins;
+  motor_config.adc.user.ports = user_adc_ports;
+
   MSPublic.brake_active = false;
   MSPublic.i_q_setpoint_target = 0; // start at 0 until throttle value is readed
   MSPublic.speed = 128000;
@@ -197,38 +256,6 @@ void init_motor() {
   MSPublic.phase_current_limit = PH_CURRENT_MAX;
   MSPublic.field_weakening_current_max = FIELD_WEAKNING_CURRENT_MAX;
   MSPublic.battery_voltage_min = BATTERYVOLTAGE_MIN;
-
-  // set the pins for the EXTI interrupts pins used by the motor
-  static uint16_t motor_exti_pins[] = {
-    HALL_1_Pin,
-    HALL_2_Pin,
-    HALL_3_Pin,
-    0 // MUST be 0 (null) terminated
-  };
-  static GPIO_TypeDef* motor_exti_ports[] = {
-    HALL_1_GPIO_Port,
-    HALL_2_GPIO_Port,
-    HALL_3_GPIO_Port,
-    0 // MUST be 0 (null) terminated
-  };
-
-  // set the pins for the EXTI interrupts pins used by the motor
-  // this next arrays must be static!!
-  static uint16_t user_exti_pins[] = {
-    WHELL_SPEED_SENSOR_PIN,
-    0 // MUST be 0 (null) terminated
-  };
-  static GPIO_TypeDef* user_exti_ports[] = {
-    WHELL_SPEED_SENSOR_PORT,
-    0 // MUST be 0 (null) terminated
-  };
-
-  static MotorConfig_t motor_config; // this motor_config MUST be static!!
-  motor_config.exti.motor.pins = motor_exti_pins;
-  motor_config.exti.motor.ports = motor_exti_ports;
-  motor_config.exti.user.pins = user_exti_pins;
-  motor_config.exti.user.ports = user_exti_ports;
-  motor_config.exti.user_exti_callback = &exti_callback;
 
   motor_init(&motor_config, &MSPublic);
 }
@@ -254,7 +281,7 @@ int main(void) {
   init_motor();
 
   // at begin, if throttle is at least halfway, do motor autodetect
-  if (MSPublic.adcData[ADC_THROTTLE] > (THROTTLEOFFSET + ((THROTTLEMAX - THROTTLEOFFSET) >> 1))) {
+  if (MSPublic.adcData[THROTTLE_ADC_ARRAY_POSITION] > (THROTTLEOFFSET + ((THROTTLEMAX - THROTTLEOFFSET) >> 1))) {
     motor_autodetect();
   }
 
@@ -270,7 +297,7 @@ int main(void) {
       static uint32_t ui32_throttle_acc = 0;
       uint16_t ui16_throttle;
       ui32_throttle_acc -= ui32_throttle_acc >> 4;
-	    ui32_throttle_acc += MSPublic.adcData[ADC_THROTTLE];
+	    ui32_throttle_acc += MSPublic.adcData[THROTTLE_ADC_ARRAY_POSITION];
 	    ui16_throttle = ui32_throttle_acc >> 4;
 
       // map throttle to motor current

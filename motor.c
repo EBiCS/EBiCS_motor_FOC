@@ -20,10 +20,6 @@ extern void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 // Square Root of 3
 #define _SQRT3	28  //1.73205081*16
 
-#define JSQR_PHASE_A 0b00011000000000000000 //3
-#define JSQR_PHASE_B 0b00100000000000000000 //4
-#define JSQR_PHASE_C 0b00101000000000000000 //5
-
 typedef struct {
 	q31_t i_d;
 	q31_t i_q;
@@ -162,6 +158,9 @@ q31_t q31_i_d_fil = 0;
 
 MotorStatePublic_t* p_MotorStatePublic;
 MotorConfig_t* p_MotorConfig;
+
+uint8_t number_of_adc_channels_used = 0;
+uint8_t adc_channels_used[16]; // 16 is the max ADC channels possible
 
 void _motor_error_handler(char *file, int line) {
 	__disable_irq();
@@ -344,7 +343,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 void get_standstill_position() {
 
-	HAL_GPIO_EXTI_Callback(HALL_1_Pin); // read in initial rotor position
+	HAL_GPIO_EXTI_Callback(HALL_1_PIN); // read in initial rotor position
 
 	switch (ui8_hall_state) {
     // 6 cases for forward direction
@@ -526,7 +525,7 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
   // low pass filter measured battery voltage 
   static q31_t q31_batt_voltage_acc = 0;
   q31_batt_voltage_acc -= (q31_batt_voltage_acc >> 5);
-  q31_batt_voltage_acc += MSP->adcData[ADC_VOLTAGE];
+  q31_batt_voltage_acc += MSP->adcData[3];
   q31_battery_voltage = (q31_batt_voltage_acc >> 5) * CAL_BAT_V;
   MSP->battery_voltage = q31_battery_voltage;
 
@@ -713,15 +712,6 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
 #pragma GCC pop_options
 
 /**
- * Enable DMA controller clock
- */
-static void DMA_Init(void) {
-
-	/* DMA controller clock enable */
-	__HAL_RCC_DMA1_CLK_ENABLE();
-}
-
-/**
  * @brief ADC1 Initialization Function
  * @param None
  * @retval None
@@ -735,7 +725,7 @@ static void ADC1_Init(void) {
 	hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIGCONV_T3_TRGO;
 	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	hadc1.Init.NbrOfConversion = 6;
+	hadc1.Init.NbrOfConversion = number_of_adc_channels_used;
 	hadc1.Init.NbrOfDiscConversion = 0;
 
 	if (HAL_ADC_Init(&hadc1) != HAL_OK) {
@@ -753,7 +743,7 @@ static void ADC1_Init(void) {
 	/**Configure Injected Channel
 	 */
   ADC_InjectionConfTypeDef sConfigInjected;
-	sConfigInjected.InjectedChannel = ADC_CHANNEL_3;
+	sConfigInjected.InjectedChannel = adc_channels_used[0];
 	sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
 	sConfigInjected.InjectedNbrOfConversion = 1;
 	sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
@@ -769,52 +759,46 @@ static void ADC1_Init(void) {
 	/**Configure Regular Channel
 	 */
   ADC_ChannelConfTypeDef sConfig;
-	sConfig.Channel = ADC_CHANNEL_2;
+	sConfig.Channel = adc_channels_used[0]; // motor phase current A
 	sConfig.Rank = ADC_REGULAR_RANK_1;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
 		_motor_error_handler(__FILE__, __LINE__);
 	}
-
 	/**Configure Regular Channel
 	 */
-	sConfig.Channel = ADC_CHANNEL_7;
+	sConfig.Channel = adc_channels_used[1]; // motor phase current B
 	sConfig.Rank = ADC_REGULAR_RANK_2;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
 		_motor_error_handler(__FILE__, __LINE__);
 	}
-	/**Configure Regular Channel
-	 */
-	sConfig.Channel = ADC_CHANNEL_0;
+
+	sConfig.Channel = adc_channels_used[2]; // motor phase current C
 	sConfig.Rank = ADC_REGULAR_RANK_3;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
 		_motor_error_handler(__FILE__, __LINE__);
 	}
-	/**Configure Regular Channel
-	 */
-	sConfig.Channel = JSQR_PHASE_A >> 15;
+
+	sConfig.Channel = adc_channels_used[3]; // battery voltage
 	sConfig.Rank = ADC_REGULAR_RANK_4;
 	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
 		_motor_error_handler(__FILE__, __LINE__);
 	}
-	/**Configure Regular Channel
-	 */
-	sConfig.Channel = JSQR_PHASE_B >> 15;
-	sConfig.Rank = ADC_REGULAR_RANK_5;
-	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
 
-	sConfig.Channel = JSQR_PHASE_C >> 15;
-	sConfig.Rank = ADC_REGULAR_RANK_6;
-	sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
+  // now configure user ADC channels
+  for (uint8_t i = 4; i < number_of_adc_channels_used; i++) {
+    /**Configure Regular Channel
+     */
+    sConfig.Channel = adc_channels_used[i];
+    sConfig.Rank = i + 1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+    if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
+      _motor_error_handler(__FILE__, __LINE__);
+    }
+  }
 }
 
 /**
@@ -841,7 +825,7 @@ static void ADC2_Init(void) {
 
 	/**Configure Injected Channel
 	 */
-	sConfigInjected.InjectedChannel = ADC_CHANNEL_4;
+	sConfigInjected.InjectedChannel = adc_channels_used[1]; // motor phase current B;
 	sConfigInjected.InjectedRank = ADC_INJECTED_RANK_1;
 	sConfigInjected.InjectedNbrOfConversion = 1;
 	sConfigInjected.InjectedSamplingTime = ADC_SAMPLETIME_1CYCLE_5;
@@ -975,46 +959,144 @@ static void TIM2_Init(void) {
 	}
 }
 
-static void set_HAL_NVIC(MotorConfig_t* p_MotorConfig, uint8_t i) {
+static void set_HAL_NVIC(uint16_t pin) {
   // set the EXTIxx_IRQn
-  if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_0) {
+  if (pin == GPIO_PIN_0) {
     HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_1) {
+  } else if (pin == GPIO_PIN_1) {
     HAL_NVIC_SetPriority(EXTI1_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_2) {
+  } else if (pin == GPIO_PIN_2) {
     HAL_NVIC_SetPriority(EXTI2_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI2_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_3) {
+  } else if (pin == GPIO_PIN_3) {
     HAL_NVIC_SetPriority(EXTI3_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI3_IRQn);
-  } else if (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_4) {
+  } else if (pin == GPIO_PIN_4) {
     HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI4_IRQn);
-  } else if ((p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_5) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_6) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_7) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_8) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_9)) {
+  } else if ((pin == GPIO_PIN_5) ||
+    (pin == GPIO_PIN_6) ||
+    (pin == GPIO_PIN_7) ||
+    (pin == GPIO_PIN_8) ||
+    (pin == GPIO_PIN_9)) {
     HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-  } else if ((p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_10) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_11) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_12) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_13) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_14) ||
-    (p_MotorConfig->exti.motor.pins[i] == GPIO_PIN_15)) {
+  } else if ((pin == GPIO_PIN_10) ||
+    (pin == GPIO_PIN_11) ||
+    (pin == GPIO_PIN_12) ||
+    (pin == GPIO_PIN_13) ||
+    (pin == GPIO_PIN_14) ||
+    (pin == GPIO_PIN_15)) {
     HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
   }
 }
 
+void enable_gpio_clock(GPIO_TypeDef** ports) {
+  // GPIO Ports Clock Enable
+  uint8_t i = 0;
+  while (ports[i] != 0) {
+  
+    if (ports[i] == GPIOA) {
+      __HAL_RCC_GPIOA_CLK_ENABLE();
+    } else if (ports[i] == GPIOB) {
+      __HAL_RCC_GPIOB_CLK_ENABLE();
+    } else if (ports[i] == GPIOC) {
+      __HAL_RCC_GPIOC_CLK_ENABLE();
+    } else if (ports[i] == GPIOD) {
+      __HAL_RCC_GPIOD_CLK_ENABLE();
+    } else if (ports[i] == GPIOE) {
+      __HAL_RCC_GPIOE_CLK_ENABLE();
+    }
+
+    i++;
+  }
+}
+
+// not optimize the following code: important for debug
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
+uint8_t get_adc_channel(GPIO_TypeDef* port, uint16_t pin) {
+  uint8_t adc_channel = 0;
+  uint8_t cnt = 0;
+
+  while (pin != 1) {
+    pin = pin >> 1;
+    cnt++;
+  }
+  pin = cnt;
+
+  if (port == GPIOA) {
+    adc_channel = pin; // first 7 pins of PortA has similar number as ADC channel
+  } else if (GPIOB) {
+    adc_channel = 8 + pin; // PB0 and PB1 only
+  } else if (GPIOC) {
+    adc_channel = 10 + pin; // PC0 to PC5
+  }
+
+  return adc_channel;
+}
+
+static void ADC_Init() {
+
+  // @stancecoke wrote:
+  // ADC1 and ADC2 are always used. Two phase currents are sampled simultaneously.
+  // The third one is calculated from U+V+W=0. So you have zero delay between both measured phase current values.
+  // It is always measured from the two phases that have the lowest dutycycle.
+
+  // DMA controller clock enable
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  // get the ADC channels number based on port and pin number
+  uint8_t i = 0;
+  while (p_MotorConfig->adc.motor.ports[i] != 0) {
+
+    uint8_t adc_channel = get_adc_channel(p_MotorConfig->adc.motor.ports[i], p_MotorConfig->adc.motor.pins[i]);
+    adc_channels_used[i] = adc_channel;
+
+    i++;
+  }
+
+  uint8_t j = 0;
+  while (p_MotorConfig->adc.user.ports[j] != 0) {
+
+    uint8_t adc_channel = get_adc_channel(p_MotorConfig->adc.user.ports[j], p_MotorConfig->adc.user.pins[j]);
+    adc_channels_used[i] = adc_channel;
+
+    i++;
+    j++;
+  }
+
+	ADC1_Init();
+	if (HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) {
+		_motor_error_handler(__FILE__, __LINE__);
+	}
+	ADC2_Init();
+	if (HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK) {
+		_motor_error_handler(__FILE__, __LINE__);
+	}
+
+  // enable external trigger
+	SET_BIT(ADC1->CR2, ADC_CR2_JEXTTRIG);
+	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
+	SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG);
+	__HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC);
+
+	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, number_of_adc_channels_used);
+  HAL_ADC_Start_IT(&hadc2);
+}
+#pragma GCC pop_options
+
 static void GPIO_Init() {
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
-	/* GPIO Ports Clock Enable */
-	__HAL_RCC_GPIOC_CLK_ENABLE();
+  enable_gpio_clock(p_MotorConfig->exti.motor.ports);
+  enable_gpio_clock(p_MotorConfig->exti.user.ports);
+  enable_gpio_clock(p_MotorConfig->adc.motor.ports);
+  enable_gpio_clock(p_MotorConfig->adc.user.ports);
 
   // The GPIO pin has to be in reset state to set it's properties.
   HAL_GPIO_WritePin(
@@ -1023,32 +1105,54 @@ static void GPIO_Init() {
     GPIO_PIN_RESET);
 
   // configure EXTI GPIO pins for motor hall sensors
-  for (uint8_t i = 0; i < 3; i++) {
+  uint8_t i = 0;
+  while (p_MotorConfig->exti.motor.ports[i] != NULL) {
     GPIO_InitStruct.Pin = p_MotorConfig->exti.motor.pins[i];
     GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(p_MotorConfig->exti.motor.ports[i], &GPIO_InitStruct);
 
-    set_HAL_NVIC(p_MotorConfig, i);
+    set_HAL_NVIC(p_MotorConfig->exti.motor.pins[i]);
+
+    i++;
   }
 
   // configure EXTI GPIO pins for user
+  i = 0;
   if (p_MotorConfig->exti.user_exti_callback != NULL) { // only configure EXTI user pins if the callback is set
-    uint8_t i = 0;
-    while (p_MotorConfig->exti.user.pins[i] != 0) {
+    while (p_MotorConfig->exti.user.ports[i] != NULL) {
       GPIO_InitStruct.Pin = p_MotorConfig->exti.user.pins[i];
       GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
       GPIO_InitStruct.Pull = GPIO_PULLUP;
       HAL_GPIO_Init(p_MotorConfig->exti.user.ports[i], &GPIO_InitStruct);
 
-      set_HAL_NVIC(p_MotorConfig, i);
+      set_HAL_NVIC(p_MotorConfig->exti.user.pins[i]);
 
       i++;
     }
   }
 
-	/*Configure peripheral I/O remapping */
-	__HAL_AFIO_REMAP_PD01_ENABLE();
+  // configure ADC GPIO pins needed for motor
+  i = 0;
+  while (p_MotorConfig->adc.motor.ports[i] != NULL) {
+    GPIO_InitStruct.Pin = p_MotorConfig->adc.motor.pins[i];
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    HAL_GPIO_Init(p_MotorConfig->adc.motor.ports[i], &GPIO_InitStruct);
+    i++;
+  }
+
+  number_of_adc_channels_used = i;
+
+  // configure ADC GPIO pins for user
+  i = 0;
+  while (p_MotorConfig->adc.user.ports[i] != NULL) {
+    GPIO_InitStruct.Pin = p_MotorConfig->adc.user.pins[i];
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    HAL_GPIO_Init(p_MotorConfig->adc.user.ports[i], &GPIO_InitStruct);
+    i++;
+  }
+
+  number_of_adc_channels_used += i;
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -1074,14 +1178,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
 
   } else if (htim == &htim1) {
-
-    // htim->Instance->DIER &= ~(TIM_IT_UPDATE);
-    // htim->Instance->DIER &= ~(TIM_IT_CC1);
-    // htim->Instance->DIER &= ~(TIM_IT_CC2);
-    // htim->Instance->DIER &= ~(TIM_IT_CC3);
-    // htim->Instance->DIER &= ~(TIM_IT_COM);
-    // htim->Instance->DIER &= ~(TIM_IT_TRIGGER);
-    // htim->Instance->DIER &= ~(TIM_IT_BREAK);
 
   } else if (htim == &htim2) {
     // DEBUG_TOGGLE;
@@ -1120,23 +1216,23 @@ void dyn_adc_state(q31_t angle) {
 static void set_inj_channel(char state) {
 	switch (state) {
 	case 1: //Phase C at high dutycycles, read current from phase A + B
-		ADC1->JSQR = JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+		ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
 		ADC1->JOFR1 = ui16_ph1_offset;
-		ADC2->JSQR = JSQR_PHASE_B; //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+		ADC2->JSQR = (((uint32_t) adc_channels_used[1]) << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
 		ADC2->JOFR1 = ui16_ph2_offset;
 		break;
 
 	case 2: //Phase A at high dutycycles, read current from phase C + B
-		ADC1->JSQR = JSQR_PHASE_C; //ADC1 injected reads phase C, JSQ4 = 0b00110, decimal 6
+		ADC1->JSQR = (((uint32_t) adc_channels_used[2]) << 15); //ADC1 injected reads phase C, JSQ4 = 0b00110, decimal 6
 		ADC1->JOFR1 = ui16_ph3_offset;
-		ADC2->JSQR = JSQR_PHASE_B; //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
+		ADC2->JSQR = (((uint32_t) adc_channels_used[1]) << 15); //ADC2 injected reads phase B, JSQ4 = 0b00101, decimal 5
 		ADC2->JOFR1 = ui16_ph2_offset;
 		break;
 
 	case 3: //Phase B at high dutycycles, read current from phase A + C
-		ADC1->JSQR = JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+		ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
 		ADC1->JOFR1 = ui16_ph1_offset;
-		ADC2->JSQR = JSQR_PHASE_C; //ADC2 injected reads phase C, JSQ4 = 0b00110, decimal 6
+		ADC2->JSQR = (((uint32_t) adc_channels_used[2]) << 15); //ADC2 injected reads phase C, JSQ4 = 0b00110, decimal 6
 		ADC2->JOFR1 = ui16_ph3_offset;
 		break;
 	}
@@ -1268,8 +1364,7 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
   // init IO pins
 	GPIO_Init();
 
-  // init DMA for ADC
-  DMA_Init();
+  ADC_Init();
 
 	// initialize MS struct.
 	MS.hall_angle_detect_flag = false;
@@ -1294,25 +1389,6 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
   PI_iq.max_step = 5000;
   PI_iq.shift = 10;
   PI_iq.limit_i = _U_MAX;
-
-	// ADC init and run calibration
-	ADC1_Init();
-	if (HAL_ADCEx_Calibration_Start(&hadc1) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
-	ADC2_Init();
-	if (HAL_ADCEx_Calibration_Start(&hadc2) != HAL_OK) {
-		_motor_error_handler(__FILE__, __LINE__);
-	}
-
-  // enable external trigger
-	SET_BIT(ADC1->CR2, ADC_CR2_JEXTTRIG);
-	__HAL_ADC_ENABLE_IT(&hadc1, ADC_IT_JEOC);
-	SET_BIT(ADC2->CR2, ADC_CR2_JEXTTRIG);
-	__HAL_ADC_ENABLE_IT(&hadc2, ADC_IT_JEOC);
-
-	HAL_ADCEx_MultiModeStart_DMA(&hadc1, (uint32_t*) p_MotorStatePublic->adcData, 6);
-  HAL_ADC_Start_IT(&hadc2);
 
   // Timers
 	TIM1_Init(); // Swapped the order here!
@@ -1355,15 +1431,15 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
   // average measured ADC phase currents, to store as the offset of each one
 	for (uint32_t i = 0; i < 16; i++) {		
 	  HAL_Delay(5);
-		ui16_ph1_offset += p_MotorStatePublic->adcData[ADC_CHANA];
-		ui16_ph2_offset += p_MotorStatePublic->adcData[ADC_CHANB];
-		ui16_ph3_offset += p_MotorStatePublic->adcData[ADC_CHANC];
+		ui16_ph1_offset += p_MotorStatePublic->adcData[0];
+		ui16_ph2_offset += p_MotorStatePublic->adcData[1];
+		ui16_ph3_offset += p_MotorStatePublic->adcData[2];
 	}
 	ui16_ph1_offset = ui16_ph1_offset >> 4;
 	ui16_ph2_offset = ui16_ph2_offset >> 4;
 	ui16_ph3_offset = ui16_ph3_offset >> 4;
 
-  ADC1->JSQR = JSQR_PHASE_A; //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
+  ADC1->JSQR = (((uint32_t) adc_channels_used[0]) << 15); //ADC1 injected reads phase A JL = 0b00, JSQ4 = 0b00100 (decimal 4 = channel 4)
   ADC1->JOFR1 = ui16_ph1_offset;
 
   EE_ReadVariable(EEPROM_POS_HALL_ORDER, &i16_hall_order);

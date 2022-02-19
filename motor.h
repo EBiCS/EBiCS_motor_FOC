@@ -12,16 +12,11 @@ extern "C" {
 #define WHEEL_CIRCUMFERENCE 690 // 690 for original M365 motor
 #define GEAR_RATIO 15 // 15 for original M365 motor
 
-// ADC channels used to measure currents
-#define ADC_CHANA 3
-#define ADC_CHANB 4
-#define ADC_CHANC 5
-
 // ADC channel to measure the battery voltage
-#define ADC_VOLTAGE 0
+#define ADC_VOLTAGE 3
 
 // calibration factors for voltage and current
-#define CAL_BAT_V 13 	// ADC counts * CAL_BAT_V = Battery voltage in mV
+#define CAL_BAT_V 14 	// ADC counts * CAL_BAT_V = Battery voltage in mV
 
 // battery voltage limits in mV
 #define BATTERYVOLTAGE_MIN 33000
@@ -53,16 +48,6 @@ extern "C" {
 // #define I_FACTOR_PLL 8
 // #define SIXSTEPTHRESHOLD 27000
 
-#define Phase_Current_1_Pin GPIO_PIN_3
-#define Phase_Current_1_GPIO_Port GPIOA
-#define Phase_Current_2_Pin GPIO_PIN_4
-#define Phase_Current_2_GPIO_Port GPIOA
-#define Phase_Current_3_Pin GPIO_PIN_5
-#define Phase_Current_3_GPIO_Port GPIOA
-
-#define Batt_Voltage_Pin GPIO_PIN_2
-#define Batt_Voltage_GPIO_Port GPIOA
-
 typedef struct {
   uint16_t* pins; // The external interrupt/event controller consists of 19 edge detector lines used to generate
   GPIO_TypeDef** ports;
@@ -75,7 +60,13 @@ typedef struct {
 } ExtiConfig_t;
 
 typedef struct {
+  PinsConfig_t motor;
+  PinsConfig_t user;
+} ADCConfig_t;
+
+typedef struct {
   ExtiConfig_t exti; // EXTI interrupt configurations. There are 3 EXTI used by the motor to read motor hall sensors but user can use other pins and have a callback
+  ADCConfig_t adc; // ADC configurations. There are 3 ADCs used by the motor to read motor phase currents but user can use other ADC pins and have later read their data
 } MotorConfig_t;
 
 typedef struct {
@@ -91,7 +82,7 @@ typedef struct {
   uint32_t speed;
   bool brake_active;
   bool field_weakening_enable;
-  uint16_t adcData[6]; // buffer for ADC1 inputs
+  uint16_t adcData[16]; // buffer for ADC inputs (this array has max ADC channels possible). Position 0, 1, 2 and 3 are used by the motor
   uint32_t debug[10];
 } MotorStatePublic_t;
 
