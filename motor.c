@@ -998,8 +998,7 @@ void enable_gpio_clock(GPIO_TypeDef** ports) {
   // GPIO Ports Clock Enable
   uint8_t i = 0;
   while (ports[i] != 0) {
-    i++;
-    
+  
     if (ports[i] == GPIOA) {
       __HAL_RCC_GPIOA_CLK_ENABLE();
     } else if (ports[i] == GPIOB) {
@@ -1011,6 +1010,8 @@ void enable_gpio_clock(GPIO_TypeDef** ports) {
     } else if (ports[i] == GPIOE) {
       __HAL_RCC_GPIOE_CLK_ENABLE();
     }
+
+    i++;
   }
 }
 
@@ -1020,6 +1021,13 @@ void enable_gpio_clock(GPIO_TypeDef** ports) {
 
 uint8_t get_adc_channel(GPIO_TypeDef* port, uint16_t pin) {
   uint8_t adc_channel = 0;
+  uint8_t cnt = 0;
+
+  while (pin != 1) {
+    pin = pin >> 1;
+    cnt++;
+  }
+  pin = cnt;
 
   if (port == GPIOA) {
     adc_channel = pin; // first 7 pins of PortA has similar number as ADC channel
@@ -1105,7 +1113,7 @@ static void GPIO_Init() {
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(p_MotorConfig->exti.motor.ports[i], &GPIO_InitStruct);
 
-    set_HAL_NVIC(p_MotorConfig->exti.user.pins[i]);
+    set_HAL_NVIC(p_MotorConfig->exti.motor.pins[i]);
 
     i++;
   }
