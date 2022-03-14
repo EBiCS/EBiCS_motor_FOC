@@ -1561,6 +1561,9 @@ void FOC_calculation(int16_t i16_ph1_current, int16_t i16_ph2_current, q31_t q31
   svpwm(q31_u_alpha, q31_u_beta);
 
   // update the debug buffer
+  // We can log 300 sets of 6 variables. So data from 300 PWM cycles. Depending on the recent speed,
+  // this is enough for one or more electric revolutions. That's the maximum that can be hold in the
+  // flash memory for the STM32 low density series.
   if (p_MotorStatePublic->debug_state == 0) {
     static uint16_t i = 0; 
     p_MotorStatePublic->debug[i][0] = debug[0];
@@ -1570,7 +1573,7 @@ void FOC_calculation(int16_t i16_ph1_current, int16_t i16_ph2_current, q31_t q31
     p_MotorStatePublic->debug[i][4] = debug[4];
     p_MotorStatePublic->debug[i][5] = debug[5];
 
-    if (++i >= 300) { // 
+    if (++i >= 300) { // lock the buffer, signal we can now send this buffer to UART
       i = 0;
       p_MotorStatePublic->debug_state = 1;
     }
@@ -1626,9 +1629,6 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
       ui8_6step_flag = true;
     }
 
-    // DEBUG
-    debug[0] = ui8_6step_flag;
-
     if (MS.angle_estimation == SPEED_PLL) {
       q31_rotorposition_PLL += q31_angle_per_tic;
     }
@@ -1675,6 +1675,9 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
   if (pwm_is_enabled()) {
     FOC_calculation(i16_ph1_current, i16_ph2_current, q31_rotorposition_absolute, &MS);
   }
+
+  // DEBUG
+  debug[0] = q31_rotorposition_absolute;
 
   // apply PWM values that are calculated inside FOC_calculation()
   TIM1->CCR1 = (uint16_t) switchtime[0];

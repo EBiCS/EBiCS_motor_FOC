@@ -20,7 +20,8 @@
       "type_traits": "c",
       "utility": "c",
       "motor.h": "c",
-      "main.h": "c"
+      "main.h": "c",
+      "stm32f103xb.h": "c"
     }
   }
 }

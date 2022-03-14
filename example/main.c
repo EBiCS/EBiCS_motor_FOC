@@ -2,6 +2,8 @@
 #include "print.h"
 #include "motor.h"
 
+extern void putc_UART3(char c);
+
 #define THROTTLEOFFSET 1100
 #define THROTTLEMAX 3250
 #define BRAKEOFFSET 50
@@ -286,7 +288,6 @@ int main(void) {
   }
 
   while (1) {
-
     //slow loop process, every 20ms
     static uint32_t systick_cnt_old = 0;
     if ((systick_cnt_old != systick_cnt) && // only at a change
@@ -309,19 +310,27 @@ int main(void) {
       }
     }
 
-    // DEBUG
-    if (MSPublic.debug_state == 1) {
-      for (uint8_t i = 0; i < 300; i++) {
-        printf_("%d, %d, %d, %d, %d, %d\n",
-            MSPublic.debug[i][0],
-            MSPublic.debug[i][1] * CAL_I,
-            MSPublic.debug[i][2] * CAL_I,
-            MSPublic.debug[i][3] * CAL_I,
-            MSPublic.debug[i][4] * CAL_I,
-            MSPublic.debug[i][5] * CAL_I);
-      }
 
-      MSPublic.debug_state = 0;
+    //debug loop process, every 2ms
+    static uint32_t systick_cnt_old1 = 0;
+    if ((systick_cnt_old1 != systick_cnt) && // only at a change
+        (systick_cnt % 2) == 0) { // every 2ms
+      systick_cnt_old1 = systick_cnt;
+
+      // DEBUG
+      if (MSPublic.debug_state == 1) {
+        for (uint8_t i = 0; i < 300; i++) {
+          printf_("%d,%d,%d,%d,%d\n",
+              // MSPublic.debug[i][0],
+              MSPublic.debug[i][1],
+              MSPublic.debug[i][2],
+              MSPublic.debug[i][3],
+              MSPublic.debug[i][4],
+              MSPublic.debug[i][5]);
+        }
+
+        MSPublic.debug_state = 0;
+      }
     }
   }
 }
