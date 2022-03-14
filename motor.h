@@ -83,7 +83,8 @@ typedef struct {
   bool brake_active;
   bool field_weakening_enable;
   uint16_t adcData[16]; // buffer for ADC inputs (this array has max ADC channels possible). Position 0, 1, 2 and 3 are used by the motor
-  uint32_t debug[10];
+  uint8_t debug_state;
+  uint32_t debug[300][6];
 } MotorStatePublic_t;
 
 enum angle_estimation {

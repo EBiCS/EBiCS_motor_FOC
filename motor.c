@@ -162,6 +162,8 @@ MotorConfig_t* p_MotorConfig;
 uint8_t number_of_adc_channels_used = 0;
 uint8_t adc_channels_used[16]; // 16 is the max ADC channels possible
 
+uint32_t debug[6]; // local buffer for debug variables
+
 void _motor_error_handler(char *file, int line) {
   __disable_irq();
   while (1) {
@@ -1274,7 +1276,7 @@ void runPIcontrol() {
   q31_t battery_current = get_battery_current(MS.i_q_setpoint,MS.i_d_setpoint, uq_filtered, ud_filtered);
 
   // DEBUG
-  p_MotorStatePublic->debug[0] = battery_current;
+  debug[1] = battery_current;
 
   if (MS.i_q * i8_direction * i8_reverse_flag > 100) { // motor mode
     if (battery_current < ((BATTERYCURRENT_MAX * 7) >> 3)) {
@@ -1306,7 +1308,8 @@ void runPIcontrol() {
   q31_u_d_temp = -PI_control(&PI_id); // control direct current to zero
 
   // DEBUG
-  p_MotorStatePublic->debug[1] = MS.i_d;
+  debug[2] = MS.i_d;
+  debug[3] = MS.i_q;
 
   arm_sqrt_q31((q31_u_d_temp*q31_u_d_temp+q31_u_q_temp*q31_u_q_temp)<<1,&MS.u_abs);
   MS.u_abs = (MS.u_abs>>16)+1;
@@ -1372,6 +1375,8 @@ void motor_init(MotorConfig_t* motorConfig, MotorStatePublic_t* motorStatePublic
   MS.i_q_setpoint = 0;
   MS.i_d_setpoint = 0;
   MS.angle_estimation = SPEED_PLL;
+
+  p_MotorStatePublic->debug_state = 0; // will start the fast lopp debug data
 
   // init PI structs
   PI_id.gain_i = I_FACTOR_I_D;
@@ -1505,7 +1510,7 @@ void svpwm(q31_t q31_u_alpha, q31_t q31_u_beta) {
   }
 }
 
-void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, MotorState_t *MS) {
+void FOC_calculation(int16_t i16_ph1_current, int16_t i16_ph2_current, q31_t q31_teta, MotorState_t *MS) {
 
   q31_t q31_i_alpha = 0;
   q31_t q31_i_beta = 0;
@@ -1517,7 +1522,11 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, Mot
   q31_t sinevalue = 0, cosinevalue = 0;
 
     // Clark transformation
-  arm_clarke_q31((q31_t) int16_i_as, (q31_t) int16_i_bs, &q31_i_alpha, &q31_i_beta);
+  arm_clarke_q31((q31_t) i16_ph1_current, (q31_t) i16_ph2_current, &q31_i_alpha, &q31_i_beta);
+
+  // DEBUG
+  debug[4] = q31_i_alpha;
+  debug[5] = q31_i_beta;
 
   arm_sin_cos_q31(q31_teta, &sinevalue, &cosinevalue);
   // limit output valyes of arm_sin_cos_q31() as some seem wrong
@@ -1550,6 +1559,22 @@ void FOC_calculation(int16_t int16_i_as, int16_t int16_i_bs, q31_t q31_teta, Mot
 
   // call SVPWM calculation
   svpwm(q31_u_alpha, q31_u_beta);
+
+  // update the debug buffer
+  if (p_MotorStatePublic->debug_state == 0) {
+    static uint16_t i = 0; 
+    p_MotorStatePublic->debug[i][0] = debug[0];
+    p_MotorStatePublic->debug[i][1] = debug[1];
+    p_MotorStatePublic->debug[i][2] = debug[2];
+    p_MotorStatePublic->debug[i][3] = debug[3];
+    p_MotorStatePublic->debug[i][4] = debug[4];
+    p_MotorStatePublic->debug[i][5] = debug[5];
+
+    if (++i >= 300) { // 
+      i = 0;
+      p_MotorStatePublic->debug_state = 1;
+    }
+  }
 }
 
 // injected ADC
@@ -1602,7 +1627,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
     }
 
     // DEBUG
-    p_MotorStatePublic->debug[2] = ui8_6step_flag;
+    debug[0] = ui8_6step_flag;
 
     if (MS.angle_estimation == SPEED_PLL) {
       q31_rotorposition_PLL += q31_angle_per_tic;

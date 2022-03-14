@@ -307,13 +307,21 @@ int main(void) {
       } else {
         MSPublic.i_q_setpoint_target = 0;
       }
+    }
 
-      // DEBUG
-      static uint8_t debug_cnt = 0;
-      if (++debug_cnt > 13) { // every 13 * 20 ms = 260ms
-        debug_cnt = 0;
-        printf_("%d, %d\n", MSPublic.debug[0], MSPublic.debug[1] * CAL_I);
+    // DEBUG
+    if (MSPublic.debug_state == 1) {
+      for (uint8_t i = 0; i < 300; i++) {
+        printf_("%d, %d, %d, %d, %d, %d\n",
+            MSPublic.debug[i][0],
+            MSPublic.debug[i][1] * CAL_I,
+            MSPublic.debug[i][2] * CAL_I,
+            MSPublic.debug[i][3] * CAL_I,
+            MSPublic.debug[i][4] * CAL_I,
+            MSPublic.debug[i][5] * CAL_I);
       }
+
+      MSPublic.debug_state = 0;
     }
   }
 }
