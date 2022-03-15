@@ -162,7 +162,7 @@ MotorConfig_t* p_MotorConfig;
 uint8_t number_of_adc_channels_used = 0;
 uint8_t adc_channels_used[16]; // 16 is the max ADC channels possible
 
-uint32_t debug[6]; // local buffer for debug variables
+uint32_t debug[8]; // local buffer for debug variables
 
 void _motor_error_handler(char *file, int line) {
   __disable_irq();
@@ -1273,7 +1273,7 @@ void runPIcontrol() {
     ui8_BC_limit_flag = true;
 
   //reset battery current flag with small hysteresis
-  q31_t battery_current = get_battery_current(MS.i_q_setpoint,MS.i_d_setpoint, uq_filtered, ud_filtered);
+  q31_t battery_current = get_battery_current(MS.i_q_setpoint, MS.i_d_setpoint, uq_filtered, ud_filtered);
 
   // DEBUG
   debug[1] = battery_current;
@@ -1306,10 +1306,6 @@ void runPIcontrol() {
   PI_id.recent_value = MS.i_d;
   PI_id.setpoint = MS.i_d_setpoint;
   q31_u_d_temp = -PI_control(&PI_id); // control direct current to zero
-
-  // DEBUG
-  debug[2] = MS.i_d;
-  debug[3] = MS.i_q;
 
   arm_sqrt_q31((q31_u_d_temp*q31_u_d_temp+q31_u_q_temp*q31_u_q_temp)<<1,&MS.u_abs);
   MS.u_abs = (MS.u_abs>>16)+1;
@@ -1560,6 +1556,9 @@ void FOC_calculation(int16_t i16_ph1_current, int16_t i16_ph2_current, q31_t q31
   // call SVPWM calculation
   svpwm(q31_u_alpha, q31_u_beta);
 
+  debug[6] = q31_u_alpha;
+  debug[7] = q31_u_beta;
+
   // update the debug buffer
   // We can log 300 sets of 6 variables. So data from 300 PWM cycles. Depending on the recent speed,
   // this is enough for one or more electric revolutions. That's the maximum that can be hold in the
@@ -1572,6 +1571,8 @@ void FOC_calculation(int16_t i16_ph1_current, int16_t i16_ph2_current, q31_t q31
     p_MotorStatePublic->debug[i][3] = debug[3];
     p_MotorStatePublic->debug[i][4] = debug[4];
     p_MotorStatePublic->debug[i][5] = debug[5];
+    p_MotorStatePublic->debug[i][6] = debug[6];
+    p_MotorStatePublic->debug[i][7] = debug[7];
 
     if (++i >= 300) { // lock the buffer, signal we can now send this buffer to UART
       i = 0;
@@ -1678,6 +1679,8 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
   // DEBUG
   debug[0] = q31_rotorposition_absolute;
+  debug[2] = i16_ph1_current;
+  debug[3] = i16_ph2_current;
 
   // apply PWM values that are calculated inside FOC_calculation()
   TIM1->CCR1 = (uint16_t) switchtime[0];

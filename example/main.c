@@ -30,6 +30,7 @@ DMA_HandleTypeDef hdma_usart3_rx;
 MotorStatePublic_t MSPublic;
 
 volatile uint32_t systick_cnt = 0;
+volatile uint8_t ui8_UART_TxCplt_flag = 1;
 
 // every 1ms
 void UserSysTickHandler(void) {
@@ -58,6 +59,10 @@ static void DMA_Init(void) {
   /* DMA1_Channel5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 3, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UartHandle) {
+	ui8_UART_TxCplt_flag = 1;
 }
 
 /**
@@ -310,25 +315,34 @@ int main(void) {
       }
     }
 
+    // DEBUG
+    static uint8_t UART_txt_buffer[256];
+    static uint16_t debug_array_cnt = 0;
+    if (MSPublic.debug_state == 1 && ui8_UART_TxCplt_flag == 1) {  
+        
+      sprintf_((char *)UART_txt_buffer, "%d, %d, %d, %d, %d, %d, %d, %d\n",
+          (MSPublic.debug[debug_array_cnt][0] / 11930464), // divide by 180 / 10
+          MSPublic.debug[debug_array_cnt][1],
+          MSPublic.debug[debug_array_cnt][2],
+          MSPublic.debug[debug_array_cnt][3],
+          MSPublic.debug[debug_array_cnt][4],
+          MSPublic.debug[debug_array_cnt][5],
+          MSPublic.debug[debug_array_cnt][6],
+          MSPublic.debug[debug_array_cnt][7]);
 
-    //debug loop process, every 2ms
-    static uint32_t systick_cnt_old1 = 0;
-    if ((systick_cnt_old1 != systick_cnt) && // only at a change
-        (systick_cnt % 2) == 0) { // every 2ms
-      systick_cnt_old1 = systick_cnt;
+      uint8_t len = 0;
+      while (UART_txt_buffer[len] != '\n') {
+        len++;
+      }
+      len++;
+  
+      ui8_UART_TxCplt_flag = 0;
 
-      // DEBUG
-      if (MSPublic.debug_state == 1) {
-        for (uint8_t i = 0; i < 300; i++) {
-          printf_("%d,%d,%d,%d,%d\n",
-              // MSPublic.debug[i][0],
-              MSPublic.debug[i][1],
-              MSPublic.debug[i][2],
-              MSPublic.debug[i][3],
-              MSPublic.debug[i][4],
-              MSPublic.debug[i][5]);
-        }
+      HAL_UART_Transmit_DMA(&huart3, (uint8_t *)&UART_txt_buffer, len);
+      debug_array_cnt++;
 
+      if (debug_array_cnt >= 300) {
+        debug_array_cnt = 0;
         MSPublic.debug_state = 0;
       }
     }
