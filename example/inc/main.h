@@ -60,6 +60,9 @@ extern "C" {
 #define DEBUG_OFF \
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_15, false) // DEBUG
 
+extern UART_HandleTypeDef huart3;
+extern volatile uint8_t ui8_UART_TxCplt_flag;
+
 void Error_Handler(void);
 
 extern void UserSysTickHandler(void);

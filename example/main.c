@@ -321,7 +321,7 @@ int main(void) {
     if (MSPublic.debug_state == 1 && ui8_UART_TxCplt_flag == 1) {  
         
       sprintf_((char *)UART_txt_buffer, "%d, %d, %d, %d, %d, %d, %d, %d\n",
-          (MSPublic.debug[debug_array_cnt][0] / 11930464), // divide by 180 / 10
+          MSPublic.debug[debug_array_cnt][0],
           MSPublic.debug[debug_array_cnt][1],
           MSPublic.debug[debug_array_cnt][2],
           MSPublic.debug[debug_array_cnt][3],

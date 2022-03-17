@@ -386,8 +386,9 @@ int8_t tics_to_speed(uint32_t tics) {
 }
 
 void motor_autodetect() {
-  enable_pwm();
   MS.hall_angle_detect_flag = true;
+  HAL_Delay(100);
+  enable_pwm();
   q31_rotorposition_absolute = 1 << 31;
   i16_hall_order = 1; // reset hall order
   MS.i_d_setpoint = 200; // set MS.id to appr. 2000mA
@@ -455,6 +456,38 @@ void motor_autodetect() {
 
       ui8_hall_state_old = ui8_hall_state;
     }
+
+    // DEBUG
+    static uint8_t UART_txt_buffer[256];
+    static uint16_t debug_array_cnt = 0;
+    if (p_MotorStatePublic->debug_state == 1 && ui8_UART_TxCplt_flag == 1) {  
+        
+      sprintf_((char *)UART_txt_buffer, "%d, %d, %d, %d, %d, %d, %d, %d\n",
+          (p_MotorStatePublic->debug[debug_array_cnt][0]),
+          p_MotorStatePublic->debug[debug_array_cnt][1],
+          p_MotorStatePublic->debug[debug_array_cnt][2],
+          p_MotorStatePublic->debug[debug_array_cnt][3],
+          p_MotorStatePublic->debug[debug_array_cnt][4],
+          p_MotorStatePublic->debug[debug_array_cnt][5],
+          p_MotorStatePublic->debug[debug_array_cnt][6],
+          p_MotorStatePublic->debug[debug_array_cnt][7]);
+
+      uint8_t len = 0;
+      while (UART_txt_buffer[len] != '\n') {
+        len++;
+      }
+      len++;
+  
+      ui8_UART_TxCplt_flag = 0;
+
+      HAL_UART_Transmit_DMA(&huart3, (uint8_t *)&UART_txt_buffer, len);
+      debug_array_cnt++;
+
+      if (debug_array_cnt >= 300) {
+        debug_array_cnt = 0;
+        p_MotorStatePublic->debug_state = 0;
+      }
+    }
   }
 
   disable_pwm();
@@ -521,6 +554,11 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
   MotorStatePublic_t* MSP = motorStatePublic;
   static q31_t q31_battery_voltage; // don´t know why, but seems this variable must be static here or it will get garbage data
 
+  // do not run motor_slow_loop() while hall_angle_detect
+  if (MS.hall_angle_detect_flag == true) {
+    return;
+  }
+
   MS.brake_active = MSP->brake_active;
 
   // battery voltage
@@ -576,15 +614,13 @@ void motor_slow_loop(MotorStatePublic_t* motorStatePublic) {
     arm_sqrt_q31((MS.i_q_setpoint_temp * MS.i_q_setpoint_temp + MS.i_d_setpoint_temp * MS.i_d_setpoint_temp) << 1, &MS.i_setpoint_abs);
     MS.i_setpoint_abs = (MS.i_setpoint_abs >> 16) + 1;
 
-    if (MS.hall_angle_detect_flag == false) {
-      if (MS.i_setpoint_abs > MSP->phase_current_limit) {
-        MS.i_q_setpoint = i8_direction * (MS.i_q_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
-        MS.i_d_setpoint = (MS.i_d_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
-        MS.i_setpoint_abs = MSP->phase_current_limit;
-      } else {
-        MS.i_q_setpoint = i8_direction * MS.i_q_setpoint_temp;
-        MS.i_d_setpoint = MS.i_d_setpoint_temp;
-      }
+    if (MS.i_setpoint_abs > MSP->phase_current_limit) {
+      MS.i_q_setpoint = i8_direction * (MS.i_q_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
+      MS.i_d_setpoint = (MS.i_d_setpoint_temp * MSP->phase_current_limit) / MS.i_setpoint_abs; // division!
+      MS.i_setpoint_abs = MSP->phase_current_limit;
+    } else {
+      MS.i_q_setpoint = i8_direction * MS.i_q_setpoint_temp;
+      MS.i_d_setpoint = MS.i_d_setpoint_temp;
     }
 
     // run KV detection
@@ -1558,27 +1594,6 @@ void FOC_calculation(int16_t i16_ph1_current, int16_t i16_ph2_current, q31_t q31
 
   debug[6] = q31_u_alpha;
   debug[7] = q31_u_beta;
-
-  // update the debug buffer
-  // We can log 300 sets of 6 variables. So data from 300 PWM cycles. Depending on the recent speed,
-  // this is enough for one or more electric revolutions. That's the maximum that can be hold in the
-  // flash memory for the STM32 low density series.
-  if (p_MotorStatePublic->debug_state == 0) {
-    static uint16_t i = 0; 
-    p_MotorStatePublic->debug[i][0] = debug[0];
-    p_MotorStatePublic->debug[i][1] = debug[1];
-    p_MotorStatePublic->debug[i][2] = debug[2];
-    p_MotorStatePublic->debug[i][3] = debug[3];
-    p_MotorStatePublic->debug[i][4] = debug[4];
-    p_MotorStatePublic->debug[i][5] = debug[5];
-    p_MotorStatePublic->debug[i][6] = debug[6];
-    p_MotorStatePublic->debug[i][7] = debug[7];
-
-    if (++i >= 300) { // lock the buffer, signal we can now send this buffer to UART
-      i = 0;
-      p_MotorStatePublic->debug_state = 1;
-    }
-  }
 }
 
 // injected ADC
@@ -1677,15 +1692,36 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc) {
     FOC_calculation(i16_ph1_current, i16_ph2_current, q31_rotorposition_absolute, &MS);
   }
 
+  // apply PWM values that are calculated inside FOC_calculation()
+  TIM1->CCR1 = (uint16_t) switchtime[0];
+  TIM1->CCR2 = (uint16_t) switchtime[1];
+  TIM1->CCR3 = (uint16_t) switchtime[2];
+
   // DEBUG
   debug[0] = q31_rotorposition_absolute;
   debug[2] = i16_ph1_current;
   debug[3] = i16_ph2_current;
 
-  // apply PWM values that are calculated inside FOC_calculation()
-  TIM1->CCR1 = (uint16_t) switchtime[0];
-  TIM1->CCR2 = (uint16_t) switchtime[1];
-  TIM1->CCR3 = (uint16_t) switchtime[2];
+  // update the debug buffer
+  // We can log 300 sets of 6 variables. So data from 300 PWM cycles. Depending on the recent speed,
+  // this is enough for one or more electric revolutions. That's the maximum that can be hold in the
+  // flash memory for the STM32 low density series.
+  if (p_MotorStatePublic->debug_state == 0) {
+    static uint16_t i = 0; 
+    p_MotorStatePublic->debug[i][0] = debug[0];
+    p_MotorStatePublic->debug[i][1] = debug[1];
+    p_MotorStatePublic->debug[i][2] = debug[2];
+    p_MotorStatePublic->debug[i][3] = debug[3];
+    p_MotorStatePublic->debug[i][4] = debug[4];
+    p_MotorStatePublic->debug[i][5] = debug[5];
+    p_MotorStatePublic->debug[i][6] = debug[6];
+    p_MotorStatePublic->debug[i][7] = debug[7];
+
+    if (++i >= 300) { // lock the buffer, signal we can now send this buffer to UART
+      i = 0;
+      p_MotorStatePublic->debug_state = 1;
+    }
+  }
 
 // DEBUG_OFF;
 }
