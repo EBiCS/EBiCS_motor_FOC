@@ -2,7 +2,7 @@
 #include "print.h"
 #include "motor.h"
 
-#define THROTTLEOFFSET 1100
+#define THROTTLEOFFSET 1250
 #define THROTTLEMAX 3250
 #define BRAKEOFFSET 50
 #define BRAKEMAX 190

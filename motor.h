@@ -16,13 +16,26 @@ extern "C" {
 #define ADC_VOLTAGE 3
 
 // calibration factors for voltage and current
-#define CAL_BAT_V 14 	// ADC counts * CAL_BAT_V = Battery voltage in mV
+// ADC 12 bits
+// #define CAL_BAT_V 14 	// ADC counts * CAL_BAT_V = Battery voltage in mV
+#define CAL_BAT_V 26 	// ADC counts * CAL_BAT_V = Battery voltage in mV
+// 30 Vbattery = 0.92V
+// 3.3V -- 4095
+// 0.92V -- x
+// x = (0.92 * 4095) / 3.3 = 1142
+// CAL_BAT_V = 30000 / 1142 = 26
 
 // battery voltage limits in mV
-#define BATTERYVOLTAGE_MIN 33000
+// #define BATTERYVOLTAGE_MIN 33000
+#define BATTERYVOLTAGE_MIN 25000
 #define BATTERYVOLTAGE_MAX 42000
 
-#define CAL_I 38 // ADC counts * CAL_I = current in mA
+// #define CAL_I 38 // ADC counts * CAL_I = current in mA
+#define CAL_I 14 // ADC counts * CAL_I = current in mA
+// 1 amp = 0.011V
+// 3.3V -- 4095
+// 0.011V -- x
+// x = (0.011 * 4095) / 3.3 = 14
 
 // maximum currents in mA
 #define BATTERYCURRENT_MAX 10000 // 10A, 36V battery, 350W limit
